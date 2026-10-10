@@ -80,8 +80,8 @@ try {
 - **Cap what one visitor can do.** Check size and file count in the route before `createUpload`. Where the app has sign-in, require it.
 - **A key is a name, not a path.** `users/42/avatar.png`. Slashes only matter for `listFiles({ prefix })`. Uploading to an existing key replaces that file.
 - **Keep a file's `key` in your own table** when it belongs to a record. Never its contents.
-- **Addresses expire** (15 minutes). Reuse one until `expiresAt` rather than asking per render; `fileUrls` signs a list. For `<img>`, the view route above is simplest.
-- **Pictures, PDF, audio, video and plain text open in the browser; everything else downloads.** HTML and SVG always download, by design. To show a picture, upload it as `image/png`, `jpeg`, `webp` or `gif`.
+- **A file's link is public.** Anyone who has it can open the file, so never put anything secret in storage and never show a link to someone who should not have the file. Where `expiresAt` is `null` the link is permanent: keep it in your page or table instead of asking again. Otherwise it lasts 15 minutes; reuse it until then. `fileUrls` gives a list. For `<img>`, the view route above is simplest, and it is where you check who may see the file.
+- **Pictures, PDF, audio, video and plain text open in the browser; everything else downloads.** HTML and SVG always download, by design, and that is fixed when the file is stored. To show a picture, upload it as `image/png`, `jpeg`, `webp` or `gif`.
 - **Show friendly messages** for `storage_full` and `file_too_large`; the error's `message` states the limit.
 - A file the server makes (an export, a PDF) goes through `saveFile(key, bytes, contentType)`.
 - `storageUsage()` returns `usedBytes`, `quotaBytes`, `maxFileBytes`. Over the allowance, uploads are refused; listing, downloading and deleting still work.

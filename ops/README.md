@@ -194,7 +194,7 @@ sum by (finishReason) (count_over_time({app="tau"} | json | event = "job.end" [2
 
 Generated apps keep files in a separate R2 bucket (`R2_STORAGE_BUCKET`, `tau-app-storage`) through
 signed addresses; tau's database (`StorageObject`) is the list of files. Design: `doc/TAU_CLOUD_STORAGE.md`.
-The bucket has an open CORS policy (any origin may `PUT`, `GET`, `HEAD`) because uploads come from
+Files are read at the bucket's public `r2.dev` address (`R2_STORAGE_PUBLIC_URL`, enabled with `wrangler r2 bucket dev-url enable tau-app-storage`): a permanent link per file, no signature, no listing. Cloudflare says that address is for testing, rate-limited (429 over the limit) and without caching or WAF; a custom domain is the production route. Unset `R2_STORAGE_PUBLIC_URL` to go back to short-lived signed addresses (`wrangler r2 bucket dev-url disable` closes the public address). The bucket has an open CORS policy (any origin may `PUT`, `GET`, `HEAD`) because uploads come from
 preview hosts and owners' domains; the main bucket is not opened like that.
 
 ### Suspend a project's storage
@@ -211,9 +211,12 @@ stopped after lifting a site, suspend it again.
 1. Find the project: the reported address gives the site, console → Users or the Storage page's
    *Largest projects* gives the project.
 2. **Suspend storage** first if the content is harmful (a reason such as the report's date). This
-   stops new downloads at once; signed addresses already handed out last up to an hour.
+   stops new uploads, new links and the owner's pane, **but it does not stop a file whose public link
+   is already out**: the files are served straight from the bucket's public `r2.dev` address, not
+   through tau. Only deleting the file (next step), or deleting the project, stops that link.
 3. Project page → **File storage → Show files** (pick Preview or Live), find the file, **Delete** with
-   a reason. This removes the row and the bytes (log line `admin.storage.delete_file`).
+   a reason. This removes the row and the bytes, and the public link answers 404 straight away (log
+   line `admin.storage.delete_file`). **Deleting is the takedown; suspending is not.**
 4. Decide about the owner: resume storage, or leave it suspended and tell them why.
 5. Check the log for who did what: `{app="tau"} |= "admin.storage"` in Loki.
 
@@ -234,7 +237,7 @@ dead rows show the owner a file that will not open.
 
 ### Settings
 
-`R2_STORAGE_BUCKET` (storage is off without it), `R2_STORAGE_ACCESS_KEY_ID` and `_SECRET_ACCESS_KEY`
+`R2_STORAGE_BUCKET` (storage is off without it), `R2_STORAGE_PUBLIC_URL` (the public address; the app gets permanent links when set), `R2_STORAGE_ACCESS_KEY_ID` and `_SECRET_ACCESS_KEY`
 (a token limited to the bucket; falls back to the main R2 pair), `TAU_STORAGE_URL` (the public address of
 `/storage`, as for `TAU_AI_URL`), `STORAGE_RPM`, `STORAGE_UPLOAD_TTL_SECONDS`, `STORAGE_URL_TTL_SECONDS`,
 `STORAGE_PENDING_TTL_MS`, `STORAGE_ALERT_BYTES`, `STORAGE_UPLOAD_SPIKE_PER_HOUR`. The allowances per

@@ -61,13 +61,29 @@ export function projectStoragePrefix(projectId: string): string {
  */
 export function presignStoragePut(
   key: string,
-  opts: { size: number; contentType: string; expiresIn: number },
+  opts: { size: number; contentType: string; contentDisposition?: string; expiresIn: number },
 ): Promise<string> {
+  const signed = ["content-length", "content-type"];
+  // Pinned for files that must only ever download (see `storedHeaders`): R2 keeps the
+  // header with the object, so the public link serves it too. Measured 2026-10-10: a
+  // body without the header is refused, and the public address returns it.
+  if (opts.contentDisposition) signed.push("content-disposition");
   return getSignedUrl(
     r2(),
-    new PutObjectCommand({ Bucket: bucket(), Key: key, ContentLength: opts.size, ContentType: opts.contentType }),
-    { expiresIn: opts.expiresIn, signableHeaders: new Set(["content-length", "content-type"]) },
+    new PutObjectCommand({
+      Bucket: bucket(),
+      Key: key,
+      ContentLength: opts.size,
+      ContentType: opts.contentType,
+      ...(opts.contentDisposition ? { ContentDisposition: opts.contentDisposition } : {}),
+    }),
+    { expiresIn: opts.expiresIn, signableHeaders: new Set(signed) },
   );
+}
+
+/** The permanent public link for an object, or null when the bucket has no public address configured. */
+export function publicStorageUrl(key: string): string | null {
+  return env.R2_STORAGE_PUBLIC_URL ? `${env.R2_STORAGE_PUBLIC_URL}/${key}` : null;
 }
 
 export function presignStorageGet(

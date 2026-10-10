@@ -105,14 +105,17 @@ export async function fileInfo(key: string): Promise<StoredFile> {
 }
 
 /**
- * A short-lived address the browser can load the file from (`<img src>`, a
- * download link). Reuse it until `expiresAt`; use `fileUrls` for a list.
- * `download: true` forces a save-as even for a picture.
+ * An address the browser can load the file from (`<img src>`, a link). Where tau
+ * has a public address for storage it is the file's permanent public link and
+ * `expiresAt` is null; otherwise it is a short-lived address, good until
+ * `expiresAt`. A picture opens in the page and every other type downloads, as it
+ * was fixed when the file was stored, so `download` only matters for short-lived
+ * addresses. Use `fileUrls` for a list.
  */
 export function fileUrl(
   key: string,
   opts: { expiresIn?: number; download?: boolean } = {},
-): Promise<{ url: string; expiresAt: string }> {
+): Promise<{ url: string; expiresAt: string | null }> {
   return call('POST', '/files/url', { key, ...opts })
 }
 
@@ -120,7 +123,7 @@ export function fileUrl(
 export function fileUrls(
   keys: string[],
   opts: { expiresIn?: number } = {},
-): Promise<{ urls: { key: string; url: string | null }[]; expiresAt: string }> {
+): Promise<{ urls: { key: string; url: string | null }[]; expiresAt: string | null }> {
   return call('POST', '/files/urls', { keys, ...opts })
 }
 

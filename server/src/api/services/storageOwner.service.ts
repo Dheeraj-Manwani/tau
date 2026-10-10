@@ -102,7 +102,8 @@ export async function fileUrl(
   // Suspended means no new download addresses, for the owner too.
   if (project.storageSuspendedAt) throw new AppError("Storage for this app has been suspended by tau.", 403);
   return asOwnerError(() =>
-    storage.fileUrl(ctxFor(projectId, userId, input.env), { key: input.key, download: input.download }),
+    // Signed, not the public link: the pane's Download has to download, and a public link cannot be told to.
+    storage.fileUrl(ctxFor(projectId, userId, input.env), { key: input.key, download: input.download }, { signed: true }),
   );
 }
 

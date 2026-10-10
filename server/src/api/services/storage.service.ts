@@ -16,6 +16,7 @@ import {
   headStorageObject,
   presignStorageGet,
   presignStoragePut,
+  publicStorageUrl,
   storageObjectKey,
 } from "@/lib/storageBucket";
 import { limitsFor, planFor, roomFor, storageUsage } from "@/lib/storageQuota";
@@ -25,6 +26,7 @@ import {
   normalizeContentType,
   normalizeObjectKey,
   normalizePrefix,
+  storedHeaders,
 } from "../lib/storagePaths";
 import { StorageError, storageErrors } from "../lib/storageErrors";
 import { log } from "../lib/log";
@@ -145,9 +147,11 @@ export async function createUpload(ctx: StorageCtx, input: UploadInput) {
     data: { ...scope(ctx), userId: ctx.userId, key, contentType, sizeBytes: BigInt(size), metadata },
   });
   const expiresIn = env.STORAGE_UPLOAD_TTL_SECONDS;
+  const stored = storedHeaders(contentType, nameOf(key));
   const uploadUrl = await presignStoragePut(storageObjectKey(ctx.projectId, ctx.env, row.id), {
     size,
-    contentType,
+    contentType: stored.contentType,
+    contentDisposition: stored.contentDisposition,
     expiresIn,
   });
   log.info("storage.upload_created", { projectId: ctx.projectId, env: ctx.env, size });
@@ -156,7 +160,11 @@ export async function createUpload(ctx: StorageCtx, input: UploadInput) {
     key,
     uploadUrl,
     method: "PUT" as const,
-    headers: { "Content-Type": contentType },
+    // Exactly what the PUT must send: both are signed into the address.
+    headers: {
+      "Content-Type": stored.contentType,
+      ...(stored.contentDisposition ? { "Content-Disposition": stored.contentDisposition } : {}),
+    },
     expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString(),
   };
 }
@@ -272,9 +280,22 @@ async function signRow(row: StorageObject, expiresIn: number, download: boolean)
   });
 }
 
-export async function fileUrl(ctx: StorageCtx, input: { key?: unknown; expiresIn?: unknown; download?: unknown }) {
+/**
+ * An address for a file. With a public bucket address configured it is the
+ * file's permanent public link (`expiresAt` is null, and `download` cannot change
+ * how it opens: that was fixed when the file was stored). `signed` forces a
+ * short-lived signed address instead, which can: the owner's pane uses it so
+ * Download always downloads.
+ */
+export async function fileUrl(
+  ctx: StorageCtx,
+  input: { key?: unknown; expiresIn?: unknown; download?: unknown },
+  opts: { signed?: boolean } = {},
+): Promise<{ url: string; expiresAt: string | null }> {
   const expiresIn = ttlFor(input.expiresIn);
   const row = await readyRow(ctx, requireKey(input.key));
+  const pub = opts.signed ? null : publicStorageUrl(storageObjectKey(row.projectId, row.env, row.id));
+  if (pub) return { url: pub, expiresAt: null };
   const url = await signRow(row, expiresIn, input.download === true);
   return { url, expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString() };
 }
@@ -290,10 +311,14 @@ export async function fileUrls(ctx: StorageCtx, input: { keys?: unknown; expires
   const urls = await Promise.all(
     keys.map(async (key) => {
       const row = byKey.get(key);
-      return { key, url: row ? await signRow(row, expiresIn, false) : null };
+      if (!row) return { key, url: null };
+      const pub = publicStorageUrl(storageObjectKey(row.projectId, row.env, row.id));
+      return { key, url: pub ?? (await signRow(row, expiresIn, false)) };
     }),
   );
-  return { urls, expiresAt: new Date(Date.now() + expiresIn * 1000).toISOString() };
+  // Public links do not expire; signed ones do.
+  const expiresAt = publicStorageUrl("x") ? null : new Date(Date.now() + expiresIn * 1000).toISOString();
+  return { urls, expiresAt };
 }
 
 // ── changing ──────────────────────────────────────────────────────────────────

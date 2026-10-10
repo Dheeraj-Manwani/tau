@@ -241,10 +241,14 @@ export default function TermsPage() {
             or other users.
           </li>
           <li>
-            <b>Files are private and are not a backup.</b> Stored files are
-            reachable only through your app. Keep your own copy of anything you
-            cannot afford to lose; we do not promise that files will never be
-            lost, corrupted or unavailable.
+            <b>Anyone with a file&apos;s link can open it, and storage is not a
+            backup.</b> Every stored file has a public link. The link cannot be
+            guessed, but anyone who is given it, or finds it in your app, can
+            open the file, and we cannot limit who has it. Never store anything
+            that must stay secret, and do not show a link to someone who should
+            not have the file. Keep your own copy of anything you cannot afford
+            to lose; we do not promise that files will never be lost, corrupted
+            or unavailable.
           </li>
           <li>
             <b>Limits.</b> Storage is limited by plan (stored total, size of a
@@ -300,7 +304,7 @@ export default function TermsPage() {
           with or without notice, and without liability to you:
         </p>
         <ul className="list-disc space-y-1 pl-5">
-          <li>Suspend an app&apos;s storage, so nothing can be uploaded or opened.</li>
+          <li>Suspend an app&apos;s storage, so nothing can be uploaded, listed or newly linked, and delete any file, which stops its link working.</li>
           <li>Take a published app offline or suspend its address.</li>
           <li>Delete specific files, apps or whole projects.</li>
           <li>Limit, suspend or terminate your account.</li>

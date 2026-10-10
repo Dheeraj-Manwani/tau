@@ -176,6 +176,14 @@ const envSchema = z.object({
   // like TAU_AI_URL: it is used from a sandbox and from a published function.
   TAU_STORAGE_URL: z.string().url().optional(),
   // Requests a minute per storage key.
+  // The bucket's public r2.dev address (`wrangler r2 bucket dev-url enable`). When set, a
+  // stored file is read at `${R2_STORAGE_PUBLIC_URL}/{r2 key}`: a permanent public link, no
+  // signature. Unset: the app gets short-lived signed addresses as before.
+  R2_STORAGE_PUBLIC_URL: z
+    .string()
+    .url()
+    .optional()
+    .transform((v) => v?.replace(/\/+$/, "")),
   STORAGE_RPM: z.coerce.number().int().positive().default(300),
   STORAGE_UPLOAD_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   STORAGE_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),

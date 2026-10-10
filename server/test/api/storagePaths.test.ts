@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  storedHeaders,
   dispositionFor,
   nameOf,
   normalizeContentType,
@@ -73,6 +74,28 @@ describe("dispositionFor", () => {
     const d = dispositionFor("image/png", 'a"; filename=evil.html\r\nX: y', false).header;
     expect(d).not.toMatch(/[\r\n]/);
     expect(d.match(/"/g)).toHaveLength(2); // the quote in the name was replaced, so it stays one quoted string
+  });
+});
+
+describe("storedHeaders", () => {
+  test("a safe type keeps its type and has no pinned disposition", () => {
+    for (const t of ["image/png", "application/pdf", "text/plain; charset=utf-8", "audio/mpeg", "video/mp4"]) {
+      expect(storedHeaders(t, "a")).toEqual({ contentType: t });
+    }
+  });
+
+  test("everything else, HTML and SVG included, is opaque bytes with an attachment disposition", () => {
+    for (const t of ["text/html", "text/html; charset=utf-8", "image/svg+xml", "application/xhtml+xml", "application/zip", "text/javascript"]) {
+      const h = storedHeaders(t, "report.html");
+      expect(h.contentType).toBe("application/octet-stream");
+      expect(h.contentDisposition).toStartWith('attachment; filename="report.html"');
+    }
+  });
+
+  test("the header is one line of ASCII whatever the file is called", () => {
+    const name = "we" + String.fromCharCode(34, 13, 10) + "ird é.html";
+    const h = storedHeaders("text/html", name).contentDisposition!;
+    expect(h).toMatch(/^[ -~]+$/);
   });
 });
 

@@ -232,7 +232,7 @@ function StorageCard({ project, onChange }: { project: ProjectDetailData["projec
           <ReasonButton
             label="Suspend storage"
             title="Suspend this app's storage?"
-            description="The app can no longer upload files or get download addresses for them, and the owner's Storage pane says it is suspended. Every file is kept."
+            description="The app can no longer upload files, list them or get links, and the owner's Storage pane says it is suspended. Every file is kept. A link that is already out keeps working: files are served from the public bucket address, so to stop one, delete the file."
             hint="Reason (kept in the log with your id)"
             placeholder="e.g. Stores a phishing kit reported on 2026-10-10."
             confirmLabel="Suspend storage"

@@ -87,6 +87,27 @@ export function dispositionFor(contentType: string, name: string, download: bool
   return { header: `attachment; ${filenameParams(name)}`, contentType: "application/octet-stream" };
 }
 
+export interface StoredHeaders {
+  /** The `Content-Type` the object is stored with, and the `PUT` must send. */
+  contentType: string;
+  /** Pinned `Content-Disposition`, or undefined for a type that may open in place. */
+  contentDisposition?: string;
+}
+
+/**
+ * What an object is stored with. A file is readable at a public link, and the
+ * bucket's own address cannot add headers, so the safe behaviour is fixed when the
+ * file is stored: a picture, PDF, audio, video or plain text keeps its type and
+ * opens in place; everything else, always including HTML and SVG, is stored as
+ * opaque bytes with an attachment disposition, so a browser saves it instead of
+ * running it (doc/TAU_CLOUD_STORAGE.md D9).
+ */
+export function storedHeaders(contentType: string, name: string): StoredHeaders {
+  if (isInlineSafe(contentType)) return { contentType };
+  const d = dispositionFor(contentType, name, true);
+  return { contentType: d.contentType, contentDisposition: d.header };
+}
+
 /** Content types come from the uploader; keep them to something a header can carry. */
 export function normalizeContentType(raw: unknown): string | null {
   if (typeof raw !== "string") return null;

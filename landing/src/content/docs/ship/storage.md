@@ -21,8 +21,13 @@ it is rebuilt.
 A file goes from the visitor's browser straight to storage. It never passes
 through your app's server, so the size of a file is not limited by the server.
 
-Every file is private. Nothing has a public address; your app's server asks for a
-short-lived link each time it wants to show or download one.
+**Anyone who has a file's link can open it.** Every stored file has its own
+public link on Cloudflare, with a long random id that cannot be guessed. Your app
+decides who is shown a link, but once someone has it, they can open the file and
+pass the link on, and tau cannot limit it. So **never store anything that must
+stay secret**, and do not show a link to a person who should not have the file.
+Listing files, uploading and deleting still need your app's server, and nothing
+can browse the list of files.
 
 ## Seeing and managing the files
 
@@ -61,7 +66,8 @@ and you cannot add more until you are under it.
 
 Pictures (not SVG), PDF, audio, video and plain text open in place. Everything
 else downloads, and **HTML and SVG files always download**, because they can run
-code.
+code. This is decided when the file is stored, so it holds for the public link
+too.
 
 ## Preview and published apps are separate
 
@@ -100,7 +106,7 @@ including what other people upload to it**, and the
 do about it (section 9) and who is responsible for what (section 7).
 
 If a project is reported, or its storage looks like abuse, tau can **suspend** it:
-nothing can be uploaded and no file can be opened, and the files are kept for the
+nothing can be uploaded, listed or newly linked, and the files are kept for the
 time being. Tau may also delete files, take an app offline or close an account,
 and may share information with the authorities. The Storage pane tells you when
 storage has been suspended. Suspending a published site suspends its files with

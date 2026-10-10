@@ -104,10 +104,12 @@ mock.module("@/lib/prisma", () => ({ prisma: fakePrisma }));
 // The bucket: objects are keyed by their R2 key, with the size they hold.
 const bucket = new Map<string, number>();
 const signed: { key: string; opts: Row }[] = [];
+let publicBase: string | null = null;
 mock.module("@/lib/storageBucket", () => ({
   storageConfigured: () => true,
   storageObjectKey: (p: string, e: string, id: string) => `apps/${p}/${e.toLowerCase()}/${id}`,
   projectStoragePrefix: (p: string) => `apps/${p}/`,
+  publicStorageUrl: (key: string) => (publicBase ? `${publicBase}/${key}` : null),
   presignStoragePut: async (key: string, opts: Row) => {
     signed.push({ key, opts });
     return `https://r2.test/put/${key}?len=${opts.size}`;
@@ -205,6 +207,7 @@ beforeEach(async () => {
   tables.storageKey.length = 0;
   bucket.clear();
   signed.length = 0;
+  publicBase = null;
   __resetStorageLimiter();
   projects.A = { id: PA, userId: "owner", storageEnabled: true, storageSuspendedAt: null };
   projects.B = { id: PB, userId: "owner", storageEnabled: true, storageSuspendedAt: null };
@@ -239,8 +242,23 @@ describe("upload flow", () => {
   });
 
   test("the size and type are signed into the address", async () => {
-    await call(previewA, "POST", "/uploads", { key: "a.png", contentType: "image/png", size: 7 });
+    const up = await call(previewA, "POST", "/uploads", { key: "a.png", contentType: "image/png", size: 7 });
     expect(signed[0]!.opts).toMatchObject({ size: 7, contentType: "image/png" });
+    expect(signed[0]!.opts.contentDisposition).toBeUndefined();
+    expect(up.json.headers).toEqual({ "Content-Type": "image/png" });
+  });
+
+  test("a file that must not open in place is stored as a forced download, and the PUT is told to send exactly that", async () => {
+    for (const [name, type] of [["page.html", "text/html"], ["logo.svg", "image/svg+xml"], ["x.zip", "application/zip"]]) {
+      signed.length = 0;
+      const up = await call(previewA, "POST", "/uploads", { key: `f/${name}`, contentType: type, size: 5 });
+      expect(up.json.headers["Content-Type"]).toBe("application/octet-stream");
+      expect(up.json.headers["Content-Disposition"]).toStartWith(`attachment; filename="${name}"`);
+      expect(signed[0]!.opts).toMatchObject({ contentType: "application/octet-stream", contentDisposition: up.json.headers["Content-Disposition"] });
+    }
+    // The row keeps what the uploader said, for the listing.
+    await put(previewA, "keep.html", 3, "text/html");
+    expect((await call(previewA, "GET", "/files/info?key=keep.html")).json.file.contentType).toBe("text/html");
   });
 
   test("completing before the bytes arrive is upload_incomplete and can be retried", async () => {
@@ -360,6 +378,31 @@ describe("rules", () => {
     }
     expect(decodeURIComponent((await call(previewA, "POST", "/files/url", { key: "pic.png" })).json.url)).toContain("inline");
     expect(decodeURIComponent((await call(previewA, "POST", "/files/url", { key: "pic.png", download: true })).json.url)).toContain("attachment");
+  });
+
+  test("with a public bucket address a file link is permanent and needs no signature", async () => {
+    publicBase = "https://pub.test";
+    const done = await put(previewA, "p.png", 3);
+    const url = await call(previewA, "POST", "/files/url", { key: "p.png", download: true });
+    expect(url.json).toEqual({ url: `https://pub.test/apps/${PA}/preview/${done.json.file.id}`, expiresAt: null });
+    const many = await call(previewA, "POST", "/files/urls", { keys: ["p.png", "none.png"] });
+    expect(many.json.expiresAt).toBeNull();
+    expect(many.json.urls[0].url).toBe(url.json.url);
+    expect(many.json.urls[1].url).toBeNull();
+    expect(signed.filter((s) => String(s.key).includes("/get/"))).toEqual([]); // nothing was signed
+    expect((await call(previewA, "POST", "/files/url", { key: "none.png" })).status).toBe(404);
+  });
+
+  test("the owner pane still gets a signed address, so Download downloads", async () => {
+    publicBase = "https://pub.test";
+    await put(previewA, "o.png", 3);
+    const res = await fetch(`${root}/project/${PA}/storage/files/url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-test-user": "owner" },
+      body: JSON.stringify({ key: "o.png", download: true }),
+    }).then((r) => r.json() as Promise<any>);
+    expect(res.url).toContain("https://r2.test/get/");
+    expect(decodeURIComponent(res.url)).toContain("attachment");
   });
 
   test("urls signs many at once and leaves unknown names null", async () => {
