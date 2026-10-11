@@ -387,3 +387,18 @@ describe("the guides point at it", () => {
     expect(assets).toContain("**The picture a page opens with**, when the Concept describes one and two searches have found nothing like it");
   });
 });
+
+// A dating site for attractive people was built with no picture on it: the
+// concept had answered "none", as it was free to whenever type would do.
+describe("when a concept may do without a picture", () => {
+  test('"none" needs an object in the picture\'s place, and is not for a subject that is seen', () => {
+    const prompt = conceptPrompt({
+      style: "brutalist", accent: "#ff2d55", accentExact: false, mode: "dark",
+      dials: { variance: 8, motion: 6, density: 5 }, energy: 9, read: "Reading this as: a page.", source: "director",
+    });
+    expect(prompt).toContain('only when the first screen shows an object built for it');
+    expect(prompt).toContain("Words and colour alone are not a reason");
+    expect(prompt).toContain("a brand that is about people, a place, food or something made is not one to leave without a picture");
+    expect(prompt).not.toContain("when type and colour carry the first screen better than a photograph would");
+  });
+});

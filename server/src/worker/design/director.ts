@@ -69,6 +69,7 @@ import { log } from "@/worker/lib/log";
 import { LOUD_ENERGY } from "./bands";
 import { hexToOklch, isHexColor } from "./color";
 import { importedMode, splitFrontMatter } from "./importDesign";
+import { GREY_CHROMA } from "./palette";
 import { ALL_STYLES, GENERAL_STYLES, STYLES, chosenPairing } from "./styles";
 import {
   isStyleKey,
@@ -405,6 +406,18 @@ export function parseDirectorReply(text: string): DirectorOptions | null {
     });
     if (!repeat) accents.push(normal);
   }
+  // A black, a grey or a stone is not an accent. The palette takes a colour
+  // with no chroma as a request for an app with no colour in it (`GREY_CHROMA`
+  // in palette.ts), which is right for a user who chose one and wrong for one
+  // of three offers that happened to be drawn: asked for colours "from the
+  // world of the subject", the director lists the black of a skate shop or
+  // the slate of a pottery beside two real ones. Measured on 120 replies to
+  // six briefs, 8 offered one and 3 apps would have been built grey
+  // (doc/DESIGN_COMPARISON_HOT_DATE.md §5f). Telling it not to did not stop
+  // it. Kept when the brief asked for exactly that colour, and when nothing
+  // with colour was offered: then grey is the answer, not a filler.
+  const coloured = accents.filter((hex) => hexToOklch(hex).c >= GREY_CHROMA);
+  const offered = raw.accent_exact === true || coloured.length === 0 ? accents : coloured;
 
   const read =
     typeof raw.read === "string" && raw.read.trim().length > 20
@@ -413,8 +426,8 @@ export function parseDirectorReply(text: string): DirectorOptions | null {
 
   return {
     styles: styles.slice(0, 3),
-    accents: accents.slice(0, 3),
-    accentExact: accents.length > 0 && raw.accent_exact === true,
+    accents: offered.slice(0, 3),
+    accentExact: offered.length > 0 && raw.accent_exact === true,
     mode: raw.mode === "dark" || raw.mode === "light" ? raw.mode : null,
     dials: {
       variance: clampDial(raw.variance),

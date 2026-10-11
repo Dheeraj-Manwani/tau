@@ -14,7 +14,8 @@
  *
  *   - `band-1` — the accent as a deep field;
  *   - `band-2` — the page turned inside out: the other mode's page and text;
- *   - `band-3` — a second hue: the style's own second colour, bright.
+ *   - `band-3` — a second hue, bright: a neighbour of the accent, on the side
+ *     the style's own second colour is (`BAND_HUE_REACH`).
  *
  * They are surfaces, not accents: the one accent still marks what to press.
  *
@@ -72,6 +73,53 @@ export const LOUD_ENERGY = 7;
 
 /** A band has to be seen as a different surface from the page it sits on. */
 const BAND_APART = 1.3;
+
+/**
+ * How far round the wheel from the accent the second hue may sit, in degrees.
+ *
+ * It used to be the style's whole move, which in a loud style is most of the
+ * way across: a red brand in Brutalist had a mint-green section, a red one in
+ * Swiss a cyan one. A chart needs its colours far apart, because they have to
+ * be told from each other at a glance. A page's sections do not: a whole
+ * section in the accent's opposite reads as another brand's, where one in its
+ * neighbour (amber beside red, violet beside blue) reads as a second colour of
+ * the same one. Chosen by eye from every loud style drawn with seven accents;
+ * at 90 a red's neighbour is already olive. Styles that sat at 60 or nearer
+ * keep what they had (doc/DESIGN_COMPARISON_HOT_DATE.md §5g).
+ */
+export const BAND_HUE_REACH = 60;
+
+/**
+ * Pink-red round to yellow, by OKLCH hue: the warm side of the wheel. It ends
+ * just past yellow (92): by 110 a colour is already a green-yellow.
+ */
+function isWarm(hue: number): boolean {
+  const h = ((hue % 360) + 360) % 360;
+  return h >= 340 || h <= 100;
+}
+
+/**
+ * The hue of the second band: a neighbour of the accent's.
+ *
+ * A style's first chart colour after the accent is its own idea of a second
+ * colour — close by in a quiet style, across the wheel in a loud one — and the
+ * band leans the way it does, no further than `BAND_HUE_REACH`.
+ *
+ * And it stays on the accent's side of the wheel. Sixty degrees is not the
+ * same distance everywhere: from red it is amber, and from yellow it is green.
+ * The first real page built with the reach alone had a gold accent and a
+ * mint-green closing section, which is the clash the reach was there to end.
+ * So a step that would cross from warm to cool, or back, is taken the other
+ * way round instead.
+ */
+export function neighbourHue(accentHue: number, own: number): number {
+  const reach = Math.min(Math.abs(own), BAND_HUE_REACH);
+  const lean = own < 0 ? -1 : 1;
+  const there = accentHue + lean * reach;
+  if (isWarm(there) === isWarm(accentHue)) return there;
+  const back = accentHue - lean * reach;
+  return isWarm(back) === isWarm(accentHue) ? back : there;
+}
 
 /**
  * How loud an app is, 1 (hushed) to 10 (brash).
@@ -150,10 +198,7 @@ export function buildBands(
 ): BandSet {
   const accent = hexToOklch(choice.accent);
   const strength = (energyOf(choice) - 1) / 9;
-  // A style's first chart colour after the accent is its own idea of a second
-  // colour — close by in a quiet style, across the wheel in a loud one — and
-  // the band takes its hue, so the two are one colour wherever both appear.
-  const secondHue = accent.h + recipe.chartHues[0];
+  const secondHue = neighbourHue(accent.h, recipe.chartHues[0]);
   return {
     light: buildModeBands(recipe.light, "light", accent, secondHue, strength, theme),
     dark: buildModeBands(recipe.dark, "dark", accent, secondHue, strength, theme),

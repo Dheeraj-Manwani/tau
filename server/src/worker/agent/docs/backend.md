@@ -40,6 +40,31 @@ const { data } = useQuery({
 })
 ```
 
+Anything that changes data goes through `useMutation`, so the screen knows while it is on its way. The button shows it, success says so and clears the form, failure says why and keeps what was typed:
+
+```tsx
+const queryClient = useQueryClient()
+const save = useMutation({
+  mutationFn: async (thing: { name: string }) => {
+    const res = await fetch('/api/things', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(thing),
+    })
+    if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Could not save. Try again.')
+    return res.json()
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['things'] })
+    setName('')
+    toast.success('Saved')
+  },
+  onError: (err) => toast.error(err.message),
+})
+
+<Button type="submit" pending={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</Button>
+```
+
 ## What this does not give you
 No database. Data held in a server variable is lost on every restart. If the app must store data on the server, call `add_database`.
 

@@ -426,6 +426,7 @@ async function executeToolInner(
           projectId,
           userId,
           indexer,
+          effort,
         );
       case "dispatch_implementer":
         return await dispatchImplementer(

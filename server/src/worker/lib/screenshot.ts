@@ -464,6 +464,42 @@ export const PAGE_SURFACES_SCRIPT = `(() => {${FIND_SECTIONS}
   });
 })()`;
 
+/**
+ * Walks down a page a screen at a time, as far as `limit` pixels, and returns
+ * to the top. Reports the page's full height and what a picture cannot show:
+ * whether the page, or an area inside it, scrolls sideways. Runs in the page.
+ */
+function walkScript(limit: number): string {
+  return `(async () => {
+    const height = () => Math.max(
+      document.documentElement.scrollHeight,
+      document.body ? document.body.scrollHeight : 0,
+    );
+    const limit = ${limit};
+    const step = Math.max(200, Math.floor(window.innerHeight * 0.8));
+    for (let y = 0; y < Math.min(height(), limit); y += step) {
+      window.scrollTo(0, y);
+      await new Promise((r) => setTimeout(r, 120));
+    }
+    window.scrollTo(0, 0);
+    await new Promise((r) => setTimeout(r, 250));
+    const sideScrollers = [];
+    for (const el of document.querySelectorAll("body *")) {
+      if (sideScrollers.length >= 4) break;
+      if (el.clientWidth === 0 || el.scrollWidth <= el.clientWidth + 8) continue;
+      const overflowX = getComputedStyle(el).overflowX;
+      if (overflowX !== "auto" && overflowX !== "scroll") continue;
+      const words = (el.innerText || "").trim().replace(/\\s+/g, " ").slice(0, 48);
+      if (words) sideScrollers.push(words);
+    }
+    return {
+      height: height(),
+      overflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
+      sideScrollers,
+    };
+  })()`;
+}
+
 const REVIEW_SETTLE_MS = 2_500;
 const ACTION_SETTLE_MS = 800;
 /** Chrome will not draw a picture much taller than this. */
@@ -574,34 +610,7 @@ export async function capturePageView(
       }>(
         "Runtime.evaluate",
         {
-          expression: `(async () => {
-            const height = () => Math.max(
-              document.documentElement.scrollHeight,
-              document.body ? document.body.scrollHeight : 0,
-            );
-            const limit = ${Math.round(view.maxHeight * maxSections)};
-            const step = Math.max(200, Math.floor(window.innerHeight * 0.8));
-            for (let y = 0; y < Math.min(height(), limit); y += step) {
-              window.scrollTo(0, y);
-              await new Promise((r) => setTimeout(r, 120));
-            }
-            window.scrollTo(0, 0);
-            await new Promise((r) => setTimeout(r, 250));
-            const sideScrollers = [];
-            for (const el of document.querySelectorAll("body *")) {
-              if (sideScrollers.length >= 4) break;
-              if (el.clientWidth === 0 || el.scrollWidth <= el.clientWidth + 8) continue;
-              const overflowX = getComputedStyle(el).overflowX;
-              if (overflowX !== "auto" && overflowX !== "scroll") continue;
-              const words = (el.innerText || "").trim().replace(/\\s+/g, " ").slice(0, 48);
-              if (words) sideScrollers.push(words);
-            }
-            return {
-              height: height(),
-              overflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
-              sideScrollers,
-            };
-          })()`,
+          expression: walkScript(Math.round(view.maxHeight * maxSections)),
           awaitPromise: true,
           returnByValue: true,
         },
@@ -678,6 +687,92 @@ export async function capturePageView(
       `the page rendered blank after ${REVIEW_CAPTURE_ATTEMPTS} attempts` +
         (lastStats ? ` (variance=${lastStats.variance.toFixed(1)}, range=${lastStats.range.toFixed(1)})` : ""),
     );
+  } finally {
+    page?.close();
+    await browser
+      .send("Target.closeTarget", { targetId })
+      .catch(() => undefined);
+  }
+}
+
+/** What a page measures as, with no picture taken of it. */
+export interface PageMeasure {
+  /** How far the page itself is wider than the window, in CSS pixels; 0 when it fits. */
+  overflowX: number;
+  surfaces: PageSurface[];
+  firstScreen: PageFirstScreen | null;
+}
+
+/** How far down a page is walked before it is measured. */
+const MEASURE_WALK_PX = 12_000;
+
+/**
+ * Measure a page as {@link capturePageView} does, and take no picture of it.
+ *
+ * For the end of a run nobody reviewed: the same window, the same walk down
+ * the page and the same scripts, so a number means what it means in a review,
+ * but nothing to hand to a model and so nothing to pay for. It does not look
+ * again at a page that came up empty, as a capture does: an empty page has
+ * nothing to measure, and whether the app renders is asked elsewhere
+ * (`checkRender` in agent/finishGate.ts).
+ */
+export async function measurePageView(
+  url: string,
+  view: Pick<PageView, "width" | "height" | "mobile">,
+): Promise<PageMeasure> {
+  const { conn: browser, wsBase } = await getBrowserSession();
+  const { targetId } = await browser.send<{ targetId: string }>(
+    "Target.createTarget",
+    { url: "about:blank" },
+  );
+
+  let page: CdpConnection | null = null;
+  try {
+    page = await CdpConnection.connect(`${wsBase}/devtools/page/${targetId}`);
+    await page.send("Page.enable");
+    await page.send("Runtime.enable");
+    await page.send("Page.addScriptToEvaluateOnNewDocument", {
+      source: PREVIEW_CAPTURE_INIT_SCRIPT,
+    });
+    await page.send("Emulation.setDeviceMetricsOverride", {
+      width: view.width,
+      height: view.height,
+      deviceScaleFactor: 1,
+      mobile: view.mobile,
+    });
+    await page.send("Emulation.setEmulatedMedia", {
+      features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+    });
+
+    const loaded = page.waitForEvent("Page.loadEventFired", env.SCREENSHOT_TIMEOUT_MS);
+    await page.send("Page.navigate", { url });
+    await loaded;
+    await new Promise((r) => setTimeout(r, REVIEW_SETTLE_MS));
+
+    const walked = await page.send<{ result: { value?: { overflowX?: number } } }>("Runtime.evaluate", {
+      expression: walkScript(MEASURE_WALK_PX),
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    const surfaces = await page
+      .send<{ result: { value?: PageSurface[] } }>("Runtime.evaluate", {
+        expression: PAGE_SURFACES_SCRIPT,
+        returnByValue: true,
+      })
+      .then((r) => (Array.isArray(r.result.value) ? r.result.value : []))
+      .catch((): PageSurface[] => []);
+    const firstScreen = await page
+      .send<{ result: { value?: PageFirstScreen | null } }>("Runtime.evaluate", {
+        expression: PAGE_FIRST_SCREEN_SCRIPT,
+        returnByValue: true,
+      })
+      .then((r) => r.result.value ?? null)
+      .catch(() => null);
+    return {
+      overflowX: Math.round(walked.result.value?.overflowX ?? 0),
+      surfaces,
+      firstScreen,
+    };
   } finally {
     page?.close();
     await browser

@@ -54,8 +54,14 @@ const [size, setSize] = useState<string | null>(null)
 ## Styling by state
 State is exposed as data attributes, and Tailwind has a variant for each: `data-open:`, `data-closed:`, `data-checked:`, `data-unchecked:`, `data-active:` (the selected tab), `data-disabled:`, `data-horizontal:`, `data-vertical:`. Do not write `data-[state=open]:`; nothing sets `data-state` here.
 
+## Anything that waits says so
+A save, a send, an upload, a reply from a model: while the app waits on it, the person has to be shown three things, or the app looks broken.
+- **It is on its way.** The button that started it takes `pending`, and its label says what is happening: `<Button type="submit" pending={saving}>{saving ? "Saving…" : "Save"}</Button>`. `pending` draws a spinner on the button and stops a second press. Do not use `disabled` for this: a button that only goes grey says nothing about why.
+- **It worked.** Say so — `toast.success("Saved")`, or the new row appearing — and clear the form.
+- **It failed.** Say what went wrong in plain words, keep what they typed, and leave the button ready to press again.
+
 ## Other things worth knowing
-- `Button` has variants `default`, `outline`, `secondary`, `ghost`, `destructive`, `link` and sizes `xs`, `sm`, `default`, `lg`, `icon`, `icon-sm`, `icon-lg`. An icon placed inside a button is sized for you.
+- `Button` has variants `default`, `outline`, `secondary`, `ghost`, `destructive`, `link` and sizes `xs`, `sm`, `default`, `lg`, `icon`, `icon-sm`, `icon-lg`. An icon placed inside a button is sized for you. `pending` is above.
 - `Card` is `Card` → `CardHeader` (`CardTitle`, `CardDescription`, `CardAction`) → `CardContent` → `CardFooter`. `<Card size="sm">` is the compact form.
 - `Badge` variants: `default`, `secondary`, `outline`, `destructive`, `ghost`.
 - `Tabs`: `<TabsList variant="line">` is available, but the app's skin already decides how tabs look.

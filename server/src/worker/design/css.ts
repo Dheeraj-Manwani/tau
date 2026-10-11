@@ -261,6 +261,21 @@ function sharedSkin(v: SkinVars): string {
   [data-slot="button"][data-size="icon-sm"] { width: calc(var(--control-h) - 0.375rem); height: calc(var(--control-h) - 0.375rem); }
   [data-slot="button"][data-size="icon-xs"] { width: calc(var(--control-h) - 0.75rem); height: calc(var(--control-h) - 0.75rem); }
   [data-slot="button"][data-variant="link"] { height: auto; padding: 0; border-width: 0; }
+  /* A button that is waiting on something (\`<Button pending>\`, apply.ts) says
+     so itself: a ring turning before its label. It is disabled for as long,
+     and stays readable: half-faded with no reason given looks broken. */
+  [data-slot="button"][data-pending] { opacity: 0.8; cursor: progress; }
+  [data-slot="button"][data-pending]::before {
+    content: "";
+    flex: none;
+    width: 1em;
+    height: 1em;
+    border: 0.14em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 9999px;
+    animation: tau-pending 0.7s linear infinite;
+  }
+  @keyframes tau-pending { to { transform: rotate(360deg); } }
 ${fieldRules(v)}
   [data-slot="input"], [data-slot="select-trigger"] { height: var(--control-h); }
   [data-slot="textarea"] { padding-block: 0.625rem; }
@@ -470,6 +485,26 @@ ${themeTokens}
   html {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    /* What the browser draws itself — scrollbars, date pickers, the page
+       before the stylesheet loads — is drawn for the mode. Without this a
+       dark app has a white scrollbar down its side. */
+    color-scheme: light;
+    /* Scrollbars in the app's own colours, and slim. The standard properties
+       only: they leave a phone's and a Mac's disappearing scrollbars as they
+       are, where the ::-webkit-scrollbar rules would pin one open. */
+    scrollbar-color: color-mix(in oklab, var(--foreground) 34%, transparent) transparent;
+    scrollbar-width: thin;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  /* A link to a part of the page travels there instead of jumping. Not for
+     people who asked for less motion, which is also how tau's own pictures
+     and measurements of a page are taken. */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
   body {
     @apply bg-background text-foreground font-sans;

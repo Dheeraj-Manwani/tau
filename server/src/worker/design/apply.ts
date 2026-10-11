@@ -8,7 +8,8 @@
  *   1. install the design's font packages;
  *   2. give the stock `<Button>` `data-variant` and `data-size` attributes, so
  *      the skin can tell a primary button from a ghost one — the one place the
- *      stock components do not already say what they are;
+ *      stock components do not already say what they are — and a `pending`
+ *      prop, so a button that is waiting on something can say so;
  *   3. set `<html class="dark">` or remove it, to match the mode, and give a
  *      new app the title and description its concept decided (`concept.ts`);
  *   4. write `.tau/DESIGN.md`;
@@ -94,6 +95,40 @@ export function tagButton(source: string): string | null {
     anchor[0],
     `${anchor[0]}\n${indent}data-variant={variant}\n${indent}data-size={size}`,
   );
+}
+
+/**
+ * Give the stock button a `pending` prop: `<Button pending={saving}>`.
+ *
+ * While it is set the button is disabled, says so to a screen reader, and
+ * carries `data-pending`, which the skin draws as a turning ring before the
+ * label (`css.ts`). Without it, a button that is waiting on the server is a
+ * button that has gone grey for no reason anyone can see, and each app that
+ * wanted better had to build a spinner of its own.
+ *
+ * Done to the file when an app is created rather than in the sandbox image,
+ * like the attributes above: it needs no rebuild of the image, and a restyle
+ * gives it to an app made before this.
+ *
+ * Returns the file unchanged if it already has the prop, or null if it is not
+ * the file expected (run on the result of `tagButton`).
+ */
+export function pendingButton(source: string): string | null {
+  if (source.includes("data-pending=")) return source;
+  const props = /^(\s*)\.\.\.props\n\}: ([^\n]+)\) \{$/m.exec(source);
+  const size = /^(\s*)data-size=\{size\}$/m.exec(source);
+  if (!props || !size || /\bpending\b|\bdisabled\b(?!:)/.test(source)) return null;
+  const [whole, indent = "", type = ""] = props;
+  const at = size[1] ?? "";
+  return source
+    .replace(
+      whole,
+      `${indent}pending = false,\n${indent}disabled,\n${indent}...props\n}: ${type} & {\n${indent}/** Waiting on something: shows a turning ring and cannot be pressed again. */\n${indent}pending?: boolean\n}) {`,
+    )
+    .replace(
+      size[0],
+      `${size[0]}\n${at}data-pending={pending ? "" : undefined}\n${at}aria-busy={pending || undefined}\n${at}disabled={disabled || pending}`,
+    );
 }
 
 /** Make `<html>` open in `mode`, leaving any other class on it alone. */
@@ -285,12 +320,17 @@ export async function applyDesignTo(
     }
   }
 
-  // 2. Button attributes.
+  // 2. Button attributes, and its waiting state.
   try {
     const button = await target.read(BUTTON_PATH);
     const tagged = button === null ? null : tagButton(button);
     if (tagged === null) skipped.push("button attributes");
-    else if (tagged !== button) await target.write(BUTTON_PATH, tagged);
+    else {
+      const waiting = pendingButton(tagged);
+      if (waiting === null) skipped.push("button pending state");
+      const next = waiting ?? tagged;
+      if (next !== button) await target.write(BUTTON_PATH, next);
+    }
   } catch (err) {
     skipped.push(`button attributes (${String(err).slice(0, 120)})`);
   }

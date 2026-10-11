@@ -44,6 +44,18 @@
  * everything else and at every effort. It runs beside the other checks with a
  * deadline of its own, and like them it is raised once.
  *
+ * ## What the page measures as
+ *
+ * Three faults of a page are positions and colours read from it in a browser:
+ * a page wider than its window, a call to action below the first screen, and,
+ * for a loud design, a long run of sections on one background. A design review
+ * reports them, but a review is a model looking at pictures and is kept for
+ * builds asked to be done well. Measuring needs no model, so a run that built
+ * or reshaped screens and had no review has its opening page measured here
+ * instead (`measuredFaults`): every quick build, and every build where no
+ * model that reads images is set up. Only once the app is known to render, and
+ * with a deadline of its own.
+ *
  * See doc/CONTEXT_AND_MEMORY_PLAN.md §4 and §5, and
  * doc/PREVIEW_DIAGNOSTICS_PLAN.md §3.4.
  */
@@ -63,8 +75,9 @@ import {
   type Finding,
   type RuleId,
 } from "../design/checks";
-import { DESIGN_PATH } from "../design/designMd";
-import { designReviewAvailable } from "../design/review";
+import { env } from "@/lib/env";
+import { DESIGN_PATH, designProse } from "../design/designMd";
+import { designReviewAvailable, measuredFaults } from "../design/review";
 import { MEMORY_PATH, appRelativePath, memoryProblems } from "./context/memoryFile";
 import { inspectPreview, previewInspectAvailable, type InspectOptions } from "../lib/previewInspect";
 import {
@@ -272,7 +285,7 @@ export async function outstandingFindings(
 
 // ── The gate ─────────────────────────────────────────────────────────────────
 
-export type GateKind = "render" | "design_check" | "design_review" | "verify" | "memory";
+export type GateKind = "render" | "design_check" | "design_review" | "measure" | "verify" | "memory";
 
 // ── Does the app render? ─────────────────────────────────────────────────────
 
@@ -448,6 +461,85 @@ export interface GateInput {
   previewUrl?: string | null;
   /** Opens the app and reports a fault. Replaced in tests; `checkRender` otherwise. */
   renderCheck?: (previewUrl: string, projectId: string) => Promise<RenderFault | null>;
+  /** Measures a route and returns its faults as findings. Replaced in tests; `measuredFaults` otherwise. */
+  measure?: (previewUrl: string, path: string, designProse: string | null) => Promise<string[]>;
+}
+
+// ── What the page measures as ────────────────────────────────────────────────
+
+/**
+ * How long measuring the page may take before the run finishes without it.
+ * On three real builds it took 8 to 12 seconds, both widths at once.
+ */
+export const MEASURE_GATE_TIMEOUT_MS = 20_000;
+/** How long reading the design may take before the page is measured without it. */
+const DESIGN_READ_MS = 4_000;
+
+/**
+ * Whether the opening page is to be measured: a run that built or reshaped
+ * screens, that no reviewer saw and none is being asked to see.
+ *
+ * Not after a run was sent back over an app that did not work. That has
+ * already cost the user a second closing message, and this would be a third.
+ */
+function measureOwed(input: GateInput, state: ReadonlySet<GateKind>, items: readonly GateItem[]): boolean {
+  return (
+    input.generation === 2 &&
+    input.sandbox !== null &&
+    Boolean(input.previewUrl) &&
+    input.filesChanged &&
+    !input.reviewerRan &&
+    !state.has("measure") &&
+    !state.has("design_review") &&
+    !state.has("render") &&
+    !items.some((item) => item.kind === "design_review") &&
+    reshapedScreens(input.work) &&
+    (input.measure !== undefined || env.SCREENSHOT_ENABLED)
+  );
+}
+
+/**
+ * Measure the opening page and say what is wrong with it; null when nothing
+ * is, and when it could not be measured in time.
+ */
+async function measureItem(input: GateInput, timeoutMs: number): Promise<GateItem | null> {
+  const started = Date.now();
+  try {
+    const faults = await withDeadline(
+      (async () => {
+        // How loud the design is decides whether one background is a fault.
+        const design = input.sandbox
+          ? await withDeadline(readOrNull(input.sandbox, DESIGN_PATH), DESIGN_READ_MS, `reading ${DESIGN_PATH}`).catch(() => null)
+          : null;
+        return (input.measure ?? measuredFaults)(input.previewUrl!, "/", design ? designProse(design) : null);
+      })(),
+      timeoutMs,
+      "measuring the page",
+    );
+    log.info("job.measure_check", {
+      projectId: input.projectId,
+      effort: input.effort,
+      faults: faults.map((f) => f.slice(0, 240)),
+      ms: Date.now() - started,
+    });
+    if (faults.length === 0) return null;
+    const broken = faults.some((f) => f.startsWith("[broken]"));
+    return {
+      kind: "measure",
+      reason: `${faults.length} finding${faults.length === 1 ? "" : "s"}`,
+      text: `**${broken ? "Fix what tau measured on the page." : "Look at what tau measured on the page."}** Nobody has seen this build rendered, so tau opened \`/\` at desktop and phone width and measured it:\n${faults.map((f) => `- ${f}`).join("\n")}\n${
+        broken
+          ? "Fix each `[broken]` finding with the smallest change that does it; do not rebuild a screen that mostly works. A `[polish]` finding is optional."
+          : "A `[polish]` finding is optional: take it if it is a small change, leave it otherwise."
+      } tau will not measure the page again this run.`,
+    };
+  } catch (err) {
+    log.warn("job.measure_check.skipped", {
+      projectId: input.projectId,
+      reason: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
 }
 
 async function memoryItem(input: GateInput): Promise<GateItem | null> {
@@ -488,15 +580,19 @@ async function memoryItem(input: GateInput): Promise<GateItem | null> {
  * raised in `state`, so a second call returns only what is new.
  *
  * Never throws and never takes longer than the longer of `timeoutMs` and
- * `renderTimeoutMs`: a check that cannot be made in its time is taken to owe
- * nothing, and is not marked as raised.
+ * `renderTimeoutMs`, and then `measureTimeoutMs` when the page is measured: a
+ * check that cannot be made in its time is taken to owe nothing, and is not
+ * marked as raised.
  */
 export async function finishItems(
   input: GateInput,
   state: GateState,
   timeoutMs = GATE_TIMEOUT_MS,
   renderTimeoutMs = RENDER_GATE_TIMEOUT_MS,
+  measureTimeoutMs = MEASURE_GATE_TIMEOUT_MS,
 ): Promise<GateItem[]> {
+  // An app that could not be opened in its time is not then opened twice more.
+  let renderUnanswered = false;
   // Started first and awaited last: opening the app takes seconds, and the
   // other checks, which read files, are done while it loads. At every effort —
   // this is not polish, it is whether the app works. It has a deadline of its
@@ -513,6 +609,7 @@ export async function finishItems(
             projectId: input.projectId,
             reason: err instanceof Error ? err.message : String(err),
           });
+          renderUnanswered = true;
           return null;
         })
       : Promise.resolve(null);
@@ -530,6 +627,14 @@ export async function finishItems(
   // An app that does not start comes before everything else that is owed.
   const fault = await rendering;
   if (fault) items.unshift(renderItemFor(fault));
+  else if (!renderUnanswered && measureOwed(input, state, items)) {
+    const measured = await measureItem(input, measureTimeoutMs);
+    if (measured) {
+      // Where a review would go: after the faults found in the source.
+      const after = items.findIndex((item) => item.kind !== "design_check");
+      items.splice(after === -1 ? items.length : after, 0, measured);
+    }
+  }
 
   for (const item of items) state.add(item.kind);
   return items;

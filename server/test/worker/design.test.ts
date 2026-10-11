@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { applyThemeEdit, readThemeTokens } from "@/api/lib/themeEdit";
 import { readDoc } from "@/worker/agent/docs";
 import { renderAppBrief } from "@/worker/agent/context/appBrief";
-import { setHtmlMode, tagButton } from "@/worker/design/apply";
+import { pendingButton, setHtmlMode, tagButton } from "@/worker/design/apply";
 import {
   contrast,
   ensureContrast,
@@ -504,6 +504,37 @@ describe("the design director", () => {
     expect(options.accents).toEqual(["#b4551f", "#0f766e"]);
   });
 
+  // Every reply below is one the director gave (doc/DESIGN_COMPARISON_HOT_DATE.md
+  // §5f). A colour with no chroma makes the palette build an app with no colour
+  // in it, and one skate shop was built grey because the black was drawn.
+  test("a black, a grey or a stone offered beside real colours is not an accent", () => {
+    const accents = (list: string[], extra = "") =>
+      parseDirectorReply(`{"styles":["brutalist"],"accents":${JSON.stringify(list)}${extra}}`)!.accents;
+    expect(accents(["#ff3b1f", "#1b1b1b", "#d6ff00"])).toEqual(["#ff3b1f", "#d6ff00"]);
+    expect(accents(["#ff2d55", "#0b0b0f", "#ffd400"])).toEqual(["#ff2d55", "#ffd400"]);
+    // A slate and a stone are the same to the palette as a black.
+    expect(accents(["#b4643c", "#6e7a5a", "#8a94a6"])).toEqual(["#b4643c", "#6e7a5a"]);
+    expect(accents(["#5c1a2b", "#1a3d52", "#6b6258"])).toEqual(["#5c1a2b", "#1a3d52"]);
+    // A muted colour that still has a hue is a colour.
+    expect(accents(["#1f3a5f", "#5c6b5a", "#8c6b4a"])).toEqual(["#1f3a5f", "#5c6b5a", "#8c6b4a"]);
+    // The grey does not use up one of the three places.
+    expect(accents(["#1b1b1b", "#ff3b1f", "#d6ff00", "#00c2a8"])).toEqual(["#ff3b1f", "#d6ff00", "#00c2a8"]);
+  });
+
+  test("a grey is kept when the brief asked for it, or it is all that was offered", () => {
+    const exact = parseDirectorReply('{"styles":["brutalist"],"accents":["#111111","#ff3b1f"],"accent_exact":true}')!;
+    expect(exact.accents).toEqual(["#111111", "#ff3b1f"]);
+    expect(exact.accentExact).toBe(true);
+    expect(chooseFrom(exact, "seed").accent).toBe("#111111");
+    // A user who chose black is told to the director as "list only that colour".
+    const only = parseDirectorReply('{"styles":["brutalist"],"accents":["#1b1b1b"]}')!;
+    expect(only.accents).toEqual(["#1b1b1b"]);
+    expect(chooseFrom(only, "seed").accent).toBe("#1b1b1b");
+    // And what the user chose never passes through the shortlist at all.
+    const offered = parseDirectorReply('{"styles":["brutalist"],"accents":["#ff3b1f"]}')!;
+    expect(chooseFrom(offered, "seed", { accent: "#000000" }).accent).toBe("#000000");
+  });
+
   test("a colour that is not hex cannot be marked exact", () => {
     const options = parseDirectorReply('{"styles":["soft"],"accents":["sage green"],"accent_exact":true}')!;
     expect(options.accents).toEqual([]);
@@ -620,6 +651,56 @@ describe("applying a design to the scaffold", () => {
 
   test("a button file it does not recognise is left alone", () => {
     expect(tagButton("export const Button = (p) => <button {...p} />")).toBeNull();
+  });
+
+  // A save button that only went grey while the server answered looked broken
+  // to the person who pressed it (doc/DESIGN_COMPARISON_HOT_DATE.md §5g).
+  test("the stock button is given a pending state: disabled, announced, and marked for the skin", () => {
+    const waiting = pendingButton(tagButton(STOCK_BUTTON)!)!;
+    expect(waiting).toContain(
+      '  size = "default",\n  pending = false,\n  disabled,\n  ...props\n}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants> & {\n',
+    );
+    expect(waiting).toContain("  pending?: boolean\n}) {");
+    expect(waiting).toContain(
+      '      data-size={size}\n      data-pending={pending ? "" : undefined}\n      aria-busy={pending || undefined}\n      disabled={disabled || pending}\n      className=',
+    );
+    // What the caller passes still comes last, and `disabled` is no longer in it.
+    expect(waiting.indexOf("disabled={disabled || pending}")).toBeLessThan(waiting.indexOf("{...props}"));
+    // Applying it again changes nothing.
+    expect(pendingButton(waiting)).toBe(waiting);
+  });
+
+  test("a button that is not the stock one keeps what it has", () => {
+    expect(pendingButton("export const Button = (p) => <button {...p} />")).toBeNull();
+    // One that already handles `disabled` itself is not second-guessed.
+    const own = tagButton(STOCK_BUTTON)!.replace("  ...props\n}", "  disabled,\n  ...props\n}");
+    expect(pendingButton(own)).toBeNull();
+  });
+
+  test("the skin draws the wait, and keeps the button readable", () => {
+    const { css } = designFiles(resolveDesign(choiceFor("editorial")), { fontsInstalled: true });
+    expect(css).toContain('[data-slot="button"][data-pending] { opacity: 0.8; cursor: progress; }');
+    expect(css).toContain('[data-slot="button"][data-pending]::before {');
+    expect(css).toContain("animation: tau-pending 0.7s linear infinite;");
+    // Inside the skin, so a restyle replaces it rather than keeping two.
+    expect(css.indexOf("@keyframes tau-pending")).toBeGreaterThan(css.indexOf("@layer skin {"));
+    expect(css.indexOf("@keyframes tau-pending")).toBeLessThan(css.indexOf("/* People who ask their system for less motion"));
+  });
+
+  test("the page scrolls smoothly to a link, and its scrollbar is in the app's colours", () => {
+    const { css } = designFiles(resolveDesign(choiceFor("editorial")), { fontsInstalled: true });
+    expect(css).toContain("  @media (prefers-reduced-motion: no-preference) {\n    html {\n      scroll-behavior: smooth;\n    }\n  }");
+    // Still off for anyone who asked for less motion, which is how tau itself looks at a page.
+    expect(css).toContain("scroll-behavior: auto !important;");
+    expect(css).toContain("scrollbar-color: color-mix(in oklab, var(--foreground) 34%, transparent) transparent;");
+    expect(css).toContain("scrollbar-width: thin;");
+    // A dark app is drawn dark by the browser too, whichever way it was switched.
+    expect(css).toContain("    color-scheme: light;");
+    expect(css).toContain("  html.dark {\n    color-scheme: dark;\n  }");
+    // None of it is in the two palette blocks the theme panel edits.
+    const palette = css.slice(css.indexOf(":root {"), css.indexOf("@theme inline"));
+    expect(palette).not.toContain("color-scheme");
+    expect(palette).not.toContain("scrollbar");
   });
 
   test("sets the mode on <html> and keeps whatever else is there", () => {

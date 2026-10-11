@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readThemeTokens } from "@/api/lib/themeEdit";
 import { designFiles, designProse, resolveDesign } from "@/worker/design";
-import { BAND_KEYS, BAND_TOKENS, buildBands, energyOf } from "@/worker/design/bands";
+import { BAND_HUE_REACH, BAND_KEYS, BAND_TOKENS, buildBands, energyOf, neighbourHue } from "@/worker/design/bands";
 import { contrast, hexToOklch, isHexColor, oklchToHex } from "@/worker/design/color";
 import { describeDesign } from "@/worker/design/config";
 import { describeEnergy, readDesignMeta } from "@/worker/design/designMd";
@@ -212,6 +212,54 @@ describe("bands: colour fields for whole sections", () => {
         }
       }
     }
+  });
+
+  // A red brand built in Brutalist had a mint-green section: the style's second
+  // colour is 150 degrees round the wheel, which is right for telling two bars
+  // of a chart apart and wrong for a whole section of a page.
+  test("the second hue is a neighbour of the accent, on the accent's own side of the wheel", () => {
+    const hueOf = (hex: string) => hexToOklch(hex).h;
+    const apart = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+    expect(BAND_HUE_REACH).toBe(60);
+    for (const style of ALL_STYLES) {
+      // Saturated accents round the wheel; a few degrees are lost fitting a colour to the screen.
+      for (const accent of ["#ff2d55", "#e8380d", "#16a34a", "#0e7490", "#2563eb", "#9333ea"]) {
+        const { bands } = resolveDesign(choiceFor(style.key, { accent, energy: 9 }));
+        for (const mode of ["light", "dark"] as const) {
+          const band = bands[mode]["band-3"];
+          if (hexToOklch(band).c < 0.03) continue; // a quiet style's is a tinted neutral
+          expect([style.key, accent, mode, apart(hueOf(band), hueOf(accent)) <= BAND_HUE_REACH + 8]).toEqual([style.key, accent, mode, true]);
+        }
+      }
+    }
+    // The page this was found on: red, and its second colour is now amber.
+    const red = hueOf(resolveDesign(choiceFor("brutalist", { accent: "#ff2d55", energy: 9, mode: "dark" })).bands.dark["band-3"]);
+    expect(red).toBeGreaterThan(60);
+    expect(red).toBeLessThan(100);
+    // Sixty degrees from yellow is green. The first page built with the reach
+    // alone had a gold accent and a mint-green closing section, so a step that
+    // would leave the warm side of the wheel is taken the other way.
+    for (const warm of ["#d4af37", "#ffd400", "#f97316"]) {
+      for (const style of ["brutalist", "maximalism", "neon", "playful"] as const) {
+        const h = hueOf(resolveDesign(choiceFor(style, { accent: warm, energy: 9 })).bands.light["band-3"]);
+        expect([warm, style, h >= 335 || h <= 104]).toEqual([warm, style, true]);
+      }
+    }
+    expect(neighbourHue(93, 150)).toBe(33);
+    expect(neighbourHue(20, 150)).toBe(80);
+    // Leaning the other way from red would land in purple, so it does not.
+    expect(neighbourHue(20, -150)).toBe(80);
+    expect(neighbourHue(60, -150)).toBe(0);
+    // A cool accent keeps a cool neighbour: green goes to teal, not to yellow.
+    expect(neighbourHue(145, -150)).toBe(205);
+    expect(neighbourHue(260, 150)).toBe(320);
+    const own = STYLES.luxe.palette.chartHues[0];
+    expect(Math.abs(own)).toBeLessThan(BAND_HUE_REACH);
+    const luxe = resolveDesign(choiceFor("luxe", { accent: "#2563eb", energy: 9 }));
+    const asBefore = buildBands({ ...STYLES.luxe.palette, chartHues: [own, 0, 0, 0] }, luxe.choice, luxe.theme);
+    expect(luxe.bands.light["band-3"]).toBe(asBefore.light["band-3"]);
+    // The charts keep the far colour: bars still have to be told apart.
+    expect(apart(hueOf(resolveDesign(choiceFor("brutalist", { accent: "#ff2d55" })).theme.light["chart-2"]), hueOf("#ff2d55"))).toBeGreaterThan(100);
   });
 
   test("a louder brand gets more colour in them; a quiet style stays quiet however loud the brand", () => {

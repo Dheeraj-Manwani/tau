@@ -584,3 +584,43 @@ describe("the data and restyle guides", () => {
     expect(text).toContain("var(--chart-1)");
   });
 });
+
+// From one page tau built: no picture anywhere on a site about attractive
+// people, its jokes hidden behind a hover, its headline's numbers repeated in
+// the section under it, and, in another app, a save button that only went grey
+// while the server answered (doc/DESIGN_COMPARISON_HOT_DATE.md §5g).
+describe("what a page shows, and what a wait shows", () => {
+  test("a section shows its subject, and a first screen has something to look at", () => {
+    const text = readDoc("sections");
+    expect(text).toContain("- **Show it.** What a section is about is shown, not described");
+    expect(text).toContain('"none" there does not make a page without pictures');
+    expect(text).toContain("and something to look at beside them");
+    expect(text).toContain("Words alone are for the layout that is made of them (Poster).");
+    // Said as a reason, with no count of pictures or words.
+    expect(text).not.toMatch(/at least (one|two|three|\d)/i);
+  });
+
+  test("a moment behind a hover is shown open once, and numbers are not said twice", () => {
+    const text = readDoc("sections");
+    expect(text).toContain("Where part of it is revealed by hovering, show one already open");
+    expect(text).toContain('on a phone open it on a tap and say "tap"');
+    expect(text).toContain("something the headline has not already said");
+  });
+
+  test("anything that waits says so, in the guide every screen gets", () => {
+    const text = readDoc("components");
+    expect(text).toContain("## Anything that waits says so");
+    expect(text).toContain('<Button type="submit" pending={saving}>{saving ? "Saving…" : "Save"}</Button>');
+    expect(text).toContain("Do not use `disabled` for this");
+    expect(text).toContain("keep what they typed");
+    // The same files that bring the layouts guide bring this one.
+    expect(docsForPath("src/pages/Home.tsx")).toContain("components");
+  });
+
+  test("the backend guide shows a save done that way", () => {
+    const text = readDoc("backend");
+    expect(text).toContain("Anything that changes data goes through `useMutation`");
+    expect(text).toContain("<Button type=\"submit\" pending={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</Button>");
+    expect(text).toContain("onError: (err) => toast.error(err.message)");
+  });
+});

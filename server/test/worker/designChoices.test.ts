@@ -603,10 +603,16 @@ describe("an app built around an imported design", () => {
 
 // ── Putting a design into an app ─────────────────────────────────────────────
 
-const BUTTON = `function Button({ variant, size, ...props }) {
+const BUTTON = `function Button({
+  className,
+  variant = "default",
+  size = "default",
+  ...props
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
-    <button
+    <ButtonPrimitive
       data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
   );
@@ -964,7 +970,8 @@ describe("what a restyle keeps of the old stylesheet", () => {
     expect(merged).toContain("@keyframes wobble");
     expect(merged).toContain(".promo-banner { animation: wobble 2s infinite; }");
     expect(merged.match(/@layer skin/g)).toHaveLength(1);
-    expect(merged.match(/prefers-reduced-motion/g)).toHaveLength(1);
+    expect(merged.match(/prefers-reduced-motion: reduce/g)).toHaveLength(1);
+    expect(merged.match(/scroll-behavior: smooth/g)).toHaveLength(1);
     // Restyling twice does not pile the kept rules up.
     const again = carryOverCss(merged, filesFor(choiceFor("soft")).css);
     expect(again.match(/@keyframes wobble/g)).toHaveLength(1);

@@ -8,7 +8,8 @@ import { meterModelCall } from "@/worker/lib/meterCall";
 import { readOrNull } from "@/worker/lib/appStack";
 import { designReferenceKey, getObjectBytes } from "@/lib/s3";
 import { normalizeDesignConfig } from "@/worker/design/config";
-import { DESIGN_PATH, designProse } from "@/worker/design/designMd";
+import { DESIGN_PATH, conceptOf, designProse } from "@/worker/design/designMd";
+import type { Effort } from "@/generated/prisma/enums";
 import {
   MAX_REVIEW_PATHS,
   designReviewAvailable,
@@ -86,6 +87,11 @@ async function referenceOf(
  * so the chat shows it the way it shows a verifier's. `next` is tau's own
  * instruction on what to do with it: which findings must be fixed, and whether
  * these screens can be looked at again.
+ *
+ * At MAX effort the review is also held against the app's concept, when it has
+ * one (`CONCEPT_QUESTIONS` in design/review.ts), and what it finds there is
+ * work for the builder rather than an option. It is the same one call over the
+ * same pictures: what MAX buys is a harder look, not more looks.
  */
 export async function dispatchDesignReviewer(
   input: unknown,
@@ -94,7 +100,9 @@ export async function dispatchDesignReviewer(
   projectId: string,
   userId: string,
   indexer: () => number,
+  effort: Effort = "HIGH",
 ) {
+  const thorough = effort === "MAX";
   if (!designReviewAvailable()) {
     return {
       unavailable: true,
@@ -136,6 +144,7 @@ export async function dispatchDesignReviewer(
       focus: typeof focus === "string" ? focus : undefined,
       steps: reviewSteps(steps, routes),
       ...(reference ? { reference } : {}),
+      ...(thorough ? { concept: conceptOf(designMd) } : {}),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -169,6 +178,7 @@ export async function dispatchDesignReviewer(
     screens: result.screens.length,
     steps: result.screens.filter((s) => s.state).length,
     reference: Boolean(reference),
+    concept: result.concept,
     captureMs: result.captureMs,
     modelMs: result.modelMs,
     inputTokens: result.usage.inputTokens,
@@ -201,6 +211,7 @@ export async function dispatchDesignReviewer(
     next: nextStep(
       { fresh: plan.fresh.filter((r) => seen.includes(r)), recheck: plan.recheck.filter((r) => seen.includes(r)) },
       result.verdict,
+      thorough,
     ),
     ...(cut.length > 0
       ? {

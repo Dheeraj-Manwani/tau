@@ -48,6 +48,8 @@
  * left out because they could not tell a good page from a bad one: the
  * contrast of text with what is behind it, text under a fixed size, and how
  * much longer a page is on a phone (doc/DESIGN_COMPARISON_HOT_DATE.md §5c).
+ * None of the three needs the reviewer, so a run that had no review has them
+ * taken without one before it finishes (`measuredFaults`).
  *
  * ## Two looks per screen, and no more
  *
@@ -68,14 +70,17 @@ import { clientForModel, isKimiModel, kimi } from "@/lib/kimi";
 import {
   capturePageView,
   describeAction,
+  measurePageView,
   type PageAction,
   type PageCapture,
   type PageFirstScreen,
+  type PageMeasure,
   type PageSurface,
   type PageView,
 } from "../lib/screenshot";
 import { LOUD_ENERGY } from "./bands";
 import { contrast, hexToOklch } from "./color";
+import type { Concept } from "./types";
 
 /**
  * A browser to take the pictures and a model to look at them. A Kimi model
@@ -130,6 +135,8 @@ const CAPTURE_CONCURRENCY = 3;
 // Includes time spent waiting for a turn at Moonshot (lib/kimi.ts).
 const REVIEW_TIMEOUT_MS = 300_000;
 const REVIEW_MAX_TOKENS = 1_200;
+/** With the questions about the concept: three more lines, each of which may run long. */
+const REVIEW_MAX_TOKENS_CONCEPT = 1_800;
 const REVIEW_MAX_TOKENS_THINKING = 6_000;
 /** A page this much wider than its window is rounding, not a fault. */
 const PAGE_OVERFLOW_TOLERANCE = 8;
@@ -192,19 +199,68 @@ export const REFERENCE_QUESTION = {
   ask: "The first picture is a reference the user gave, and the app is meant to look like it. Leave the content aside: the words, the photographs and the logos will differ. Does any screen of the app differ from the reference at a glance in what it is made of — light or dark page, the main colour, square or round corners, serif or sans type, how packed it is, how the page is arranged?",
 } as const;
 
+/**
+ * Asked only of a build someone asked to be done as well as it can be (MAX
+ * effort), about an app that has a concept (`design/concept.ts`), and only
+ * when its opening screen is among those shown.
+ *
+ * The seven above ask whether a screen is broken. These ask whether it is the
+ * page its concept described, which is the one thing the other questions
+ * cannot get at: a page can pass all seven and still be any page of its kind.
+ * Each is judged against a line of the concept, which the reviewer is shown
+ * for these questions alone, so that "no" stays an answer it can give.
+ *
+ * Two wordings were tried on real builds (doc/DESIGN_COMPARISON_HOT_DATE.md
+ * §5e), and the first is why these read as they do. Asked whether what the
+ * concept names was "plainly not there", and whether any part of the page
+ * "could sit unchanged on any other page of its kind", the reviewer said yes
+ * on a page that had just been fixed for both: the picture was there but not
+ * as described, the applicants in a list "read as fictional". So each now asks
+ * whether there is nothing of the kind at all, and says that a thing of the
+ * kind counts however it differs in detail. The picture the concept describes
+ * is not shown to the reviewer for the same reason: it compared the two.
+ *
+ * All three are `polish`. What a concept asked for is a matter of taste, and a
+ * model's reading of a picture is not grounds for calling a page broken.
+ */
+export const CONCEPT_QUESTIONS = [
+  {
+    label: "Opening",
+    kind: "polish",
+    ask: "The concept note says what the first screen of `/` shows beside its headline. Going only by what a visitor sees before scrolling, is there nothing of that kind there at all: a headline and text alone, where the note names something to show? A thing of the kind the note names counts as there, however it differs from the note in its details. If the note names nothing to show, the answer is no.",
+  },
+  {
+    label: "Voice",
+    kind: "polish",
+    ask: "Going only by the first screen of `/`, its words and how it looks, would a stranger take this for a different kind of brand from the one the concept note describes: hushed where the note is loud, playful where it is severe, corporate where it is personal?",
+  },
+  {
+    label: "Moment",
+    kind: "polish",
+    ask: "The concept note names one moment: the thing on `/` that only this brand would have. Is there nothing of that kind anywhere in the pictures of `/`? A thing of that kind counts as there, however it differs from the note in its details, and so does one that would only appear when something is hovered or pressed: a still picture cannot show that. What lies below the last picture of a long page is not missing. If it is missing, say which part of the page is the place for it.",
+  },
+] as const;
+
 interface Question {
   label: string;
   kind: "broken" | "polish";
   ask: string;
 }
 
-/** The questions a review asks: the usual seven, and one about the reference when there is one. */
-export function questionsFor(hasReference: boolean): readonly Question[] {
-  return hasReference ? [...QUESTIONS, REFERENCE_QUESTION] : QUESTIONS;
+/**
+ * The questions a review asks: the usual seven, one about the reference when
+ * there is one, and the three about the concept when the review is given it.
+ */
+export function questionsFor(hasReference: boolean, hasConcept = false): readonly Question[] {
+  return [
+    ...QUESTIONS,
+    ...(hasReference ? [REFERENCE_QUESTION] : []),
+    ...(hasConcept ? CONCEPT_QUESTIONS : []),
+  ];
 }
 
-export function systemPrompt(hasReference = false): string {
-  const questions = questionsFor(hasReference);
+export function systemPrompt(hasReference = false, hasConcept = false): string {
+  const questions = questionsFor(hasReference, hasConcept);
   return `You are checking screenshots of a web app as it actually renders — each screen at desktop width, then at phone width. The app's builder cannot see what it builds; your answers are how it finds out whether something is broken. A note on what the app is meant to look like comes first, so you know the intended style.
 
 Most screens you are shown are fine. A wrong "yes" costs the builder a rewrite of a screen that worked, so answer "yes" only to what is plainly visible in a picture and "no" to everything else. "No" to every question is the usual result.
@@ -220,11 +276,15 @@ Q1: yes — \`/route\` phone, which part of the page: what is wrong. Fix: the sm
 If a question has more than one "yes", put the clearest two on its line, separated by " | ". Add nothing before or after the ${questions.length} lines. Do not report what you cannot see in the pictures, or the blue notice bar at the very top of a screenshot if there is one. A caption says when a screen is shown after someone pressed or typed something: judge it in that state. If the screenshots show an app with no data yet, judge the empty state as a user would first meet it.`;
 }
 
-function recheckRules(hasReference: boolean): string {
+function recheckRules(hasReference: boolean, hasConcept: boolean): string {
+  // Taste is asked about once, on the first look.
+  const taste = questionsFor(hasReference, hasConcept)
+    .filter((q) => q.kind === "polish")
+    .map((q) => q.label);
   return `For a re-check screen, answer "yes" only for a fault that is in the picture now: one from the earlier report that is still there, or one that was not there before. A change made to fix an earlier finding is not itself a fault — a table that now scrolls sideways or stacks, filters that now wrap onto two lines. ${
-    hasReference
-      ? 'Answer "no" to the Template and Reference questions for a re-check screen.'
-      : 'Answer "no" to the last question for a re-check screen.'
+    taste.length === 1
+      ? 'Answer "no" to the last question for a re-check screen.'
+      : `Answer "no" to the ${taste.slice(0, -1).join(", ")} and ${taste[taste.length - 1]} questions for a re-check screen.`
   }`;
 }
 
@@ -241,14 +301,17 @@ export interface Answer {
 /**
  * The reviewer's answers, read line by line. Lines that are not an answer are
  * ignored; a question it skipped is simply absent.
+ *
+ * @param asked  how many questions were put; an answer numbered past that is
+ *               not an answer to anything
  */
-export function parseAnswers(text: string): Answer[] {
+export function parseAnswers(text: string, asked = QUESTIONS.length + 1): Answer[] {
   const answers: Answer[] = [];
   for (const line of text.split("\n")) {
-    const m = /^\s*\**Q(\d)\**\s*[:.]\s*\**\s*(yes|no)\b\**\s*[—–:-]*\s*(.*)$/i.exec(line);
+    const m = /^\s*\**Q(\d{1,2})\**\s*[:.]\s*\**\s*(yes|no)\b\**\s*[—–:-]*\s*(.*)$/i.exec(line);
     if (!m) continue;
     const question = Number(m[1]);
-    if (question < 1 || question > QUESTIONS.length + 1) continue;
+    if (question < 1 || question > asked) continue;
     if (answers.some((a) => a.question === question)) continue;
     const yes = m[2]!.toLowerCase() === "yes";
     answers.push({ question, yes, detail: yes ? m[3]!.trim() : "" });
@@ -262,18 +325,20 @@ export function parseAnswers(text: string): Answer[] {
  *
  * @param measured     faults tau measured itself, already written as findings
  * @param withPolish   false on a re-check, where taste is not asked about
+ * @param questions    the questions that were asked, in the order asked
  */
 export function composeReport(
   answers: readonly Answer[],
   measured: readonly string[] = [],
   withPolish = true,
+  questions: readonly Question[] = questionsFor(true),
 ): { review: string; verdict: Verdict } {
   const findings = [...measured];
   for (const kind of ["broken", "polish"] as const) {
     if (kind === "polish" && !withPolish) continue;
     for (const a of answers) {
-      const q = questionsFor(true)[a.question - 1]!;
-      if (!a.yes || q.kind !== kind) continue;
+      const q = questions[a.question - 1];
+      if (!q || !a.yes || q.kind !== kind) continue;
       findings.push(`[${kind}] ${q.label} — ${a.detail || "the reviewer did not say where."}`);
     }
   }
@@ -318,6 +383,8 @@ export interface DesignReview {
   screens: ReviewedScreen[];
   /** Screens that could not be photographed, and why. */
   skipped: string[];
+  /** The questions about the app's concept were asked as well. */
+  concept: boolean;
   usage: { model: string; inputTokens: number; outputTokens: number };
   /** How long the pictures took, and the model. */
   captureMs: number;
@@ -394,13 +461,28 @@ function listed(routes: readonly string[]): string {
   return routes.map((r) => `\`${r}\``).join(", ");
 }
 
-/** What the builder should do with a report, said by tau rather than left to it. */
-export function nextStep(plan: Pick<ReviewPlan, "fresh" | "recheck">, verdict: Verdict): string {
+/**
+ * What the builder should do with a report, said by tau rather than left to it.
+ *
+ * @param thorough  the build was asked to be done as well as it can be (MAX
+ *                  effort): a point of taste is then work to do, not an option.
+ *                  It is still looked at once, so the cap on looks holds.
+ */
+export function nextStep(
+  plan: Pick<ReviewPlan, "fresh" | "recheck">,
+  verdict: Verdict,
+  thorough = false,
+): string {
+  const polish = thorough
+    ? "This build is at MAX effort, so take each [polish] point too: change the part it names, to what it says belongs there, without rebuilding the rest of the screen. Leave one only if it is wrong about the page. Polish is looked at once and will not be judged again."
+    : null;
   if (verdict === "pass") {
-    return "Nothing on these screens is broken, so they need no second look. A [polish] point is optional: take it if it is a small change, leave it otherwise.";
+    return polish
+      ? `Nothing on these screens is broken, so they need no second look. ${polish}`
+      : "Nothing on these screens is broken, so they need no second look. A [polish] point is optional: take it if it is a small change, leave it otherwise.";
   }
   const parts = [
-    "Fix every [broken] finding with the smallest change that does it — do not rebuild a screen that mostly works. A [polish] finding is optional.",
+    `Fix every [broken] finding with the smallest change that does it — do not rebuild a screen that mostly works. ${polish ?? "A [polish] finding is optional."}`,
   ];
   if (plan.fresh.length > 0) {
     parts.push(
@@ -599,6 +681,42 @@ export function firstScreenFault(
   return `[broken] First screen — \`${screen.path}\` ${screen.view}: tau measured ${what} ${where}. The headline above it is set at ${headline.size}px, runs to ${lines} and ends at ${headline.bottom}px. Fix: bring the action onto the first screen by setting the headline smaller or shortening it, and by taking out space above and between; do not move the action above the headline.`;
 }
 
+/**
+ * What tau measures on one route with no reviewer: the three findings above,
+ * at the two widths a review uses, and no picture taken.
+ *
+ * For a run that had no review, which is every quick (LOW) build and every
+ * build on an installation with no model that reads images. A position or a
+ * colour read from the page needs a browser and nothing else, so it does not
+ * have to wait for a build someone paid to have looked at
+ * (`agent/finishGate.ts`).
+ *
+ * A width that cannot be measured is left out; the other still counts.
+ */
+export async function measuredFaults(
+  previewUrl: string,
+  path: string,
+  designProse: string | null,
+  measure: (url: string, view: PageView) => Promise<PageMeasure> = measurePageView,
+): Promise<string[]> {
+  const route = normalizeRoute(path);
+  const url = `${previewUrl.replace(/\/+$/, "")}${route}`;
+  const energy = energyIn(designProse);
+  const taken = await Promise.all(
+    VIEWS.map(async ([view, size]) => ({ view, found: await measure(url, size).catch(() => null) })),
+  );
+  const faults: (string | null)[] = [];
+  for (const { view, found } of taken) {
+    if (!found) continue;
+    const screen = { path: route, view, overflowX: found.overflowX };
+    faults.push(pageOverflowFault(screen), firstScreenFault(screen, found.firstScreen));
+    // At desktop width, where sections lie side by side with their backgrounds.
+    if (view === "desktop") faults.push(slabFault(screen, found.surfaces, energy));
+  }
+  const rank = (f: string) => (f.startsWith("[broken]") ? 0 : 1);
+  return faults.filter((f): f is string => f !== null).sort((a, b) => rank(a) - rank(b));
+}
+
 /** Which stretch of a page a picture shows, when the page took more than one. */
 export interface SectionOf {
   /** 0-based. */
@@ -647,6 +765,24 @@ function measuredLines(screen: { overflowX: number; sideScrollers: readonly stri
   return lines;
 }
 
+/**
+ * The lines of a concept a picture can be held against, and which questions
+ * they are for.
+ *
+ * Not the whole concept, for the reason the reviewer is not given the whole
+ * design: every line it is shown is a rule it will look for a breach of. The
+ * idea and the five-second impression are left out as restatements of these.
+ */
+export function conceptNote(concept: Concept, hasReference = false): string {
+  const first = QUESTIONS.length + (hasReference ? 1 : 0) + 1;
+  const lines = [
+    concept.voice ? `- Voice: ${concept.voice}` : "",
+    concept.moment ? `- The moment: ${concept.moment}` : "",
+    concept.opening ? `- The first screen: ${concept.opening}` : "",
+  ].filter(Boolean);
+  return `The concept note: what this app was meant to be about, decided before it was built. It is for questions ${first} to ${first + CONCEPT_QUESTIONS.length - 1} only. It says what the page is about and nothing about its style: how a thing it names is drawn is not a departure from the look, and no earlier question is answered from it.\n\n${lines.join("\n")}`;
+}
+
 /** The text the reviewer reads before the pictures. */
 export function reviewBrief(input: {
   designProse: string | null;
@@ -655,15 +791,20 @@ export function reviewBrief(input: {
   earlier: readonly string[];
   /** The user gave a picture to make the app look like, and it is the first one shown. */
   reference?: boolean;
+  /** What the app is about, when the questions about that are being asked. */
+  concept?: Concept | null;
 }): string {
   const parts = [
     input.designProse
       ? `What this app is meant to look like, from its written design:\n\n${designForReview(input.designProse)}`
       : "This app has no written design, so the answer to the question about style is \"no\".",
   ];
+  if (input.concept) {
+    parts.push(conceptNote(input.concept, Boolean(input.reference)));
+  }
   if (input.recheck.length > 0 && input.earlier.length > 0) {
     parts.push(
-      `Some of the screens below are marked "re-check": ${listed(input.recheck)}. They were reviewed earlier in this build, with the report that follows, and the builder has changed them since.\n\n<earlier_report>\n${input.earlier.join("\n\n---\n\n")}\n</earlier_report>\n\n${recheckRules(Boolean(input.reference))}`,
+      `Some of the screens below are marked "re-check": ${listed(input.recheck)}. They were reviewed earlier in this build, with the report that follows, and the builder has changed them since.\n\n<earlier_report>\n${input.earlier.join("\n\n---\n\n")}\n</earlier_report>\n\n${recheckRules(Boolean(input.reference), Boolean(input.concept))}`,
     );
   }
   if (input.focus?.trim()) {
@@ -760,12 +901,21 @@ export async function reviewDesign(input: {
   steps?: readonly ReviewStep[];
   /** A picture the user gave to make the app look like. */
   reference?: { bytes: Uint8Array; mimeType: string };
+  /**
+   * What the app is about, for a build that is also to be judged against it
+   * (`CONCEPT_QUESTIONS`). Used only when it describes a first screen and
+   * that screen is among those being looked at for the first time.
+   */
+  concept?: Concept | null;
   /** Let the model reason before it answers. Defaults to `DESIGN_REVIEW_THINKING`. */
   thinking?: boolean;
 }): Promise<DesignReview> {
   if (!designReviewAvailable()) throw new Error("No model that reads images is configured");
   const base = input.previewUrl.replace(/\/+$/, "");
   const recheck = input.recheck ?? [];
+  // A tool's concept names no first screen, and its moment is something done,
+  // not something a picture shows.
+  const concept = input.concept?.opening && input.fresh.includes("/") ? input.concept : null;
 
   const steps = input.steps ?? [];
   const shots = [
@@ -863,6 +1013,7 @@ export async function reviewDesign(input: {
     recheck,
     earlier: input.earlier ?? [],
     reference: Boolean(input.reference),
+    concept,
   });
   // The reference is shown first, so that "the first picture" is it.
   const referencePart: Part[] = input.reference
@@ -883,9 +1034,9 @@ export async function reviewDesign(input: {
     {
       model,
       // Reasoning counts against the limit, so it is given room.
-      max_tokens: thinking ? REVIEW_MAX_TOKENS_THINKING : REVIEW_MAX_TOKENS,
+      max_tokens: thinking ? REVIEW_MAX_TOKENS_THINKING : concept ? REVIEW_MAX_TOKENS_CONCEPT : REVIEW_MAX_TOKENS,
       messages: [
-        { role: "system", content: systemPrompt(Boolean(input.reference)) },
+        { role: "system", content: systemPrompt(Boolean(input.reference), Boolean(concept)) },
         { role: "user", content: [{ type: "text", text: brief }, ...referencePart, ...parts] },
       ],
       // This model reasons before answering unless told not to, and the
@@ -905,7 +1056,8 @@ export async function reviewDesign(input: {
     );
   }
 
-  const answers = parseAnswers(written);
+  const questions = questionsFor(Boolean(input.reference), Boolean(concept));
+  const answers = parseAnswers(written, questions.length);
   // A page wider than its window is a measurement, not an opinion: it is
   // reported whether or not the reviewer said so.
   const overflowSeen = answers.some((a) => a.question === 1 && a.yes);
@@ -915,7 +1067,12 @@ export async function reviewDesign(input: {
   ];
   const report =
     answers.length > 0
-      ? composeReport(answers, [...measured, ...slabs], input.fresh.length > 0)
+      ? composeReport(
+          answers,
+          [...measured, ...slabs],
+          input.fresh.length > 0,
+          questions,
+        )
       : // The format was ignored; pass on what was written rather than nothing.
         { review: [...measured, written].join("\n\n"), verdict: parseVerdict([...measured, written].join("\n")) };
 
@@ -923,6 +1080,7 @@ export async function reviewDesign(input: {
     ...report,
     screens,
     skipped,
+    concept: Boolean(concept),
     usage: {
       model,
       inputTokens: completion.usage?.prompt_tokens ?? 0,
