@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ChevronDownIcon,
@@ -332,14 +332,8 @@ export function AddressPicker({
   onChange: (next: string | null) => void;
 }) {
   const shown = value ?? suggested;
-  const [settled, setSettled] = useState(shown);
-  useEffect(() => {
-    const t = setTimeout(() => setSettled(shown), 400);
-    return () => clearTimeout(t);
-  }, [shown]);
-
-  const check = useNameCheck(projectId, settled);
-  const stale = settled !== shown || check.isFetching;
+  const check = useNameCheck(projectId, shown);
+  const stale = check.checking;
   const result = check.data && check.data.name === shown.trim().toLowerCase() ? check.data : null;
 
   return (

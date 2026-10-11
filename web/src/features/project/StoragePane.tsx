@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   DownloadIcon,
@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
 import { APP_BILLING } from "@/src/lib/routes";
+import { useDebounced } from "@/src/hooks/useDebounced";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,16 +49,6 @@ import {
 function formatDate(iso: string): string {
   const ts = Date.parse(iso);
   return ts ? new Date(ts).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
-}
-
-/** Debounce a value, so typing a prefix does not ask the server per keystroke. */
-function useDebounced<T>(value: T, ms: number): T {
-  const [v, setV] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setV(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return v;
 }
 
 function UsageBar({ used, quota, maxFile }: { used: number; quota: number; maxFile: number }) {

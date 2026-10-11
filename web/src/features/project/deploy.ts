@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
+import { useDebounced } from "@/src/hooks/useDebounced";
 import { api, isTerminalRequestError } from "@/src/lib/api-client";
 import { billingKeys } from "@/src/features/billing/api";
 import { projectKeys } from "@/src/features/project/api";
@@ -131,17 +132,28 @@ export interface NameCheck {
   message: string | null;
 }
 
-/** The live check behind the address field. Pass null to stay idle. */
+/** How long the address field has to sit still before the server is asked. */
+const NAME_CHECK_DELAY_MS = 400;
+
+/**
+ * The live check behind the address field. Pass null to stay idle.
+ *
+ * The wait is here, not in the callers, so nothing that reads the check can ask
+ * per keystroke. `data` is the answer for the last name that was asked about,
+ * which while `checking` is not yet the one passed in.
+ */
 export function useNameCheck(projectId: string | null, name: string | null) {
-  return useQuery({
-    queryKey: ["project", projectId ?? "", "name-check", name ?? ""],
+  const settled = useDebounced(name, NAME_CHECK_DELAY_MS);
+  const query = useQuery({
+    queryKey: ["project", projectId ?? "", "name-check", settled ?? ""],
     queryFn: () =>
       api
-        .get<NameCheck>(`/project/${projectId}/deploy/name-available`, { params: { name } })
+        .get<NameCheck>(`/project/${projectId}/deploy/name-available`, { params: { name: settled } })
         .then((r) => r.data),
-    enabled: !!projectId && !!name,
+    enabled: !!projectId && !!name && !!settled,
     staleTime: 10_000,
   });
+  return { data: query.data, checking: settled !== name || query.isFetching };
 }
 
 /** Lowercase letters, numbers and hyphens, as typed: what an address can hold. */
