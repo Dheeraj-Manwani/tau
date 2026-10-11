@@ -153,7 +153,7 @@ describe("the style library", () => {
       expect(css).toContain(`the ${STYLES[key].name} style`);
       expect(css).toContain("@layer skin");
       expect(designMd).toContain(`# Design — ${STYLES[key].name}`);
-      expect(designProse(designMd).length).toBeLessThan(6_500);
+      expect(designProse(designMd).length).toBeLessThan(DESIGN_PROSE_MAX_CHARS);
       expect(describeDesign(designMd)?.style).toBe(key);
     }
     expect(STYLES.neon.defaultMode).toBe("dark");
@@ -743,7 +743,7 @@ describe("the design to change to", () => {
       style: "editorial", styleName: "Editorial", accent: "#a4442a", mode: "light",
       dials: { variance: 6, motion: 3, density: 2 }, fonts: "playfair",
       fontsLabel: "Playfair Display + Karla", imported: false,
-      switch: false, neutral: null,
+      switch: false, neutral: null, energy: null,
     });
     expect(readOf(md)).toBe(READ);
     expect(describeDesign("# Someone else's design")).toBeNull();
@@ -1064,10 +1064,12 @@ describe("the theme panel and the design file", () => {
 describe("the director's rating of its own shortlist", () => {
   const reply = (extra: object) => JSON.stringify({ styles: ["editorial", "craft", "soft"], accents: ["#b5532a"], ...extra });
 
-  test("a style it called a stretch is dropped; the first is always kept", () => {
+  test("a style it called a stretch is dropped; when all are, the first is kept", () => {
     expect(parseDirectorReply(reply({ fits: [5, 4, 2] }))!.styles).toEqual(["editorial", "craft"]);
     expect(parseDirectorReply(reply({ fits: [5, 3, 3] }))!.styles).toEqual(["editorial"]);
     expect(parseDirectorReply(reply({ fits: [2, 2, 2] }))!.styles).toEqual(["editorial"]);
+    // The first is not special when something better was offered.
+    expect(parseDirectorReply(reply({ fits: [2, 5, 4] }))!.styles).toEqual(["craft", "soft"]);
   });
 
   test("with no rating, or one that makes no sense, nothing is dropped", () => {
@@ -1088,25 +1090,51 @@ describe("the director's rating of its own shortlist", () => {
 
 describe("the structure an app opens with", () => {
   const read = (what: string) => `Reading this as: ${what}, which should feel warm.`;
+  const KINDS = ["page", "app"] as const;
 
-  test("is one of its style's own, and the same for the same app", () => {
+  test("is one of its style's own, of the kind asked for, and the same for the same app", () => {
     for (const style of ALL_STYLES) {
-      const lead = leadLayout(style, read("a climbing gym"));
-      expect(style.layouts.map((k) => LAYOUTS[k].name)).toContain(lead.name);
-      expect(leadLayout(style, read("a climbing gym")).name).toBe(lead.name);
+      for (const kind of KINDS) {
+        const lead = leadLayout(style, read("a climbing gym"), kind);
+        expect(style.layouts.map((k) => LAYOUTS[k].name)).toContain(lead.name);
+        expect(lead.kind).toBe(kind);
+        expect(leadLayout(style, read("a climbing gym"), kind).name).toBe(lead.name);
+      }
     }
   });
 
   test("differs between apps, so two in one style do not open alike", () => {
-    const reads = ["a climbing gym", "a plumbing ledger", "a ska band", "a recipe journal", "a drone fleet", "a tea shop"].map(read);
+    const reads = [
+      "a climbing gym", "a plumbing ledger", "a ska band", "a recipe journal", "a drone fleet", "a tea shop",
+      "a law firm", "a skate shop", "a wedding florist", "a habit tracker", "a film club", "a bike courier",
+    ].map(read);
     for (const style of ALL_STYLES) {
-      expect(new Set(reads.map((r) => leadLayout(style, r).name)).size).toBeGreaterThanOrEqual(3);
+      for (const kind of KINDS) {
+        // A style with two structures of a kind can only alternate between them.
+        const offered = style.layouts.filter((k) => LAYOUTS[k].kind === kind).length;
+        expect(new Set(reads.map((r) => leadLayout(style, r, kind).name)).size).toBeGreaterThanOrEqual(Math.min(3, offered));
+      }
+    }
+  });
+
+  // Chosen across a style's whole list, six landing pages in ten were told to
+  // open with a sidebar, a board or a master-detail view.
+  test("a page is never told to open the way a tool does, nor a tool the way a page does", () => {
+    for (const style of ALL_STYLES) {
+      const prose = designProse(filesFor(choiceFor(style.key)).designMd);
+      const line = prose.split("\n").find((l) => l.startsWith("If this is a page people read, it opens with"))!;
+      const [page, app] = [...line.matchAll(/\*\*([^*]+)\*\*/g)].map((m) => m[1]);
+      const kindOf = (name: string | undefined) => Object.values(LAYOUTS).find((l) => l.name === name)?.kind;
+      expect(kindOf(page)).toBe("page");
+      expect(kindOf(app)).toBe("app");
     }
   });
 
   test("is said in the design file, and kept when the style is the same", () => {
     const md = filesFor(choiceFor("editorial")).designMd;
-    expect(md).toContain(`This app opens with **${leadLayout(STYLES.editorial, READ).name}**`);
+    expect(md).toContain(
+      `If this is a page people read, it opens with **${leadLayout(STYLES.editorial, READ, "page").name}**; if it is something they operate, with **${leadLayout(STYLES.editorial, READ, "app").name}**.`,
+    );
     expect(designProse(md)).toContain("open the screens after it a different way");
   });
 });

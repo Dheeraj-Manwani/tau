@@ -42,7 +42,7 @@ const SHAPE_CONTRAST = 3;
 const SWALLOWED_CONTRAST = 1.5;
 
 /** An accent with less chroma than this is a grey, and tints nothing. */
-const GREY_CHROMA = 0.03;
+export const GREY_CHROMA = 0.03;
 
 const DESTRUCTIVE_HUE = 27;
 

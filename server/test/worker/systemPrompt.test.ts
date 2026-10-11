@@ -152,8 +152,10 @@ describe("system prompt — generation 2, every level", () => {
     // its place by replacing one, or by moving detail out to a guide.
     // 19_000 -> 19_500 for file storage: one bullet and one guide-index line,
     // about 320 characters, with the detail in the `storage` guide.
+    // 19_500 -> 19_600 for the `sections` guide: its index line and nothing
+    // else, about 100 characters.
     for (const key of levels) {
-      expect(buildSystemPrompt({ templateKey: key }).length).toBeLessThan(19_500);
+      expect(buildSystemPrompt({ templateKey: key }).length).toBeLessThan(19_600);
     }
   });
 

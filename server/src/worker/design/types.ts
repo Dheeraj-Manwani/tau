@@ -253,6 +253,12 @@ export interface StyleSpec {
   /** Which family of looks it is shown with. */
   group: StyleGroupKey;
   /**
+   * The style is quiet by its own description, and cannot be made to shout: a
+   * brand read as loud is not given it unless nothing else fits or the user
+   * asked for it (`director.ts`). Set only where the `look` line says so.
+   */
+  quiet?: true;
+  /**
    * How widely the style can be used. A `general` style would not look wrong
    * on an app tau knows nothing about; a `niche` one is a strong look that a
    * brief has to call for. Only matters where a style is picked without the
@@ -377,6 +383,13 @@ export interface DesignChoice {
   switch?: boolean;
   /** Where the neutrals lean, when the user chose; otherwise the style's own. */
   neutral?: Neutral;
+  /**
+   * How loud the brand is, 1 (hushed) to 10 (brash), as the director read it
+   * from the way the brief talks. It belongs to the app, not to its style, so
+   * it stays through a restyle. Omitted when nobody read it — a style the user
+   * picked, a design they brought — and then it follows the dials (`bands.ts`).
+   */
+  energy?: number;
   /** "Reading this as …" — one sentence on what is being built and how it should feel. */
   read: string;
   /**

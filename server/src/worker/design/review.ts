@@ -39,6 +39,16 @@
  * scrolls sideways rather than being cut off, that the whole page is wider
  * than its window — is measured in the browser and written into the caption.
  *
+ * Three measurements go to the builder as findings of their own, whatever the
+ * reviewer answered: a page wider than its window, a call to action that
+ * begins below the first screen (`firstScreenFault`), and, for a loud design,
+ * a long stretch of sections on one background (`slabFault`). Each is a
+ * position or a colour read from the page, which a model shown a picture cut
+ * to fit can only guess at. Others were tried against published sites and
+ * left out because they could not tell a good page from a bad one: the
+ * contrast of text with what is behind it, text under a fixed size, and how
+ * much longer a page is on a phone (doc/DESIGN_COMPARISON_HOT_DATE.md §5c).
+ *
  * ## Two looks per screen, and no more
  *
  * How many times a screen is looked at is tau's decision, not either model's
@@ -60,8 +70,12 @@ import {
   describeAction,
   type PageAction,
   type PageCapture,
+  type PageFirstScreen,
+  type PageSurface,
   type PageView,
 } from "../lib/screenshot";
+import { LOUD_ENERGY } from "./bands";
+import { contrast, hexToOklch } from "./color";
 
 /**
  * A browser to take the pictures and a model to look at them. A Kimi model
@@ -158,7 +172,7 @@ export const QUESTIONS = [
   {
     label: "Off-style",
     kind: "broken",
-    ask: "Does a screen depart from the intended look in a way anyone would see at a glance: corners rounded where the style is square or the reverse, soft heavy shadows where it is flat, a serif where it names a sans, a second accent colour, gradient-filled text? Not shades of one colour, and never the size of type or the amount of spacing: neither can be judged from these pictures.",
+    ask: "Does a screen depart from the intended look in a way anyone would see at a glance: corners rounded where the style is square or the reverse, soft heavy shadows where it is flat, a serif where it names a sans, a second accent colour, gradient-filled text? A whole section on one of the band colours the design names is part of the look, not a second accent. Not shades of one colour, and never the size of type or the amount of spacing: neither can be judged from these pictures.",
   },
   {
     label: "Template",
@@ -263,6 +277,9 @@ export function composeReport(
       findings.push(`[${kind}] ${q.label} — ${a.detail || "the reviewer did not say where."}`);
     }
   }
+  // What must be fixed comes first, whoever found it.
+  const rank = (f: string) => (f.startsWith("[broken]") ? 0 : 1);
+  findings.sort((a, b) => rank(a) - rank(b));
   const verdict: Verdict = findings.some((f) => f.startsWith("[broken]")) ? "fix" : "pass";
   return {
     review: [`VERDICT: ${verdict}`, ...findings.map((f, i) => `${i + 1}. ${f}`)].join("\n"),
@@ -444,10 +461,14 @@ export function designForReview(prose: string): string {
   if (kept.length < 2) return prose;
   return [head, ...kept]
     .join("")
-    // The three dials are instructions on how to build, scored out of ten.
-    .replace(/^- \*\*(?:Variance|Motion|Density) \d+\/10\*\*.*\n?/gm, "")
-    // So is which class carries which colour.
+    // The dials, and how loud the brand is, are instructions on how to build,
+    // scored out of ten.
+    .replace(/^- \*\*(?:Variance|Motion|Density|Energy) \d+\/10\*\*.*\n?/gm, "")
+    // So is which class carries which colour, and how a band is written. That
+    // the bands exist, and what colours they are, stays: it is what keeps one
+    // from being taken for a second accent.
     .replace(/^- Colour only through tokens:.*\n?/gm, "")
+    .replace(/^- A band is one class on the .*\n?/gm, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -456,6 +477,126 @@ export function designForReview(prose: string): string {
 export function pageOverflowFault(screen: Pick<ReviewedScreen, "path" | "view" | "overflowX">): string | null {
   if (screen.overflowX <= PAGE_OVERFLOW_TOLERANCE) return null;
   return `[broken] Overflow — \`${screen.path}\` ${screen.view}: tau measured the page as ${screen.overflowX}px wider than the window, so the whole page scrolls sideways. Fix: find the element that is too wide and contain it (\`min-w-0\`, \`overflow-x-auto\` on that element, or let it wrap).`;
+}
+
+/**
+ * Two backgrounds closer than this are one surface at a glance. It sits
+ * between the two steps a tau palette is built with: the page and its muted
+ * fill, which are meant to be a shade apart, and a band, which is built to be
+ * at least `BAND_APART` (1.3) from the page.
+ */
+const SAME_SURFACE_CONTRAST = 1.2;
+/** …unless they differ in hue: two colours of one lightness are two surfaces. */
+const SAME_SURFACE_CHROMA = 0.04;
+/**
+ * How many neighbouring sections on one surface make a stretch worth
+ * mentioning. Two are often one chapter told in two parts; more than that is a
+ * length of page with nothing to say where its subjects change.
+ */
+const SLAB_SECTIONS = 3;
+
+function sameSurface(a: string, b: string): boolean {
+  if (contrast(a, b) >= SAME_SURFACE_CONTRAST) return false;
+  const p = hexToOklch(a);
+  const q = hexToOklch(b);
+  const rad = Math.PI / 180;
+  return (
+    Math.hypot(
+      p.c * Math.cos(p.h * rad) - q.c * Math.cos(q.h * rad),
+      p.c * Math.sin(p.h * rad) - q.c * Math.sin(q.h * rad),
+    ) < SAME_SURFACE_CHROMA
+  );
+}
+
+/**
+ * The longest stretch of neighbouring sections that sit on what is, to the
+ * eye, one background: 1-based positions, or null when no stretch is long
+ * enough to mention. A section on a picture ends a stretch.
+ */
+export function longestSlab(surfaces: readonly PageSurface[]): { first: number; last: number } | null {
+  let best: { first: number; last: number } | null = null;
+  let start = 0;
+  for (let i = 1; i <= surfaces.length; i++) {
+    const here = surfaces[i]?.background;
+    const before = surfaces[i - 1]!.background;
+    if (here && before && sameSurface(here, before)) continue;
+    const length = i - start;
+    if (length >= SLAB_SECTIONS && (!best || length > best.last - best.first + 1)) {
+      best = { first: start + 1, last: i };
+    }
+    start = i;
+  }
+  return best;
+}
+
+/** How loud a written design says its app is, or null when it does not say. */
+export function energyIn(designProse: string | null): number | null {
+  const m = designProse ? /\*\*Energy (\d+)\/10\*\*/.exec(designProse) : null;
+  return m ? Number(m[1]) : null;
+}
+
+/**
+ * A loud design whose page runs on one background, said as a finding; null
+ * otherwise.
+ *
+ * Only ever `[polish]`, and only for a design that asks for colour: a quiet
+ * page on one background is the design, and sections that belong together may
+ * share one in any design. The builder is told what was measured and is left
+ * to decide.
+ */
+export function slabFault(
+  screen: Pick<ReviewedScreen, "path" | "view">,
+  surfaces: readonly PageSurface[],
+  energy: number | null,
+): string | null {
+  if (energy === null || energy < LOUD_ENERGY) return null;
+  const slab = longestSlab(surfaces);
+  if (!slab) return null;
+  return `[polish] Bands — \`${screen.path}\` ${screen.view}: tau measured sections ${slab.first} to ${slab.last} of ${surfaces.length} as sitting on one background, or on two a shade apart. This design is loud and marks where a long page changes subject with colour. Fix: put the sections that start a new subject on a band (\`band-1\`, \`band-2\`, \`band-3\`) or on \`bg-primary\`; leave alone any that belong together.`;
+}
+
+/** A box this far past the end of the first screen is rounding, not a fault. */
+const FOLD_TOLERANCE = 8;
+/**
+ * An action further down than this many screens is not the headline's: it
+ * belongs to something lower in a tall opening section, and a visitor was
+ * never meant to find it without scrolling.
+ */
+const HEADLINE_REACH_SCREENS = 2;
+
+/**
+ * A page whose first screen ends before its call to action begins, said as a
+ * finding; null when the action is on the first screen, or the page does not
+ * open with a headline and something to press.
+ *
+ * `[broken]`, where the other measured judgement of a design is `[polish]`,
+ * because there is nothing in it to weigh: the builder put an action under
+ * the headline, and a visitor cannot see it. Measured on twenty published sites
+ * at both widths, every one had its action on the first screen; the page this
+ * was written for had it 103 pixels below.
+ *
+ * It says how big the headline is and where it ends, because that is nearly
+ * always what pushed the action down, and nothing about what should be on a
+ * first screen besides: whether it needs a picture is the design's question.
+ */
+export function firstScreenFault(
+  screen: Pick<ReviewedScreen, "path" | "view">,
+  first: PageFirstScreen | null,
+): string | null {
+  // One section is a screen of an app, not a page with a first screen to keep.
+  if (!first?.action || first.sections < 2) return null;
+  const { fold, headline, action } = first;
+  if (action.bottom <= fold + FOLD_TOLERANCE) return null;
+  if (action.top >= fold * HEADLINE_REACH_SCREENS) return null;
+  const what = action.words ? `"${action.words}"` : "the first thing to press";
+  const lines = headline.lines === 1 ? "one line" : `${headline.lines} lines`;
+  // Said as it is: a button the window cuts through is not one a visitor has
+  // to go looking for.
+  const where =
+    action.top >= fold
+      ? `as starting ${action.top}px down the page, and the first screen ends at ${fold}px, so a visitor has to scroll before there is anything to press`
+      : `from ${action.top}px to ${action.bottom}px down the page, and the first screen ends at ${fold}px, so the bottom of the window cuts through it`;
+  return `[broken] First screen — \`${screen.path}\` ${screen.view}: tau measured ${what} ${where}. The headline above it is set at ${headline.size}px, runs to ${lines} and ends at ${headline.bottom}px. Fix: bring the action onto the first screen by setting the headline smaller or shortening it, and by taking out space above and between; do not move the action above the headline.`;
 }
 
 /** Which stretch of a page a picture shows, when the page took more than one. */
@@ -655,6 +796,13 @@ export async function reviewDesign(input: {
   const parts: Part[] = [];
   const screens: ReviewedScreen[] = [];
   const skipped: string[] = [];
+  // Measured on a first look at a screen as it loads, at desktop width, where
+  // sections lie side by side with their backgrounds rather than stacked.
+  const energy = energyIn(input.designProse);
+  const slabs: string[] = [];
+  // Measured at both widths and on a re-check too: an action that is still
+  // below the first screen is still a fault.
+  const firstScreens: string[] = [];
   shots.forEach((shot, i) => {
     const result = captured[i] as PageCapture | Error;
     if (result instanceof Error) {
@@ -670,6 +818,12 @@ export async function reviewDesign(input: {
       capturedHeight: result.capturedHeight,
       overflowX: result.overflowX,
     };
+    if (shot.name === "desktop" && shot.actions.length === 0 && input.fresh.includes(shot.path)) {
+      const slab = slabFault(screen, result.surfaces, energy);
+      if (slab) slabs.push(slab);
+    }
+    const below = firstScreenFault(screen, result.firstScreen);
+    if (below) firstScreens.push(below);
     result.sections.forEach((section, index) => {
       parts.push({
         type: "text",
@@ -755,10 +909,13 @@ export async function reviewDesign(input: {
   // A page wider than its window is a measurement, not an opinion: it is
   // reported whether or not the reviewer said so.
   const overflowSeen = answers.some((a) => a.question === 1 && a.yes);
-  const measured = overflowSeen ? [] : screens.map(pageOverflowFault).filter((f): f is string => f !== null);
+  const measured = [
+    ...(overflowSeen ? [] : screens.map(pageOverflowFault).filter((f): f is string => f !== null)),
+    ...firstScreens,
+  ];
   const report =
     answers.length > 0
-      ? composeReport(answers, measured, input.fresh.length > 0)
+      ? composeReport(answers, [...measured, ...slabs], input.fresh.length > 0)
       : // The format was ignored; pass on what was written rather than nothing.
         { review: [...measured, written].join("\n\n"), verdict: parseVerdict([...measured, written].join("\n")) };
 

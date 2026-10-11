@@ -216,10 +216,40 @@ describe("what a path or a tool attaches", () => {
     expect(docsForPath("server/db/client.ts")).toEqual(["database"]);
   });
 
-  test("the files a screen is made of bring the layouts guide", () => {
+  test("the files a screen is made of bring the layouts guide, and the sections one with it", () => {
     for (const p of ["src/App.tsx", "src/pages/Home.tsx", "src/components/Header.tsx", "src/components/site/Footer.tsx"]) {
-      expect(docsForPath(p)).toEqual(["layouts", "components"]);
+      expect(docsForPath(p)).toEqual(["layouts", "sections", "components"]);
     }
+  });
+
+  test("the sections guide says what it is for, and its recipes are the ones that were rendered", () => {
+    const doc = readDoc("sections");
+    // It reaches an agent building a tool too, so it has to say at once that
+    // it is not for one.
+    expect(doc.split("\n")[2]).toContain("A screen people operate");
+    // Rendered in two styles at both widths before being written down; this
+    // pins the classes so an edit cannot quietly change one.
+    for (const claim of [
+      "decide the run first",
+      "**Neighbours differ.**",
+      "absolute inset-0 translate-x-3 translate-y-3 border-2 border-foreground",
+      "put `overflow-hidden` on the section that holds one",
+      // A real build tilted two cards into each other on a phone.
+      "two that overlap on a phone hide each other's words",
+      "flex w-max animate-[marquee_40s_linear_infinite]",
+      "@keyframes marquee { to { transform: translateX(-50%); } }",
+      "do not invent a review",
+      "**Dialog form**",
+    ]) {
+      expect(doc).toContain(claim);
+    }
+    // No counts of sections or of colours: a number written here is applied
+    // to every page alike.
+    expect(doc).not.toMatch(/\b(?:at least|at most|no more than|up to|\w+ (?:to|or) \w+) (?:sections|bands)\b/i);
+    // The two guides arrive together and say the first screen's rule once.
+    expect(readDoc("layouts")).toContain("**The first screen makes the offer.**");
+    expect(readDoc("layouts")).toContain("the type gets smaller; the action does not move down");
+    expect(readDoc("motion")).toContain("A ticker strip on a page is the one exception");
   });
 
   test("opening a stock component to see how it works brings the guide that says", () => {

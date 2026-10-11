@@ -20,6 +20,7 @@ export const wabisabi: StyleSpec = {
     "Ceramics, tea, slow living and wellbeing, a craftsperson's or an artist's portfolio, a studio, a retreat, interiors, a small press, anything that wants to feel calm, natural and unhurried.",
   avoid: "Not for anything urgent, dense or loud: dashboards, trading, games, sales pages with countdowns.",
   group: "tactile",
+  quiet: true,
   reach: "niche",
   aka: ["Wabi sabi", "Imperfect minimalism"],
 

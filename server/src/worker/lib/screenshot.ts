@@ -282,7 +282,187 @@ export interface PageCapture {
    * area scrolls, only that its content stops at the edge.
    */
   sideScrollers: string[];
+  /**
+   * The page's full-width sections, top to bottom, each with the colour it
+   * sits on. Two neighbours a shade apart look like two sections in the markup
+   * and like one in a picture shrunk to fit; this is how that is told.
+   */
+  surfaces: PageSurface[];
+  /**
+   * Where the headline and the first thing to press sit, when the page opens
+   * with a headline in a section of its own; null otherwise. A picture of the
+   * top of a page does not say where its first screen ends.
+   */
+  firstScreen: PageFirstScreen | null;
 }
+
+/** One full-width section of a page. */
+export interface PageSurface {
+  /** Its height in CSS pixels. */
+  height: number;
+  /** The colour behind it as `#rrggbb`; null when that is a picture or a gradient. */
+  background: string | null;
+}
+
+/**
+ * What a visitor meets before scrolling: the page's headline and the first
+ * thing after it that can be pressed or filled in. Positions are in CSS pixels
+ * from the top of the page.
+ */
+export interface PageFirstScreen {
+  /** The window's height: where the first screen ends. */
+  fold: number;
+  /** How many full-width sections the page is made of. */
+  sections: number;
+  headline: {
+    words: string;
+    /** Lines it runs to as rendered, and its type size. */
+    lines: number;
+    size: number;
+    top: number;
+    bottom: number;
+  };
+  /** The highest thing to press after the headline; null when its section has none. */
+  action: { words: string; top: number; bottom: number } | null;
+}
+
+/**
+ * Finds a page's sections, and leaves them in `found`. The start of both
+ * scripts below.
+ *
+ * The sections are the children of whichever element has the most children
+ * that span the window and are tall enough to be a section rather than a
+ * navigation bar or a rule — which finds them whether they are `<section>`s
+ * in a `<main>` or `<div>`s in a wrapper.
+ */
+const FIND_SECTIONS = `
+  const vw = window.innerWidth;
+  const box = (el) => el.getBoundingClientRect();
+  const wide = (el) => { const r = box(el); return r.width >= vw * 0.9 && r.height >= 160; };
+  let found = [];
+  const walk = (el, depth) => {
+    if (depth > 6) return;
+    const kids = [...el.children].filter(wide);
+    if (kids.length > found.length) found = kids;
+    for (const kid of kids) walk(kid, depth + 1);
+  };
+  if (document.body) walk(document.body, 0);`;
+
+/**
+ * Measures the first screen. Runs in the page, scrolled to its top.
+ *
+ * Only for a page that opens the way a landing page does: a visible `<h1>`
+ * inside one of the page's full-width sections. The action is the highest
+ * thing in that section, after the headline in the markup, that a visitor can
+ * press or type into — not one in a navigation bar or in anything pinned to
+ * the window, which is on every screen and is not what the headline is asking
+ * for. If even that one is below the first screen, nothing is on it.
+ *
+ * Reports positions and decides nothing; `firstScreenFault` in
+ * `design/review.ts` does that.
+ */
+export const PAGE_FIRST_SCREEN_SCRIPT = `(() => {${FIND_SECTIONS}
+  const shown = (el) => {
+    const r = box(el);
+    if (r.width < 2 || r.height < 2) return false;
+    const s = getComputedStyle(el);
+    return s.visibility !== "hidden" && s.display !== "none";
+  };
+  const fold = window.innerHeight;
+  const y = window.scrollY;
+  const said = (text) => (text || "").replace(/\\s+/g, " ").trim();
+  const h1 = [...document.querySelectorAll("h1")].find(shown);
+  if (!h1) return null;
+  const hero = found.find((el) => el.contains(h1));
+  const at = box(h1);
+  if (!hero || at.top + y >= fold) return null;
+  // A line is counted once however many pieces of text sit on it.
+  const range = document.createRange();
+  range.selectNodeContents(h1);
+  const lines = [];
+  for (const r of range.getClientRects()) {
+    if (r.width < 1 || r.height < 1) continue;
+    const mid = r.top + r.height / 2;
+    if (!lines.some((m) => Math.abs(m - mid) < r.height / 2)) lines.push(mid);
+  }
+  const pinned = (el) => {
+    for (let n = el; n && n !== hero; n = n.parentElement) {
+      if (n.tagName === "NAV") return true;
+      const p = getComputedStyle(n).position;
+      if (p === "fixed" || p === "sticky") return true;
+    }
+    return false;
+  };
+  // The highest on the page, not the first in the markup: what comes first in
+  // the markup can be the pause button of a video further down.
+  const act = [...hero.querySelectorAll('a[href], button, input:not([type=hidden]), textarea, select, summary, [role=button], [role=link], [role=tab], [role=switch], [role=checkbox], [role=radio], [role=combobox], [role=slider]')]
+    .filter((el) => shown(el) && !pinned(el) && (h1.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) && !h1.contains(el))
+    .sort((p, q) => box(p).top - box(q).top)[0];
+  const a = act ? box(act) : null;
+  return {
+    fold,
+    sections: found.length,
+    headline: {
+      words: said(h1.innerText).slice(0, 80),
+      lines: Math.max(1, lines.length),
+      size: Math.round(parseFloat(getComputedStyle(h1).fontSize)),
+      top: Math.round(at.top + y),
+      bottom: Math.round(at.bottom + y),
+    },
+    action: a
+      ? {
+          words: said(act.innerText || act.value || act.getAttribute("aria-label") || act.getAttribute("placeholder")).slice(0, 40),
+          top: Math.round(a.top + y),
+          bottom: Math.round(a.bottom + y),
+        }
+      : null,
+  };
+})()`;
+
+/**
+ * Finds a page's sections and what each sits on. Runs in the page.
+ *
+ * A colour is read back through a canvas, so it comes out the same however
+ * the stylesheet wrote it.
+ */
+export const PAGE_SURFACES_SCRIPT = `(() => {${FIND_SECTIONS}
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 1;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const hex = (color) => {
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, 1, 1);
+    ctx.fillStyle = "#000";
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+    if (a < 250) return null;
+    return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("");
+  };
+  const painted = (el) => {
+    const s = getComputedStyle(el);
+    if (s.backgroundImage && s.backgroundImage !== "none") return "image";
+    return hex(s.backgroundColor);
+  };
+  const surface = (el) => {
+    const r = box(el);
+    for (const kid of el.children) {
+      const k = box(kid);
+      const pos = getComputedStyle(kid).position;
+      const covers = (pos === "absolute" || pos === "fixed") && k.width >= r.width * 0.9 && k.height >= r.height * 0.9;
+      if (covers && (painted(kid) || /^(IMG|VIDEO)$/.test(kid.tagName) || kid.querySelector("img, video"))) return "image";
+    }
+    for (let n = el; n; n = n.parentElement) {
+      const p = painted(n);
+      if (p) return p;
+    }
+    return hex(getComputedStyle(document.documentElement).backgroundColor) || "#ffffff";
+  };
+  return found.slice(0, 40).map((el) => {
+    const s = surface(el);
+    return { height: Math.round(box(el).height), background: s === "image" ? null : s };
+  });
+})()`;
 
 const REVIEW_SETTLE_MS = 2_500;
 const ACTION_SETTLE_MS = 800;
@@ -427,6 +607,25 @@ export async function capturePageView(
         },
       );
       const measured = walked.result.value ?? {};
+      // Never worth failing a capture over: a page it cannot read has no sections to report.
+      const surfaces = await page
+        .send<{ result: { value?: PageSurface[] } }>("Runtime.evaluate", {
+          expression: PAGE_SURFACES_SCRIPT,
+          returnByValue: true,
+        })
+        .then((r) => (Array.isArray(r.result.value) ? r.result.value : []))
+        .catch((): PageSurface[] => []);
+      // As someone arriving sees it: nothing pressed or typed yet.
+      const firstScreen =
+        actions.length > 0
+          ? null
+          : await page
+              .send<{ result: { value?: PageFirstScreen | null } }>("Runtime.evaluate", {
+                expression: PAGE_FIRST_SCREEN_SCRIPT,
+                returnByValue: true,
+              })
+              .then((r) => r.result.value ?? null)
+              .catch(() => null);
       const pageHeight = Math.max(view.height, Math.round(measured.height ?? view.height));
       const bounds = sectionBounds(pageHeight, view.maxHeight, maxSections);
       const shoot = async ({ from, to }: { from: number; to: number }) =>
@@ -470,6 +669,8 @@ export async function capturePageView(
           capturedHeight: bounds[bounds.length - 1]!.to,
           overflowX: Math.round(measured.overflowX ?? 0),
           sideScrollers: measured.sideScrollers ?? [],
+          surfaces,
+          firstScreen,
         };
       }
     }

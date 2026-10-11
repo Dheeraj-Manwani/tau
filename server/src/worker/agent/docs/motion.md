@@ -49,6 +49,6 @@ function useInView<T extends Element>() {
 - Animate `transform` and `opacity`. Animating width, height, top or left makes the page stutter.
 - Entrances are 300–700ms and ease out. Feedback on touch is under 200ms.
 - An element animates in once. Do not replay it every time it scrolls back into view.
-- Never loop an animation that is not showing that something is in progress.
+- Never loop an animation that is not showing that something is in progress. A ticker strip on a page is the one exception.
 - Never delay the main content of a screen by more than half a second.
 - Dialogs, sheets, menus and tooltips already animate. Do not add to them.

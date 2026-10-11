@@ -6,6 +6,9 @@ Two rules hold for all of them:
 - **Something is biggest.** One element per screen is clearly the most important and is given the most room. Equal thirds and equal halves are what make a page look generated.
 - **Mobile is designed, not collapsed.** Below `md`, columns stack in reading order, side navigation becomes a top bar with a menu, and nothing scrolls sideways unless it is meant to.
 
+A page has a third:
+- **The first screen makes the offer.** What a visitor sees before scrolling holds the headline, a line of support and the action together, at desktop and at phone width. Size the headline to what it says: three words can fill a screen, a sentence cannot. When the two compete, the type gets smaller; the action does not move down.
+
 ## Pages
 
 **Split hero** — `grid lg:grid-cols-12`, words in `lg:col-span-7`, image or product in `lg:col-span-5` (or 5/7), vertically centred, filling most of the first screen. Later sections repeat the split with the sides swapped. The image may bleed off the edge of the page.
@@ -14,9 +17,11 @@ Two rules hold for all of them:
 
 **Bento grid** — `grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 auto-rows-[minmax(9rem,auto)]`. Tiles span different numbers of columns and rows (`col-span-2 row-span-2`, `col-span-3`, `col-span-1`). One tile is clearly the largest. Each tile holds one thing: a figure, a chart, an image, an action.
 
-**Full-bleed bands** — a stack of full-width `<section>`s, each with its own background (`bg-background`, `bg-muted`, `bg-primary text-primary-foreground`, an image) and its own inner arrangement inside a `max-w-6xl mx-auto` container. No two neighbouring bands are laid out the same way.
+**Full-bleed bands** — a stack of full-width `<section>`s, each with its own inner arrangement inside a `max-w-6xl mx-auto` container. No two neighbouring bands are laid out the same way. A band's background is what tells a reader the subject has changed, so change it where the subject does: `bg-background` and `bg-muted` are a shade apart and read as one surface from a distance, while `band-1`, `band-2`, `band-3`, `bg-primary text-primary-foreground` and an image each read as a new one. How much of a page goes on colour is the design's call — its Energy line in `.tau/DESIGN.md` says.
 
-**Poster** — the first screen is `min-h-svh` and holds one statement set as large as it will go (`text-[clamp(3rem,12vw,11rem)] leading-[0.9]`), a line of supporting text, and one action. Navigation is minimal. Everything else follows below, plainly.
+A band class is a scope, not just a fill: `<section className="band-1">` re-points `text-foreground`, `text-muted-foreground`, `border-border`, `bg-card` and the components for everything inside it, and the main button turns to the band's text colour. Build the inside as you would on the page. Do not add `text-white`, a literal colour, or a second `bg-*` on the same element.
+
+**Poster** — the first screen is `min-h-svh` and holds one statement, a line of supporting text, and one action, all three inside it. The statement is set as large as its length allows: `text-[clamp(3rem,12vw,11rem)] leading-[0.9]` for three or four words, nearer `text-[clamp(2.75rem,7vw,6rem)]` for a sentence. Navigation is minimal. Everything else follows below, plainly.
 
 **Index list** — the content as rows: `divide-y` or a table, each row a number or date, a title, a few facts, and an arrow. Rows are tall (`py-6`) and the title is large. Hovering a row reveals an image or more detail. No cards.
 

@@ -97,6 +97,10 @@ export function restyledChoice(
 
   const neutral =
     config.neutral === "style" ? undefined : (config.neutral ?? current?.neutral ?? undefined);
+  // How loud the brand is was read from what the app is, so it outlasts a
+  // style — until the user sets the feel themselves, which says it afresh.
+  const feelChosen = config.dials?.variance !== undefined || config.dials?.motion !== undefined;
+  const energy = feelChosen || imported ? undefined : (current?.energy ?? undefined);
 
   return {
     style: key,
@@ -113,6 +117,7 @@ export function restyledChoice(
     // app through a change of style, until the request says otherwise.
     ...((config.switch ?? current?.switch) ? { switch: true } : {}),
     ...(neutral ? { neutral } : {}),
+    ...(energy !== undefined ? { energy } : {}),
     read: read ?? `Reading this as: an app for the people who use it, which should feel ${style.name.toLowerCase()}.`,
     source: imported ? "import" : "user",
     ...(imported ? { imported } : {}),

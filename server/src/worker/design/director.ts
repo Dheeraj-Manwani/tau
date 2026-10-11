@@ -26,6 +26,26 @@
  * an order that differs per project; each says what it is *not* for; and the
  * usual default colours are named as things to avoid.
  *
+ * ## The subject and the voice are two questions
+ *
+ * Asked what suits a brief, the model answers for the subject: a dating app
+ * that admits only the beautiful is "exclusive", and exclusive is a quiet
+ * near-black page with a fine serif. That brief also said the brand roasts
+ * people and is unapologetic about it, and the page that came back whispered.
+ * The subject had been matched and the voice ignored, because nothing asked
+ * about it.
+ *
+ * So each style on the shortlist is rated twice — for the subject (`fits`) and
+ * for how the brand talks (`voices`) — and has to pass both to be picked from.
+ * The second rating is not enough alone: asked both questions, the model
+ * still gave a self-described quiet style full marks for a brand it called a
+ * nine for loudness. So its answers are also checked against each other, and
+ * a style marked `quiet` is not picked from for a brand it called loud.
+ *
+ * The director also says how loud the brand is (`energy`), which is kept with
+ * the design: it decides how much of a page is given over to colour
+ * (`bands.ts`) and is told to the builder in words (`designMd.ts`).
+ *
  * It can fail — a timeout, a malformed reply — and must never hold up or break
  * the creation of an app. `fallbackChoice` picks deterministically from the
  * project's id, which is at least different from one project to the next.
@@ -46,6 +66,7 @@
 import { clientForModel } from "@/lib/kimi";
 import { env } from "@/lib/env";
 import { log } from "@/worker/lib/log";
+import { LOUD_ENERGY } from "./bands";
 import { hexToOklch, isHexColor } from "./color";
 import { importedMode, splitFrontMatter } from "./importDesign";
 import { ALL_STYLES, GENERAL_STYLES, STYLES, chosenPairing } from "./styles";
@@ -79,8 +100,9 @@ const MAX_IMPORT_BRIEF_CHARS = 3_000;
 const STYLE_WEIGHTS = [0.5, 0.3, 0.2] as const;
 
 /**
- * A style the director rated this or lower is a stretch it listed to fill the
- * list. The first style is always kept: with nothing else, it is the answer.
+ * A style the director rated this or lower, for the subject or for the voice,
+ * is a stretch it listed to fill the list. When every style is a stretch the
+ * first is kept: with nothing else, it is the answer.
  */
 export const WEAK_FIT = 3;
 const ACCENT_WEIGHTS = [0.4, 0.35, 0.25] as const;
@@ -277,8 +299,10 @@ These are the styles available. They are equally good; none is the default.
 ${catalog}
 
 Reply with:
-- styles: up to three styles that would each genuinely suit this subject and this audience, best first. They should be different answers to the brief, not three versions of the safest one. List two, or one, when that is all that really fits: every style you list may be the one used. Never list a style whose "Not for" describes this brief — a tool people work in all day is not a magazine, and a page that sells something is not an admin panel. If the brief itself names a style, by its key or by one of the names it is also called, or describes a look that only one of them matches, list only that one.
-- fits: a whole number from 1 to 5 for each style in styles, in the same order. 5: you would choose it alone. 4: a good answer. 3: it would do. 2 or 1: a stretch. Be honest: a style that is a stretch should not be in the list at all, and a list of one is a good answer.
+- styles: up to three styles that would each genuinely suit this subject, this audience and the way this brand talks, best first. They should be different answers to the brief, not three versions of the safest one. List two, or one, when that is all that really fits: every style you list may be the one used. Never list a style whose "Not for" describes this brief — a tool people work in all day is not a magazine, and a page that sells something is not an admin panel. If the brief itself names a style, by its key or by one of the names it is also called, or describes a look that only one of them matches, list only that one.
+- fits: a whole number from 1 to 5 for each style in styles, in the same order: how well the style suits the subject and the audience. 5: you would choose it alone. 4: a good answer. 3: it would do. 2 or 1: a stretch. Be honest: a style that is a stretch should not be in the list at all, and a list of one is a good answer.
+- voices: a whole number from 1 to 5 for each style in styles, in the same order: how well the style carries the brand's voice — how it talks to people and how loud it is — which is a different question from its subject. 5: the style speaks in this voice. 3: it would have to be pushed against its nature. 1: it says the opposite. A brand that jokes, teases, shouts or picks a fight is not carried by a hushed, restrained style, however well the subject matches; a brand that reassures is not carried by a brash one. A brief that says nothing about how the brand talks gets the same number as fits.
+- energy: a whole number from 1 to 10: how loud the brand is. 1 is hushed and restrained, 5 is confident and plain-spoken, 10 is brash, cheeky and in your face. Decide it from how the brief talks and what it says about the brand's attitude, not from the industry: a law firm that jokes is loud, and a nightclub that whispers is quiet.
 - accents: three colours, as hex values, each of which would suit this subject, from three clearly different parts of the colour wheel, best first. Take them from the world of the subject — what the thing is made of, where it happens, what its audience already associates with it — not from what websites usually look like. Blue, indigo and purple are what every other app uses, and warm orange-brown is the next most common default: use those only when the subject really is that colour. If the brief names a colour, list only that one.
 - accent_exact: true only if the brief gives a specific colour or a brand colour that has to be used exactly as given.
 - mode: "light" or "dark" — how the app opens. Decide from the subject and from where and when it will be used.
@@ -291,7 +315,7 @@ Reply with:
 Anything the brief itself says about the look — a colour, light or dark, a named style, a mood — overrides your own judgement.
 
 Reply with one JSON object and nothing else:
-{"styles": ["<key>", "<key>", "<key>"], "fits": [5, 4, 4], "accents": ["#rrggbb", "#rrggbb", "#rrggbb"], "accent_exact": false, "mode": "light", "variance": 5, "motion": 5, "density": 5, "read": "Reading this as: …"}`;
+{"styles": ["<key>", "<key>", "<key>"], "fits": [5, 4, 4], "voices": [5, 4, 4], "energy": 5, "accents": ["#rrggbb", "#rrggbb", "#rrggbb"], "accent_exact": false, "mode": "light", "variance": 5, "motion": 5, "density": 5, "read": "Reading this as: …"}`;
 }
 
 /** What the director offered: shortlists, best first, not yet a decision. */
@@ -302,6 +326,8 @@ export interface DirectorOptions {
   /** Null when the reply did not say; the chosen style's own default applies. */
   mode: Mode | null;
   dials: { variance: number | null; motion: number | null; density: number | null };
+  /** How loud the brand is, 1 to 10. Absent when the reply did not say. */
+  energy?: number;
   read: string | null;
 }
 
@@ -334,17 +360,36 @@ export function parseDirectorReply(text: string): DirectorOptions | null {
   const list = (many: unknown, one: unknown): unknown[] =>
     Array.isArray(many) ? many : one !== undefined ? [one] : [];
 
-  // The director rated each style it listed. One it called a stretch is
-  // dropped rather than left to be picked half the time, but the first stays.
-  const fits = Array.isArray(raw.fits) ? raw.fits.map((f) => (typeof f === "number" && f >= 1 ? f : NaN)) : [];
-  const styles: StyleKey[] = [];
+  // The director rated each style it listed, twice: for the subject and for
+  // the brand's voice. One it called a stretch on either count is dropped
+  // rather than left to be picked half the time — the first included, when
+  // something better was offered: a style that matches the subject and says
+  // the opposite of the brand is the answer this is here to prevent.
+  const ratings = (value: unknown): number[] =>
+    Array.isArray(value) ? value.map((f) => (typeof f === "number" && f >= 1 ? f : NaN)) : [];
+  const fits = ratings(raw.fits);
+  const voices = ratings(raw.voices);
+  const weak = (rating: number | undefined) => Number.isFinite(rating) && rating! <= WEAK_FIT;
+  // The rating of the voice cannot be left to the model alone. On the brief
+  // this was written for it called the brand a nine out of ten for loudness
+  // and, in the same reply, gave a style that describes itself as quiet full
+  // marks for carrying that voice, six times in eight. Its own two answers
+  // are checked against each other: a brand it calls loud is not carried by a
+  // style that says it is quiet.
+  const energy = clampDial(raw.energy);
+  const loud = energy !== null && energy >= LOUD_ENERGY;
+  const listed: { key: StyleKey; stretch: boolean }[] = [];
   list(raw.styles, raw.style).forEach((item, i) => {
     const key = typeof item === "string" ? item.trim().toLowerCase() : item;
-    if (!isStyleKey(key) || styles.includes(key)) return;
-    const stretch = Number.isFinite(fits[i]) && fits[i]! <= WEAK_FIT;
-    if (styles.length === 0 || !stretch) styles.push(key);
+    if (!isStyleKey(key) || listed.some((s) => s.key === key)) return;
+    listed.push({
+      key,
+      stretch: weak(fits[i]) || weak(voices[i]) || (loud && STYLES[key].quiet === true),
+    });
   });
-  if (styles.length === 0) return null;
+  if (listed.length === 0) return null;
+  const sound = listed.filter((s) => !s.stretch);
+  const styles = (sound.length > 0 ? sound : listed.slice(0, 1)).map((s) => s.key);
 
   // Keep accents that are real colours and are not a near-repeat of one
   // already kept — three shades of one brown are one option, not three.
@@ -376,6 +421,7 @@ export function parseDirectorReply(text: string): DirectorOptions | null {
       motion: clampDial(raw.motion),
       density: clampDial(raw.density),
     },
+    ...(energy !== null ? { energy } : {}),
     read,
   };
 }
@@ -422,6 +468,11 @@ export function chooseFrom(
       imported?.tokens.density ??
       blend(options.dials.density, style.dials.density),
   };
+  // How loud the brand is was read from the brief, and is kept as read: it is
+  // about the brand, where the dials are about a style's range. Someone who
+  // set the feel themselves, or brought a design, has already said how loud.
+  const feelChosen = config.dials?.variance !== undefined || config.dials?.motion !== undefined;
+  const energy = feelChosen || imported ? undefined : options.energy;
 
   return {
     style: key,
@@ -435,6 +486,7 @@ export function chooseFrom(
     dials,
     ...(chosenPairing(style, config.fonts) ? { fonts: config.fonts } : {}),
     ...userLook(config),
+    ...(energy !== undefined ? { energy } : {}),
     read: options.read ?? defaultRead(style.name),
     source: sourceOf(config, imported, "director"),
     ...(imported ? { imported } : {}),
@@ -501,6 +553,7 @@ export async function directDesign(
       offeredAccents: options.accents.join(","),
       chose: choice.style,
       accent: choice.accent,
+      energy: choice.energy ?? null,
       source: choice.source,
     });
     return { choice, usage };

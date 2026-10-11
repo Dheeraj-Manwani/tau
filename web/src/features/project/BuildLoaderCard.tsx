@@ -47,107 +47,101 @@ export function BuildLoaderCard({
   const TipIcon = tip.icon;
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 bg-black p-6">
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-blue-500/20 bg-[#060608] shadow-2xl shadow-black/40">
+    <div className="flex h-full flex-col items-center justify-center gap-3 bg-black p-4">
+      <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-blue-500/20 bg-[#060608] shadow-2xl shadow-black/40">
         <BuildWeatherCanvas />
 
-        <div className="relative px-6 py-7 sm:px-8">
-          <div className="relative flex flex-col items-center text-center">
-            <div
-              className="flex min-h-7 w-full items-center justify-center gap-2 overflow-hidden"
-              aria-live="polite"
-            >
+        <div className="relative flex flex-col gap-3 p-4">
+          <div
+            className="flex items-center justify-between gap-3"
+            aria-live="polite"
+          >
+            <div className="flex min-w-0 items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/5 py-1 pl-2 pr-3">
               <span
-                className="logo-mark relative block size-4 shrink-0"
+                className="logo-mark relative block size-3.5 shrink-0"
                 role="img"
                 aria-label="tau"
               />
               <AnimatePresence mode="wait" initial={false}>
                 <motion.p
                   key={liveActivity}
-                  initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
-                  transition={{ duration: 0.22 }}
-                  className="text-sm font-semibold leading-snug text-silver-900"
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+                  transition={{ duration: 0.2 }}
+                  className="truncate text-xs font-medium text-silver-900"
                 >
                   is {liveActivity}
                 </motion.p>
               </AnimatePresence>
             </div>
+            <LoaderAction
+              icon={ShuffleIcon}
+              label="Shuffle tips"
+              onClick={onShuffle}
+            />
+          </div>
 
-            <div className="mt-5 w-full">
-              <div className="relative min-h-36 overflow-hidden">
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key={tipIndex}
-                    initial={reduceMotion ? false : { opacity: 0, x: 18 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={reduceMotion ? undefined : { opacity: 0, x: -18 }}
-                    transition={{ duration: 0.28, ease: "easeOut" }}
-                    className="flex flex-col items-center"
-                  >
-                    <span className="mb-3 flex size-9 items-center justify-center rounded-lg border border-silver-400/30 bg-space-overlay">
-                      <TipIcon className={cn("size-4", tip.iconClass)} />
-                    </span>
-                    <p className="display-heading text-xl text-silver-900">
-                      {tip.title}
-                    </p>
-                    <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-silver-600">
-                      {tip.copy}
-                    </p>
-                    {tipIndex === 0 && (
-                      <button
-                        type="button"
-                        onClick={onFeedback}
-                        className="mt-2 rounded-md px-3 py-1.5 text-xs font-medium text-amber-300 underline underline-offset-4 hover:text-amber-200 focus-visible:outline-2 focus-visible:outline-ring"
-                      >
-                        Give feedback
-                      </button>
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-
-              <div className="mt-2 flex items-center justify-center">
-                <div
-                  role="group"
-                  className="flex items-center gap-1"
-                  aria-label={`Tip ${tipIndex + 1} of ${tipCount}`}
-                >
-                  {Array.from({ length: tipCount }, (_, index) => (
+          <div className="relative min-h-[5.5rem] overflow-hidden">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={tipIndex}
+                initial={reduceMotion ? false : { opacity: 0, x: 14 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={reduceMotion ? undefined : { opacity: 0, x: -14 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="flex items-start gap-3"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-silver-400/30 bg-space-overlay">
+                  <TipIcon className={cn("size-4", tip.iconClass)} />
+                </span>
+                <div className="min-w-0">
+                  <p className="display-heading text-base leading-tight text-silver-900">
+                    {tip.title}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-silver-600">
+                    {tip.copy}
+                  </p>
+                  {tipIndex === 0 && (
                     <button
-                      key={index}
                       type="button"
-                      onClick={() => onSelectTip(index)}
-                      aria-label={`Show tip ${index + 1}`}
-                      aria-current={index === tipIndex ? "true" : undefined}
-                      className="flex size-6 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500"
+                      onClick={onFeedback}
+                      className="mt-1 rounded-md text-xs font-medium text-amber-300 underline underline-offset-4 hover:text-amber-200 focus-visible:outline-2 focus-visible:outline-ring"
                     >
-                      <span
-                        className={cn(
-                          "block h-1.5 rounded-full transition-[width,background-color,opacity]",
-                          index === tipIndex
-                            ? "w-4 bg-blue-500"
-                            : "w-1.5 bg-silver-600 opacity-80 ring-1 ring-silver-400 hover:opacity-100",
-                        )}
-                      />
+                      Give feedback
                     </button>
-                  ))}
+                  )}
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          <div
+            role="group"
+            className="flex items-center justify-center gap-1"
+            aria-label={`Tip ${tipIndex + 1} of ${tipCount}`}
+          >
+            {Array.from({ length: tipCount }, (_, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => onSelectTip(index)}
+                aria-label={`Show tip ${index + 1}`}
+                aria-current={index === tipIndex ? "true" : undefined}
+                className="flex h-4 w-5 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500"
+              >
+                <span
+                  className={cn(
+                    "block h-1 rounded-full transition-[width,background-color,opacity]",
+                    index === tipIndex
+                      ? "w-4 bg-blue-500"
+                      : "w-1 bg-silver-600 opacity-80 hover:opacity-100",
+                  )}
+                />
+              </button>
+            ))}
           </div>
         </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <LoaderAction
-          icon={ShuffleIcon}
-          label="Shuffle tips"
-          onClick={onShuffle}
-        />
-        {/* <LoaderAction icon={Gamepad2Icon} label="Play a game" onClick={onPlay} /> */}
       </div>
     </div>
   );

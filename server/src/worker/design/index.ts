@@ -12,6 +12,7 @@
  * See doc/CONTEXT_AND_MEMORY_PLAN.md §5.
  */
 import type { Palette, Theme } from "../templates/theme";
+import { buildBands, type BandSet } from "./bands";
 import { buildDesignCss } from "./css";
 import { readDesignMeta, renderDesignMd, renderImportedDesignMd } from "./designMd";
 import type { CheckContext } from "./checks";
@@ -25,6 +26,8 @@ export interface ResolvedDesign {
   style: StyleSpec;
   choice: DesignChoice;
   theme: Theme;
+  /** The colour fields for whole sections, placed against that palette. */
+  bands: BandSet;
 }
 
 /**
@@ -131,7 +134,7 @@ export function resolveDesign(choice: DesignChoice, fonts?: FontSet): ResolvedDe
   });
   if (tokens) theme = withImportedColors(theme, tokens.colors, choice.mode);
 
-  return { style, choice, theme };
+  return { style, choice, theme, bands: buildBands(base.palette, choice, theme) };
 }
 
 export function designFiles(
@@ -146,6 +149,7 @@ export function designFiles(
       dials: design.choice.dials,
       fontsInstalled: opts.fontsInstalled,
       switch: design.choice.switch === true,
+      bands: design.bands,
     }),
     designMd: design.choice.imported
       ? renderImportedDesignMd(design.style, design.choice, design.theme)

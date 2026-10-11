@@ -132,6 +132,8 @@ export interface DesignSummary {
   switch: boolean;
   /** Where the user asked the neutrals to lean; null for the style's own. */
   neutral: Neutral | null;
+  /** How loud the brand was read to be, 1 to 10; null when nobody read it. */
+  energy: number | null;
 }
 
 /**
@@ -170,5 +172,6 @@ export function describeDesign(designMd: string | null | undefined): DesignSumma
     imported,
     switch: meta.switch === "1",
     neutral: NEUTRALS.includes(meta.neutral as Neutral) ? (meta.neutral as Neutral) : null,
+    energy: dial(meta.energy) ?? null,
   };
 }

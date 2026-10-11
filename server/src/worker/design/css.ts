@@ -5,7 +5,8 @@
  *
  *   1. **The palette** — `:root` (light) and `.dark`, flat hex declarations.
  *      Same shape as `templates/theme.ts` writes, because the theme panel finds
- *      tokens by that shape (`api/lib/themeEdit.ts`).
+ *      tokens by that shape (`api/lib/themeEdit.ts`). The band colours
+ *      (`bands.ts`) follow the palette in each block, in the same shape.
  *   2. **Theme tokens** — fonts, radius scale, shadow scale, type scale and the
  *      spacing unit. Tailwind v4 reads all of these from CSS variables, so
  *      overriding them restyles every utility that uses them — `shadow-sm` is a
@@ -32,11 +33,52 @@
  * Pure. See doc/CONTEXT_AND_MEMORY_PLAN.md §5.
  */
 import { THEME_COLOR_TOKENS, type Palette, type Theme } from "../templates/theme";
+import { BAND_KEYS, BAND_TOKENS, type BandSet, type Bands } from "./bands";
 import { TABS_LIST, TABS_TAB } from "./styles/selectors";
 import type { Dials, FontRef, Mode, SkinVars, StyleSpec } from "./types";
 
-function declarations(palette: Palette): string {
-  return THEME_COLOR_TOKENS.map((name) => `  --${name}: ${palette[name]};`).join("\n");
+/** A palette block's lines: the palette, then the bands when the design has them. */
+function declarations(palette: Palette, bands?: Bands): string {
+  const lines = THEME_COLOR_TOKENS.map((name) => `  --${name}: ${palette[name]};`);
+  if (bands) lines.push("", ...BAND_TOKENS.map((name) => `  --${name}: ${bands[name]};`));
+  return lines.join("\n");
+}
+
+/**
+ * What makes a band a scope (`bands.ts`): the class paints the section and
+ * re-points the ordinary tokens for everything inside it, so text, borders,
+ * cards and buttons written for the page read correctly on the band.
+ *
+ * The quiet colours are mixed from the band's two, so they follow whatever the
+ * band is. The main button turns inside out — the band's text colour, with the
+ * band showing through its label — since the accent was chosen against the
+ * page and may not show on a field of its own hue.
+ */
+function bandRules(): string {
+  const mix = (share: number) => `color-mix(in oklab, var(--on-band) ${share}%, var(--band))`;
+  return `
+  /* Bands: a full-width section on a colour field of its own. One class on the
+     section; inside it the tokens below follow the band. */
+${BAND_KEYS.map((key) => `  .${key} { --band: var(--${key}); --on-band: var(--${key}-foreground); }`).join("\n")}
+  ${BAND_KEYS.map((key) => `.${key}`).join(", ")} {
+    background-color: var(--band);
+    color: var(--on-band);
+    --background: var(--band);
+    --foreground: var(--on-band);
+    --card: ${mix(7)};
+    --card-foreground: var(--on-band);
+    --muted: ${mix(10)};
+    --muted-foreground: ${mix(72)};
+    --secondary: ${mix(10)};
+    --secondary-foreground: var(--on-band);
+    --accent: ${mix(14)};
+    --accent-foreground: var(--on-band);
+    --border: ${mix(24)};
+    --input: ${mix(24)};
+    --primary: var(--on-band);
+    --primary-foreground: var(--band);
+    --ring: var(--on-band);
+  }`;
 }
 
 /**
@@ -325,6 +367,8 @@ export interface DesignCssInput {
   fontsInstalled: boolean;
   /** The app has a light and dark switch (`themeSwitchHtml` in `apply.ts`); this styles it. */
   switch?: boolean;
+  /** The colour fields for whole sections (`bands.ts`). Left out, the file has none. */
+  bands?: BandSet;
 }
 
 /**
@@ -362,9 +406,10 @@ export function buildDesignCss(input: DesignCssInput): string {
     ? fontImports(style.fonts).map((spec) => `@import "${spec}";`)
     : [];
 
-  const colorMappings = THEME_COLOR_TOKENS.map(
-    (name) => `  --color-${name}: var(--${name});`,
-  ).join("\n");
+  const { bands } = input;
+  const colorMappings = [...THEME_COLOR_TOKENS, ...(bands ? BAND_TOKENS : [])]
+    .map((name) => `  --color-${name}: var(--${name});`)
+    .join("\n");
 
   const themeTokens = Object.entries(style.theme)
     .map(([name, value]) => `  ${name}: ${value};`)
@@ -391,12 +436,12 @@ ${imports.length > 0 ? `${imports.join("\n")}\n` : ""}
 :root {
   --radius: ${theme.radius};
 
-${declarations(theme.light)}
+${declarations(theme.light, bands?.light)}
 }
 
 /* Dark palette. */
 .dark {
-${declarations(theme.dark)}
+${declarations(theme.dark, bands?.dark)}
 }
 
 @theme inline {
@@ -436,7 +481,7 @@ ${themeTokens}
     width: var(--icon-size);
     height: var(--icon-size);
   }
-${(style.baseCss + backdropBase(style.backdrop)).replace(/^\n/, "")}
+${(style.baseCss + backdropBase(style.backdrop) + (bands ? bandRules() : "")).replace(/^\n/, "")}
 }
 
 /* The component skin. It restyles the stock shadcn components by their

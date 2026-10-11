@@ -38,6 +38,7 @@ export const DOC_NAMES = [
   "secrets",
   "theme",
   "layouts",
+  "sections",
   "data",
   "restyle",
   "components",
@@ -103,6 +104,18 @@ export const DOCS: Record<DocName, DocSpec> = {
     // The files a screen is made of. `src/App.tsx` is in here on purpose: it is
     // the first file an agent opens before building anything, so the guide is
     // in hand before the first screen is written.
+    covers: (p) =>
+      p === "src/App.tsx" ||
+      p.startsWith("src/pages/") ||
+      (p.startsWith("src/components/") && !p.startsWith("src/components/ui/")),
+  },
+  sections: {
+    when: "before building a page people scroll and read: a landing page, a site, a portfolio.",
+    // Arrives with `layouts`, on the same files and for the same reason: a
+    // page's run of sections is decided before the first of them is written.
+    // It reaches an agent building a tool as well, which costs it a page of
+    // reading: nothing tau can see at that point says which of the two is
+    // being built, and the guide's first paragraph does.
     covers: (p) =>
       p === "src/App.tsx" ||
       p.startsWith("src/pages/") ||

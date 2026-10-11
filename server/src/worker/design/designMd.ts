@@ -18,16 +18,21 @@
  * Pure. See doc/CONTEXT_AND_MEMORY_PLAN.md §5.
  */
 import type { Theme } from "../templates/theme";
+import { buildBands, energyOf, type Bands } from "./bands";
 import { normalizeHex } from "./color";
 import { spacingUnit } from "./css";
 import { splitFrontMatter } from "./importDesign";
-import { LAYOUTS } from "./layouts";
+import { LAYOUTS, type LayoutSpec } from "./layouts";
 import type { DesignChoice, Dials, StyleSpec } from "./types";
 
 export const DESIGN_PATH = ".tau/DESIGN.md";
 
-/** The prose is handed over whole on every request, so it has to stay small. */
-export const DESIGN_PROSE_MAX_CHARS = 6_500;
+/**
+ * The prose is handed over whole on every request, so it has to stay small.
+ * Room for the longest style with the longest "Reading this as" sentence: a
+ * file that runs over is cut from the end, which is its do's and don'ts.
+ */
+export const DESIGN_PROSE_MAX_CHARS = 7_200;
 /** The app's own notes ride along with the prose, and have a limit of their own. */
 export const DESIGN_NOTES_MAX_CHARS = 1_500;
 
@@ -68,6 +73,25 @@ export function describeDials(dials: Dials): string[] {
       "packed: tight rows, small gaps, as much on screen as stays readable.",
     )}`,
   ];
+}
+
+/**
+ * How loud the brand is, as a sentence an agent can act on: how the page
+ * talks, and how much of it is given to colour.
+ *
+ * It says what marking a page's chapters with colour is for, and how far this
+ * app takes it, and stops there. A number of sections or of colours written
+ * here would be applied to every app alike, which is the sameness a design of
+ * its own is meant to prevent.
+ */
+export function describeEnergy(energy: number): string {
+  // `level` calls 7 and up high, which is where `LOUD_ENERGY` (`bands.ts`) is.
+  return `**Energy ${energy}/10** — ${level(
+    energy,
+    "quiet: understate. Space and type carry the page and the copy does not raise its voice. Keep to the page colour, and save a band for the moment that most deserves one.",
+    "confident: direct and plain-spoken. Where a long page changes subject, change its background, so its chapters can be told apart.",
+    "loud: the brand has an attitude and the page shows it. Blunt headlines set large, copy with a point of view, and a long page colour-blocked: neighbouring sections sit on different backgrounds.",
+  )}`;
 }
 
 function yamlString(value: string): string {
@@ -141,6 +165,7 @@ function metaComment(choice: DesignChoice): string {
     choice.source === "user" || choice.source === "import" ? ` source=${choice.source}` : "",
     choice.switch ? " switch=1" : "",
     choice.neutral ? ` neutral=${choice.neutral}` : "",
+    choice.energy !== undefined ? ` energy=${choice.energy}` : "",
   ].join("");
   return `<!-- tau: style=${choice.style} mode=${choice.mode} accent=${choice.accent} variance=${d.variance} motion=${d.motion} density=${d.density}${extra} -->`;
 }
@@ -234,6 +259,17 @@ const TOKEN_RULE =
   "- Colour only through tokens: `bg-background`, `bg-card`, `bg-muted`, `bg-primary`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-chart-1` … `bg-chart-5`. Never a literal colour in a component.";
 
 /**
+ * The colour fields a whole section can sit on (`bands.ts`), in two lines: what
+ * they are, which is also what a reviewer of screenshots needs in order not to
+ * take one for a stray second accent; and how to use one, which is for the
+ * builder alone (`review.ts` leaves it out).
+ */
+function bandLines(bands: Bands): string {
+  return `- Bands: a full-width section may sit on a colour field of its own — \`band-1\` \`${bands["band-1"]}\` (the accent, deep), \`band-2\` \`${bands["band-2"]}\` (the page inverted) or \`band-3\` \`${bands["band-3"]}\` (a second hue). Surfaces, not accents.
+- A band is one class on the \`<section>\` (\`band-1\`). The tokens inside follow it — text, borders, cards and buttons all read correctly — so build the section as you would on the page.`;
+}
+
+/**
  * For a style that paints a backdrop behind the page: what an agent has to
  * know to leave it visible. The stylesheet makes the usual full-height wrapper
  * see-through, but a section given a background of its own still covers it.
@@ -253,9 +289,15 @@ function backdropRule(style: StyleSpec): string {
  * list. So one is chosen for the app, by what the app is: the sentence that
  * says what it is for. That sentence is kept in the file and survives a
  * restyle, so the same app keeps the same lead for as long as the style does.
+ *
+ * One for each kind of thing it could be. A style's list holds structures for
+ * pages people read and for tools people operate, and choosing across the whole
+ * list told six landing pages in ten to open with a sidebar or a master-detail
+ * view. Nothing here knows which the app is; the builder does, so it is given
+ * both and takes the one that applies.
  */
-export function leadLayout(style: StyleSpec, read: string): (typeof LAYOUTS)[keyof typeof LAYOUTS] {
-  const keys = style.layouts;
+export function leadLayout(style: StyleSpec, read: string, kind: LayoutSpec["kind"]): LayoutSpec {
+  const keys = style.layouts.filter((key) => LAYOUTS[key].kind === kind);
   return LAYOUTS[keys[parseInt(lineMark(read), 16) % keys.length]!];
 }
 
@@ -275,6 +317,7 @@ export function renderDesignMd(
 ): string {
   const p = choice.mode === "dark" ? theme.dark : theme.light;
   const other = choice.mode === "dark" ? "light" : "dark";
+  const bands = buildBands(style.palette, choice, theme)[choice.mode];
   const { fonts, prose } = style;
   const sameFace = fonts.display.name === fonts.body.name;
 
@@ -306,14 +349,15 @@ ${choice.read}
 
 ${prose.overview}
 
-${describeDials(choice.dials).map((line) => `- ${line}`).join("\n")}
+${[...describeDials(choice.dials), describeEnergy(energyOf(choice))].map((line) => `- ${line}`).join("\n")}
 
 ## Colors
 ${prose.colors}
 
 ${accentLine(p.primary, p.background, p.foreground)}
 - The app opens in ${choice.mode} mode. A ${other} palette is defined too, so both must keep working.
-${TOKEN_RULE}${backdropRule(style)}${switchRule(choice)}
+${TOKEN_RULE}
+${bandLines(bands)}${backdropRule(style)}${switchRule(choice)}
 
 ## Typography
 ${typeLines.join("\n")}
@@ -326,7 +370,7 @@ ${prose.layout}
 Build each screen on one of these structures, chosen for what the screen holds:
 ${layouts}
 
-This app opens with **${leadLayout(style, choice.read).name}**: build its first screen that way, and open the screens after it a different way.
+If this is a page people read, it opens with **${leadLayout(style, choice.read, "page").name}**; if it is something they operate, with **${leadLayout(style, choice.read, "app").name}**. Build its first screen that way, and open the screens after it a different way.
 
 ## Elevation & Depth
 ${prose.elevation}

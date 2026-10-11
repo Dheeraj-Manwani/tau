@@ -24,14 +24,17 @@ The user can change colours from tau's theme panel, which finds each token by th
 - `border`, `input`, `ring` — lines, field outlines, the focus ring.
 - `chart-1` … `chart-5` — data series; `chart-1` is the accent.
 - `sidebar-*` — a sidebar, when the app has one.
+- `band-1`, `band-2`, `band-3`, each with a `-foreground` — colour fields for whole sections: the accent as a deep field, the page inverted, and a second hue.
 
 Use them as classes: `bg-card`, `text-muted-foreground`, `border-border`, `bg-primary/10`. Never a literal colour in a component.
+
+A band is used as a class of its own, `band-1`, on the section. The `.band-*` rules in `@layer base` paint it and re-point the other tokens for whatever is inside, so text, borders, cards and buttons there need nothing special.
 
 ## Changing things
 
 **A colour.** Edit the hex value in **both** palette blocks. Check that every `x-foreground` is still easy to read on `x` — aim for a contrast ratio of 4.5:1. Then update the colour named in `.tau/DESIGN.md`.
 
-**The accent.** Change `--primary`, `--ring`, `--chart-1`, `--sidebar-primary` and `--sidebar-ring` together, in both blocks, and re-check `--primary-foreground` against the new colour.
+**The accent.** Change `--primary`, `--ring`, `--chart-1`, `--sidebar-primary` and `--sidebar-ring` together, in both blocks, and re-check `--primary-foreground` against the new colour. `--band-1` is a deep shade of the accent: move it to the new hue too, keeping it dark enough for `--band-1-foreground` to read on.
 
 **Light or dark by default.** Add or remove `class="dark"` on `<html>` in `index.html`. For a switch, toggle that class on `document.documentElement`, save the choice in `localStorage`, and apply the saved choice before the app renders so the page does not flash.
 
