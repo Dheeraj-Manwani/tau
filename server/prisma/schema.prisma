@@ -691,6 +691,9 @@ enum ResourceKind {
   LAMBDA_FUNCTION
   IAM_ROLE
   NEON_PROJECT
+  /// A Cloudflare custom hostname whose domain was removed while Cloudflare could
+  /// not be reached. Recorded only then, with no project, so the sweep removes it.
+  CUSTOM_HOSTNAME
 }
 
 /// A cloud resource tau created for a project, recorded the moment it exists

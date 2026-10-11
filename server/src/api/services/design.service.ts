@@ -30,7 +30,7 @@ import { createHash } from "node:crypto";
 import { Sandbox } from "e2b";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
-import { designReferenceKey, getBlobText, putAttachmentBytes } from "@/lib/s3";
+import { deleteObject, designReferenceKey, getBlobText, putAttachmentBytes } from "@/lib/s3";
 import { SandboxStatus } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 import { log } from "@/worker/lib/log";
@@ -210,6 +210,23 @@ export async function storeDesignReference(
   const hash = createHash("sha256").update(body).digest("hex");
   await putAttachmentBytes(designReferenceKey(userId, hash), body, mimeType);
   return { hash, mimeType: mimeType.toLowerCase() };
+}
+
+/**
+ * Delete a reference picture once no project of the user's points at it. Called
+ * after a project is deleted: the picture is kept under the user and the hash of
+ * its bytes, so two projects made from one screenshot share it. Never throws.
+ */
+export async function releaseDesignReference(userId: string, reference: DesignReference | undefined): Promise<void> {
+  if (!reference) return;
+  try {
+    const inUse = await prisma.project.count({
+      where: { userId, designConfig: { path: ["reference", "hash"], equals: reference.hash } },
+    });
+    if (inUse === 0) await deleteObject(designReferenceKey(userId, reference.hash));
+  } catch (err) {
+    log.warn("design.reference_release_failed", { userId, error: String(err).slice(0, 200) });
+  }
 }
 
 /**

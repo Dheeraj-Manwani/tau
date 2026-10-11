@@ -13,6 +13,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "@/src/components/ui/alert-dialog";
+import { ApiError } from "@/src/lib/api-client";
 import { useDeleteProject } from "@/src/features/project/api";
 import { useProjectStorage } from "@/src/features/project/storage";
 import type { ProjectListItem } from "@/src/features/project/types";
@@ -47,8 +48,12 @@ export function DeleteProjectDialog({
         onOpenChange(false);
         onDeleted?.(id);
       },
-      onError: () => {
-        toast.error("Failed to delete project");
+      onError: (err) => {
+        // A 409 is the server saying why not yet (a publish or a run still in
+        // progress), in words meant for the owner.
+        toast.error(
+          err instanceof ApiError && err.status === 409 ? err.message : "Failed to delete project",
+        );
         onOpenChange(false);
       },
     });

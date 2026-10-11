@@ -8,6 +8,8 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 type Row = Record<string, any>;
 const domains: Row[] = [];
 const projects: Row[] = [];
+/** Hostnames written down for the sweep because Cloudflare could not be told to drop them. */
+const resources: Row[] = [];
 let idSeq = 0;
 
 const same = (a: unknown, b: unknown) => (a ?? null) === (b ?? null);
@@ -65,6 +67,12 @@ const db = {
       const i = domains.findIndex((d) => matches(d, where));
       if (i === -1) throw new Error("not found");
       return domains.splice(i, 1)[0];
+    },
+  },
+  projectResource: {
+    upsert: async ({ create }: { create: Row }) => {
+      if (!resources.some((r) => r.kind === create.kind && r.providerId === create.providerId)) resources.push({ ...create });
+      return create;
     },
   },
 };
@@ -167,6 +175,7 @@ const row = (hostname: string): any => domains.find((d) => d.hostname === hostna
 beforeEach(() => {
   domains.length = 0;
   projects.length = 0;
+  resources.length = 0;
   synced.length = 0;
   removedHostnames.length = 0;
   dnsTxt.clear();
@@ -592,6 +601,17 @@ describe("removing a domain", () => {
     };
     await removeDomain("p1", row("www.example.com").id, "u1");
     expect(domains).toHaveLength(0);
+    // Written down, so the hourly sweep removes what this could not.
+    expect(resources).toEqual([{ kind: "CUSTOM_HOSTNAME", providerId: "cf-www.example.com", region: "cloudflare" }]);
+  });
+
+  test("a hostname Cloudflare did drop is not written down", async () => {
+    await addDomain("p1", "u1", "www.example.com");
+    proveOwnership("www.example.com");
+    await checkDomain(row("www.example.com"));
+    await removeDomain("p1", row("www.example.com").id, "u1");
+    expect(cf.removed).toEqual(["cf-www.example.com"]);
+    expect(resources).toHaveLength(0);
   });
 
   test("another project's domain cannot be removed", async () => {

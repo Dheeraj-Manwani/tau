@@ -372,6 +372,10 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
  * job short-circuits to {@link runPreviewJob} instead of the agent loop.
  */
 export async function processJob(payload: DispatchPayload): Promise<void> {
+  // Stopped while it was still waiting its turn, which only a project being
+  // deleted does: whoever stopped it has already ended the row, and starting
+  // now would run against a project that is going or gone.
+  if (bus.isCancelled(payload.jobId)) return;
   // Tell the reaper this process owns the job, so a stale heartbeat during one
   // long turn isn't mistaken for an abandoned run (api/src/lib/jobs.ts).
   bus.markResident(payload.jobId, {

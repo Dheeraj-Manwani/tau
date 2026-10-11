@@ -311,6 +311,29 @@ export async function sweepAttachments(): Promise<SweepResult> {
   return { orphansDeleted, stuckReset, errors };
 }
 
+/**
+ * The files behind everything sent in a project's chat. Read before the project
+ * is deleted: its messages take the attachment rows with them, and the rows are
+ * the only record of which files those were.
+ */
+export async function projectAttachmentBlobKeys(projectId: string): Promise<string[]> {
+  const rows = await prisma.attachment.findMany({
+    where: { message: { projectId }, blobKey: { not: null } },
+    select: { blobKey: true },
+  });
+  return [...new Set(rows.map((r) => r.blobKey!))];
+}
+
+/**
+ * Delete the files no attachment points at any more. A file is shared by every
+ * attachment of the same bytes from the same user, so one still in use by
+ * another project or an unsent message is kept. Never throws: a file left
+ * behind costs storage, not a failed delete.
+ */
+export async function deleteUnreferencedAttachmentBlobs(blobKeys: string[]): Promise<void> {
+  for (const key of blobKeys) await deleteBlobIfUnreferenced(key).catch(() => undefined);
+}
+
 /** Remove every attachment blob owned by a user (account deletion). */
 export async function deleteUserAttachmentBlobs(
   userId: string,

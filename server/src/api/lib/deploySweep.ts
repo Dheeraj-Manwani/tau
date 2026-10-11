@@ -160,9 +160,9 @@ export async function runDeploySweep(): Promise<void> {
   }
   // Resources whose project is gone but that were never removed (C9).
   try {
-    const { backendsRemoved, databasesScheduled, errors } = await reconcileResources();
-    if (backendsRemoved > 0 || databasesScheduled > 0 || errors.length > 0) {
-      log.info("resources.reconcile", { backendsRemoved, databasesScheduled, errors });
+    const { backendsRemoved, databasesScheduled, hostnamesRemoved, errors } = await reconcileResources();
+    if (backendsRemoved > 0 || databasesScheduled > 0 || hostnamesRemoved > 0 || errors.length > 0) {
+      log.info("resources.reconcile", { backendsRemoved, databasesScheduled, hostnamesRemoved, errors });
     }
   } catch (err) {
     captureException(err, { detail: "resource reconcile failed" });

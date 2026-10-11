@@ -8,3 +8,14 @@ test("only names tau made are mapped back to a project", () => {
   expect(projectIdOfResourceName(`other-${id}`)).toBeNull();
   expect(projectIdOfResourceName(`tau-app-${id}-extra`)).toBeNull();
 });
+
+// Module mocks are process-global in Bun, so the stand-ins live in a child runner.
+test("custom hostnames Cloudflare could not drop are retried", () => {
+  const result = Bun.spawnSync([process.execPath, "test", `${import.meta.dir}/reconcileHostnames.fixture.ts`], {
+    cwd: `${import.meta.dir}/../..`,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (result.exitCode !== 0) throw new Error(new TextDecoder().decode(result.stderr));
+  expect(result.exitCode).toBe(0);
+});

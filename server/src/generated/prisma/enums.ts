@@ -166,7 +166,8 @@ export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof Deployment
 export const ResourceKind = {
   LAMBDA_FUNCTION: 'LAMBDA_FUNCTION',
   IAM_ROLE: 'IAM_ROLE',
-  NEON_PROJECT: 'NEON_PROJECT'
+  NEON_PROJECT: 'NEON_PROJECT',
+  CUSTOM_HOSTNAME: 'CUSTOM_HOSTNAME'
 } as const
 
 export type ResourceKind = (typeof ResourceKind)[keyof typeof ResourceKind]

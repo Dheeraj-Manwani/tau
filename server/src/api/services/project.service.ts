@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { publicSiteUrl } from "@/lib/sites";
+import { projectSitesPrefix, publicSiteUrl } from "@/lib/sites";
 import { findShowcaseSites } from "../repositories/showcase.repository";
 import { createProjectArchive } from "../lib/projectArchive";
 import { Sandbox } from "e2b";
@@ -26,6 +26,7 @@ import {
   getBlobText,
   getBlob,
   deleteProjectBlobs,
+  deleteSitePrefix,
   presignGet,
   blobKey,
 } from "@/lib/s3";
@@ -79,7 +80,9 @@ import {
 import type { Prisma } from "@/generated/prisma/client";
 import { normalizeDesignConfig } from "@/worker/design/config";
 import { readPreferences } from "../schemas/preferences.schema";
-import { syncDesignAfterThemeEdit } from "./design.service";
+import { releaseDesignReference, syncDesignAfterThemeEdit } from "./design.service";
+import { deleteUnreferencedAttachmentBlobs, projectAttachmentBlobKeys } from "./attachment.service";
+import { log } from "../lib/log";
 import { removeSite } from "@/lib/edgeRegistry";
 import { releaseProjectDomains } from "./domain.service";
 import { removeBackend } from "@/lib/lambdaApps";
@@ -976,6 +979,64 @@ export async function cancelAllActiveJobs(userId: string): Promise<number> {
   return holds.length;
 }
 
+/** How long a delete waits for the project's runs to stop before asking to be tried again. */
+const DELETE_STOP_WAIT_MS = 45_000;
+
+/**
+ * Stop everything running for a project, and wait until it has stopped.
+ *
+ * A run that outlived its project would go on writing files and site bytes
+ * after they were cleared, with no rows left to say they exist. A run stops at
+ * its next turn, so this can take a while: past {@link DELETE_STOP_WAIT_MS} the
+ * delete is refused, and trying again finds the run already told to stop.
+ */
+export async function stopProjectJobs(projectId: string, waitMs = DELETE_STOP_WAIT_MS): Promise<void> {
+  const active = await prisma.job.findMany({
+    where: { projectId, status: { in: [JobStatus.QUEUED, JobStatus.RUNNING] } },
+    select: { id: true, type: true },
+  });
+  // A publish cannot be stopped half way, and waiting one out is minutes.
+  if (active.some((j) => j.type === JobType.DEPLOY && bus.isResident(j.id))) {
+    throw Errors.conflict("This project is being published. Wait for that to finish, then delete it.");
+  }
+  for (const job of active) {
+    // Also for one still waiting its turn: the runner skips a job stopped before it started.
+    bus.requestCancel(job.id);
+    if (bus.isResident(job.id)) continue;
+    await terminateStrandedJob(job.id, {
+      status: JobStatus.CANCELLED,
+      reason: FinishReason.CANCELLED,
+      message: "This run was stopped because its project was deleted.",
+    });
+  }
+
+  const deadline = Date.now() + waitMs;
+  while (bus.registrySnapshot().some((e) => e.projectId === projectId)) {
+    if (Date.now() >= deadline) {
+      throw Errors.conflict("tau is still stopping this project's run. Try deleting it again in a moment.");
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}
+
+/** Never throws: a sandbox left running ends by itself when its idle timeout passes. */
+async function killProjectSandbox(projectId: string): Promise<void> {
+  // Read now, not earlier: a run that has just stopped may have made a new one.
+  const row = await prisma.project.findUnique({ where: { id: projectId }, select: { sandboxId: true } });
+  if (!row?.sandboxId) return;
+  await Sandbox.kill(row.sandboxId).catch((err) => {
+    log.warn("project.delete.sandbox_kill_failed", { projectId, error: String(err).slice(0, 200) });
+  });
+}
+
+/**
+ * Delete a project and everything it made outside the database.
+ *
+ * The order is what makes a failure half way survivable. Whatever can fail and
+ * be done again goes first, and the files, which cannot be brought back, go
+ * last: a delete that stops early leaves a project that still opens and can be
+ * deleted again, never one whose rows outlived its files.
+ */
 export async function deleteProject(
   projectId: string,
   userId: string,
@@ -985,25 +1046,39 @@ export async function deleteProject(
   if (project.userId !== userId) {
     throw Errors.forbidden("You do not have access to this project");
   }
-  // Delete R2 blobs first; if this fails we abort before touching the DB.
+  // Nothing may be writing while the rest is taken apart.
+  await stopProjectJobs(projectId);
+  // The preview, and the keys in its `.env`, stop answering now rather than at the idle timeout.
+  await killProjectSandbox(projectId);
+
+  // The rows are the only record of these, and they go with the project.
+  const attachmentBlobs = await projectAttachmentBlobKeys(projectId);
+  const reference = normalizeDesignConfig(project.designConfig)?.reference;
+
+  // While the rows still say which AWS resources exist. Throws if AWS cannot be
+  // reached, so the delete is retried rather than leaving a running function
+  // nobody tracks; nothing of the project's own has been touched yet.
+  await removeBackend(projectId);
+
+  // From here on what goes cannot be brought back. The project's files, then
+  // every build it published: the deployment rows are what the sweep follows,
+  // so builds left past this point would stay in the bucket for good.
   await deleteProjectBlobs(userId, projectId);
-  // The storage rows would cascade away with the project and leave the bytes. The
-  // keys go first, so a published app that is still running cannot add a file
-  // between the listing and the delete. This is immediate on purpose, unlike the
-  // database's delay: nothing can restore the rows, so bytes kept past this point
-  // would only be orphans (doc/TAU_CLOUD_STORAGE.md 0.11).
+  await deleteSitePrefix(projectSitesPrefix(userId, projectId));
+  // The storage rows would cascade away with the project and leave the bytes.
+  // The keys go first, so nothing can add a file between the listing and the
+  // delete. This is immediate on purpose, unlike the database's delay: nothing
+  // can restore the rows, so bytes kept past this point would only be orphans
+  // (doc/TAU_CLOUD_STORAGE.md 0.11).
   if (storageConfigured()) {
     await revokeStorageKeys(projectId);
     await deleteStoragePrefix(projectStoragePrefix(projectId));
   }
   // Before the rows go: the database would delete the domains, but not at Cloudflare or the edge.
   await releaseProjectDomains(projectId);
-  // Also before the rows go: they are what says which AWS resources exist. Throws
-  // if AWS cannot be reached, so the delete is retried rather than leaving a
-  // running function nobody tracks.
-  await removeBackend(projectId);
   // The database is kept for a few days more (DATABASE_DELETE_DELAY_DAYS), then
-  // the sweep removes it; the schedule must be written before the project's rows go.
+  // the sweep removes it. Written last before the rows go, so a delete that
+  // failed above never leaves a living project's database on the schedule.
   await scheduleDatabaseRemoval(projectId);
   await projectRepo.deleteProject(projectId);
   // The address is gone for good (SiteName keeps the name), so the edge must stop serving it.
@@ -1011,6 +1086,9 @@ export async function deleteProject(
     invalidateSiteLookup(project.slug);
     await removeSite(project.slug);
   }
+  // Shared with the user's other projects, so only now can it be seen whether anything still uses them.
+  await deleteUnreferencedAttachmentBlobs(attachmentBlobs);
+  await releaseDesignReference(userId, reference);
 }
 
 /**

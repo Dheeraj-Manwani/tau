@@ -2,16 +2,18 @@
  * Cloud resources that belong to a project that is gone (doc/PUBLISHING.md C9).
  *
  * Every resource is recorded before it is created, and deleting a project removes
- * its AWS resources and schedules its database first. Two things can still leave
+ * its AWS resources and schedules its database first. Three things can still leave
  * one behind: a publish that was running when its project was deleted and made
- * its function afterwards, and a database whose removal was never scheduled. A
- * resource row with no project is the signal for both; the row, not a listing of
- * the cloud account, is what is trusted, so nothing that tau did not make can be
- * touched. Runs hourly beside the other sweeps.
+ * its function afterwards, a database whose removal was never scheduled, and a
+ * custom hostname whose domain was removed while Cloudflare could not be reached.
+ * A resource row with no project is the signal for all three; the row, not a
+ * listing of the cloud account, is what is trusted, so nothing that tau did not
+ * make can be touched. Runs hourly beside the other sweeps.
  */
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { removeBackend } from "@/lib/lambdaApps";
+import { cloudflareHostnames, hostnamesConfig } from "@/lib/cloudflareHostnames";
 import { ResourceKind } from "@/generated/prisma/enums";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -28,11 +30,12 @@ export function projectIdOfResourceName(providerId: string): string | null {
 export interface ReconcileResult {
   backendsRemoved: number;
   databasesScheduled: number;
+  hostnamesRemoved: number;
   errors: string[];
 }
 
 export async function reconcileResources(): Promise<ReconcileResult> {
-  const result: ReconcileResult = { backendsRemoved: 0, databasesScheduled: 0, errors: [] };
+  const result: ReconcileResult = { backendsRemoved: 0, databasesScheduled: 0, hostnamesRemoved: 0, errors: [] };
 
   // Settle first: a publish still running for a project deleted a moment ago may yet create these.
   const settled = new Date(Date.now() - 60 * 60 * 1000);
@@ -58,5 +61,25 @@ export async function reconcileResources(): Promise<ReconcileResult> {
     data: { deleteAfter: new Date(Date.now() + env.DATABASE_DELETE_DELAY_DAYS * DAY_MS) },
   });
   result.databasesScheduled = unscheduled.count;
+
+  // Custom hostnames Cloudflare could not be told to drop when their domain was removed.
+  const config = hostnamesConfig();
+  const cloudflare = config ? cloudflareHostnames(config) : null;
+  const strayHostnames = cloudflare
+    ? await prisma.projectResource.findMany({ where: { kind: ResourceKind.CUSTOM_HOSTNAME, deletedAt: null }, take: 50 })
+    : [];
+  for (const row of strayHostnames) {
+    try {
+      // The name was added again since and took this hostname over: it is serving, so it stays.
+      const adopted = (await prisma.domain.count({ where: { cloudflareHostnameId: row.providerId } })) > 0;
+      if (!adopted) {
+        await cloudflare!.remove(row.providerId);
+        result.hostnamesRemoved += 1;
+      }
+      await prisma.projectResource.update({ where: { id: row.id }, data: { deletedAt: new Date() } });
+    } catch (err) {
+      result.errors.push(`${row.providerId}: ${String(err).slice(0, 200)}`);
+    }
+  }
   return result;
 }

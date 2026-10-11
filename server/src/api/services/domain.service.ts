@@ -41,7 +41,7 @@ import {
   type HostnamesClient,
 } from "@/lib/cloudflareHostnames";
 import { removeHostnames, syncProject } from "@/lib/edgeRegistry";
-import { DomainStatus } from "@/generated/prisma/enums";
+import { DomainStatus, ResourceKind } from "@/generated/prisma/enums";
 import type { Domain, Project } from "@/generated/prisma/client";
 import { Errors } from "../lib/errors";
 import * as projectRepo from "../repositories/project.repository";
@@ -361,9 +361,19 @@ export async function setPrimary(projectId: string, domainId: string, userId: st
 async function release(domain: Domain): Promise<void> {
   const client = deps.hostnames();
   if (domain.cloudflareHostnameId && client) {
-    await client.remove(domain.cloudflareHostnameId).catch((err) => {
-      // The row goes anyway: a hostname left at Cloudflare is adopted if the name is added again.
+    const hostnameId = domain.cloudflareHostnameId;
+    await client.remove(hostnameId).catch(async (err) => {
+      // The row goes anyway: a hostname left at Cloudflare is adopted if the name is
+      // added again. Until then it is written down, so the hourly sweep removes it
+      // (`reconcileResources`) instead of it counting against the zone for good.
       log.warn("domain.cf_remove_failed", { hostname: domain.hostname, error: String(err).slice(0, 200) });
+      await prisma.projectResource
+        .upsert({
+          where: { kind_providerId: { kind: ResourceKind.CUSTOM_HOSTNAME, providerId: hostnameId } },
+          create: { kind: ResourceKind.CUSTOM_HOSTNAME, providerId: hostnameId, region: "cloudflare" },
+          update: { deletedAt: null },
+        })
+        .catch((e) => log.warn("domain.cf_remove_unrecorded", { hostname: domain.hostname, error: String(e).slice(0, 200) }));
     });
   }
   await removeHostnames([domain.hostname]);

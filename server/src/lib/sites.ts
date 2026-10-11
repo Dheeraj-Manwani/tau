@@ -22,6 +22,14 @@ export function sitePrefix(
   return `${SITE_PREFIX}/${userId}/${projectId}/${deploymentId}`;
 }
 
+/**
+ * R2 prefix holding every build a project ever published. Only for deleting
+ * the project: once its deployment rows are gone nothing else can find these.
+ */
+export function projectSitesPrefix(userId: string, projectId: string): string {
+  return `${SITE_PREFIX}/${userId}/${projectId}`;
+}
+
 /** Full R2 key for one file inside a deployment, given its prefix. */
 export function siteObjectKey(storagePrefix: string, path: string): string {
   return `${storagePrefix}/${normalizeSitePath(path)}`;
