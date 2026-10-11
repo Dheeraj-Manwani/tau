@@ -2,7 +2,7 @@
 
 For a page people scroll and read: a landing page, a site, a portfolio, an about page. A screen people operate — a tool, a dashboard, a form — is built on its layout alone, not from these.
 
-The layout `.tau/DESIGN.md` names arranges the first screen. Under it comes a run of sections, and a page invented one section at a time comes out as the same heading, paragraph and row of cards all the way down. So decide the run first: name each section from this guide and say what it is there for, in order, then build that list.
+`.tau/DESIGN.md` names the layout that arranges the first screen and, where it has a Concept, says what the page is about: the moment the Concept names is one of the sections, built as the thing itself. Under the first screen comes a run of sections, and a page invented one section at a time comes out as the same heading, paragraph and row of cards all the way down. So decide the run first: name each section from this guide and say what it is there for, in order, then build that list.
 
 - **One job each.** The content picks the pattern: a sequence is steps, a number is a figure, something a person said is a quote. A section with nothing of its own to say is cut, not padded.
 - **Neighbours differ.** Two sections in a row never share a pattern or an arrangement. How far their backgrounds differ is the design's call: its Energy line says.
@@ -12,7 +12,7 @@ The layout `.tau/DESIGN.md` names arranges the first screen. Under it comes a ru
 A visitor decides here, so the whole offer is on it before any scrolling, at desktop and at phone width: the headline, a line of support, the action, and whatever the layout puts beside them.
 
 These are what make it this brand's and nobody else's. Anything tilted or set off reaches past its box, which on a phone makes the whole page scroll sideways: put `overflow-hidden` on the section that holds one.
-- **Framed picture** — one photograph chosen for its mood, in a frame with some character: a tall crop (`aspect-[4/5] object-cover`), an outline set off behind it (a sibling `absolute inset-0 translate-x-3 translate-y-3 border-2 border-foreground`), a slight tilt (`-rotate-2`).
+- **Framed picture** — one photograph, the one the Concept describes where it describes one, in a frame with some character: a tall crop (`aspect-[4/5] object-cover`), an outline set off behind it (a sibling `absolute inset-0 translate-x-3 translate-y-3 border-2 border-foreground`), a slight tilt (`-rotate-2`).
 - **Sticker** — a few words on a small rotated shape overlapping a corner of the picture: `absolute -top-5 -right-5 rotate-12 bg-primary text-primary-foreground p-4 text-center`. A promise, a price, a date. Once on a page; a second one stops it being special.
 - **Specimen** — the product itself as an object with real content in it: a profile card, a ticket, a receipt, a message thread, a letter. Tilt it a little, with room round it: two that overlap on a phone hide each other's words. It says more than a paragraph describing it, and can be a section of its own further down.
 

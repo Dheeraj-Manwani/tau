@@ -84,6 +84,14 @@ const envSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
+  // One model call when an app is created that decides what it is about, and
+  // names it (worker/design/concept.ts). On by default; "false" builds apps as
+  // they were built before it, with no concept in their design file.
+  DESIGN_CONCEPT: z
+    .string()
+    .default("true")
+    .transform((v) => v === "true"),
+
   // Gives the agent `dispatch_implementer`, a sub-agent that writes code in its
   // own context. Off while it is being tried (doc/CONTEXT_AND_MEMORY_PLAN.md §11,
   // phase 7, S1): it was written and never run.

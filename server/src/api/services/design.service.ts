@@ -38,7 +38,7 @@ import { hasDependency } from "@/worker/lib/appStack";
 import { applyDesignTo, type DesignTarget } from "@/worker/design/apply";
 import { designCatalog } from "@/worker/design/catalog";
 import { describeDesign, normalizeDesignConfig } from "@/worker/design/config";
-import { DESIGN_PATH, syncDesignMd } from "@/worker/design/designMd";
+import { DESIGN_PATH, conceptOf, syncDesignMd } from "@/worker/design/designMd";
 import { directDesign } from "@/worker/design/director";
 import {
   NOT_COPIED_NOTICE,
@@ -369,7 +369,7 @@ export async function restyleProject(projectId: string, userId: string, request:
     config = { ...config, style: choice.style };
   }
 
-  const choice = restyledChoice(current, config, read, projectId, imported);
+  const choice = restyledChoice(current, config, read, projectId, imported, conceptOf(currentMd));
   const result = await applyDesignTo(target, choice, {
     restyle: true,
     logWith: { projectId, live: sandbox !== null },

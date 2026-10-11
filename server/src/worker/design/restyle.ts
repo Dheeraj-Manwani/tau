@@ -44,7 +44,7 @@ import {
   chosenPairing,
   isFontPairing,
 } from "./styles";
-import type { DesignChoice, DesignConfig, ImportedDesign } from "./types";
+import type { Concept, DesignChoice, DesignConfig, ImportedDesign } from "./types";
 
 // ── The new choice ───────────────────────────────────────────────────────────
 
@@ -71,6 +71,8 @@ export function readOf(designMd: string | null | undefined): string | null {
  * @param read      the "Reading this as …" sentence to keep
  * @param imported  a design the user brought with this request
  * @param seed      the project id, for an app with no design to start from
+ * @param concept   what the app is about, as its design file now says; it is
+ *                  the app's and not the style's, so it is kept as it reads
  */
 export function restyledChoice(
   current: DesignSummary | null,
@@ -78,6 +80,7 @@ export function restyledChoice(
   read: string | null,
   seed: string,
   imported?: ImportedDesign,
+  concept?: Concept | null,
 ): DesignChoice {
   const key =
     config.style ??
@@ -118,6 +121,7 @@ export function restyledChoice(
     ...((config.switch ?? current?.switch) ? { switch: true } : {}),
     ...(neutral ? { neutral } : {}),
     ...(energy !== undefined ? { energy } : {}),
+    ...(concept ? { concept } : {}),
     read: read ?? `Reading this as: an app for the people who use it, which should feel ${style.name.toLowerCase()}.`,
     source: imported ? "import" : "user",
     ...(imported ? { imported } : {}),
@@ -131,6 +135,7 @@ const MAX_KEPT_NOTES = 60;
 /** The sections tau writes. A section under any other heading is somebody's own. */
 const TAU_SECTIONS = new Set([
   "overview",
+  "concept",
   "colors",
   "typography",
   "layout",

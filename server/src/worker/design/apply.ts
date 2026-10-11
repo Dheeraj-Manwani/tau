@@ -9,7 +9,8 @@
  *   2. give the stock `<Button>` `data-variant` and `data-size` attributes, so
  *      the skin can tell a primary button from a ghost one — the one place the
  *      stock components do not already say what they are;
- *   3. set `<html class="dark">` or remove it, to match the mode;
+ *   3. set `<html class="dark">` or remove it, to match the mode, and give a
+ *      new app the title and description its concept decided (`concept.ts`);
  *   4. write `.tau/DESIGN.md`;
  *   5. write `src/index.css` — last, so its font imports already resolve when
  *      the dev server reloads.
@@ -36,13 +37,14 @@ import {
   writeTracked,
   type StackContext,
 } from "../lib/appStack";
+import { applyIdentity, readIdentity } from "@/api/lib/appIdentity";
 import { DESIGN_PATH } from "./designMd";
 import { fontSlug } from "./importDesign";
 import { designFiles, resolveDesign } from "./index";
 import { carryOverCss, keptNotes, withKeptNotes } from "./restyle";
 import { variableFont } from "./styles/fonts";
 import { STYLES, fontsFor } from "./styles";
-import type { DesignChoice, FontSet, Mode } from "./types";
+import type { Concept, DesignChoice, FontSet, Mode } from "./types";
 
 const BUTTON_PATH = "src/components/ui/button.tsx";
 const INDEX_HTML = "index.html";
@@ -172,6 +174,30 @@ export interface ApplyResult {
   fontsInstalled: boolean;
   /** Steps that could not be done, for the run log. */
   skipped: string[];
+  /** What the app is about, when that was decided in time to be written down. */
+  concept?: Concept;
+}
+
+/**
+ * Whether a page's title is still the one the scaffold came with: nobody has
+ * named the app. Eight of twelve apps built before tau wrote the title were
+ * shipped saying "app" in the browser tab.
+ */
+export function isScaffoldTitle(title: string | null): boolean {
+  return title === null || /^(?:app|vite\b.*)$/i.test(title.trim());
+}
+
+/**
+ * `index.html` saying what the app is: its tab title, its description, and the
+ * tags a shared link is drawn from, all from the concept. Only for a page
+ * nobody has named yet; a title somebody wrote is theirs.
+ */
+export function namedHtml(html: string, concept: Concept): string {
+  if (!concept.title || !isScaffoldTitle(readIdentity(html).title)) return html;
+  return applyIdentity(html, {
+    title: concept.title,
+    ...(concept.description ? { description: concept.description } : {}),
+  });
 }
 
 function packagesOf(fonts: FontSet): string[] {
@@ -229,11 +255,18 @@ async function importedFonts(
  *
  * @param opts.restyle  the app already had a design: keep what it added to
  *                      the stylesheet and to `DESIGN.md` since
+ * @param opts.concept  what the app is about, still being decided. Waited for
+ *                      only once everything before the design file is done,
+ *                      which is as late as it can be
  */
 export async function applyDesignTo(
   target: DesignTarget,
   choice: DesignChoice,
-  opts: { restyle?: boolean; logWith?: Record<string, unknown> } = {},
+  opts: {
+    restyle?: boolean;
+    logWith?: Record<string, unknown>;
+    concept?: Promise<Concept | null>;
+  } = {},
 ): Promise<ApplyResult> {
   const skipped: string[] = [];
 
@@ -262,12 +295,17 @@ export async function applyDesignTo(
     skipped.push(`button attributes (${String(err).slice(0, 120)})`);
   }
 
-  // 3. Light or dark.
+  // The fonts are what take the time. By now the concept has had as long as
+  // it can be given without holding anything up.
+  const concept = (opts.concept ? await opts.concept.catch(() => null) : null) ?? choice.concept;
+
+  // 3. Light or dark, and a name for an app that has none.
   try {
     const html = await target.read(INDEX_HTML);
     if (html === null) skipped.push("html mode");
     else {
-      const next = themeSwitchHtml(setHtmlMode(html, choice.mode), choice.switch === true);
+      const moded = themeSwitchHtml(setHtmlMode(html, choice.mode), choice.switch === true);
+      const next = concept && !opts.restyle ? namedHtml(moded, concept) : moded;
       if (next !== html) await target.write(INDEX_HTML, next);
     }
   } catch (err) {
@@ -275,7 +313,10 @@ export async function applyDesignTo(
   }
 
   // 4 and 5. The two files that are the design.
-  const files = designFiles(design, { fontsInstalled });
+  const files = designFiles(
+    concept ? { ...design, choice: { ...design.choice, concept } } : design,
+    { fontsInstalled },
+  );
   let applied = false;
   try {
     let { designMd, css } = files;
@@ -301,16 +342,22 @@ export async function applyDesignTo(
     density: choice.dials.density,
     ...(choice.fonts ? { fonts: choice.fonts } : {}),
     source: choice.source,
+    concept: Boolean(concept),
     applied,
     fontsInstalled,
     ...(skipped.length > 0 ? { skipped } : {}),
   });
-  return { applied, fontsInstalled, skipped };
+  return { applied, fontsInstalled, skipped, ...(concept ? { concept } : {}) };
 }
 
 /** Apply a new app's design in its sandbox. */
-export function applyDesign(ctx: StackContext, choice: DesignChoice): Promise<ApplyResult> {
+export function applyDesign(
+  ctx: StackContext,
+  choice: DesignChoice,
+  concept?: Promise<Concept | null>,
+): Promise<ApplyResult> {
   return applyDesignTo(sandboxTarget(ctx), choice, {
     logWith: { jobId: ctx.jobId, projectId: ctx.projectId },
+    ...(concept ? { concept } : {}),
   });
 }

@@ -23,16 +23,17 @@ import { normalizeHex } from "./color";
 import { spacingUnit } from "./css";
 import { splitFrontMatter } from "./importDesign";
 import { LAYOUTS, type LayoutSpec } from "./layouts";
-import type { DesignChoice, Dials, StyleSpec } from "./types";
+import type { Concept, DesignChoice, Dials, StyleSpec } from "./types";
 
 export const DESIGN_PATH = ".tau/DESIGN.md";
 
 /**
  * The prose is handed over whole on every request, so it has to stay small.
- * Room for the longest style with the longest "Reading this as" sentence: a
- * file that runs over is cut from the end, which is its do's and don'ts.
+ * Room for the longest style with the longest "Reading this as" sentence and
+ * a concept at its fullest: a file that runs over is cut from the end, which
+ * is its do's and don'ts.
  */
-export const DESIGN_PROSE_MAX_CHARS = 7_200;
+export const DESIGN_PROSE_MAX_CHARS = 8_700;
 /** The app's own notes ride along with the prose, and have a limit of their own. */
 export const DESIGN_NOTES_MAX_CHARS = 1_500;
 
@@ -166,6 +167,7 @@ function metaComment(choice: DesignChoice): string {
     choice.switch ? " switch=1" : "",
     choice.neutral ? ` neutral=${choice.neutral}` : "",
     choice.energy !== undefined ? ` energy=${choice.energy}` : "",
+    choice.concept?.kind ? ` kind=${choice.concept.kind}` : "",
   ].join("");
   return `<!-- tau: style=${choice.style} mode=${choice.mode} accent=${choice.accent} variance=${d.variance} motion=${d.motion} density=${d.density}${extra} -->`;
 }
@@ -181,8 +183,62 @@ export function isVolatileLine(line: string): boolean {
     line.startsWith("<!-- tau:") ||
     line.startsWith(LINES_OPEN) ||
     line.startsWith("- The accent is `") ||
-    line.startsWith("Reading this as:")
+    line.startsWith("Reading this as:") ||
+    CONCEPT_PARTS.some(([, label]) => line.startsWith(`- **${label}** — `))
   );
+}
+
+// ── What the app is about ────────────────────────────────────────────────────
+
+export const CONCEPT_HEADING = "## Concept";
+const CONCEPT_INTRO =
+  "What this app is about, decided before it was built. It stays when the style changes. Build every screen to it, write every line in its voice, and build the moment it names: without that, this is any app of its kind.";
+
+/** The parts of a concept the design file carries, in the order it says them. */
+const CONCEPT_PARTS: readonly [keyof Concept, string][] = [
+  ["idea", "Idea"],
+  ["voice", "Voice"],
+  ["moment", "The moment"],
+  ["opening", "Opens with"],
+  ["picture", "Picture"],
+  ["glance", "At a glance"],
+];
+
+/**
+ * A concept as a section of the file, or nothing when the app has none.
+ *
+ * Its lines belong to the app and not to its style, so they are not among the
+ * lines a restyle replaces or keeps as notes (`isVolatileLine`): they are read
+ * back (`conceptOf`) and written again in the new file.
+ */
+function conceptSection(concept: Concept | undefined): string {
+  if (!concept) return "";
+  const lines = CONCEPT_PARTS.filter(([key]) => concept[key]).map(
+    ([key, label]) => `- **${label}** — ${concept[key]}`,
+  );
+  return `\n${CONCEPT_HEADING}\n${CONCEPT_INTRO}\n\n${lines.join("\n")}\n`;
+}
+
+/** The concept a design file states, as it now reads; null when it states none. */
+export function conceptOf(designMd: string | null | undefined): Concept | null {
+  if (!designMd) return null;
+  const body = designMd.replace(/\r\n/g, "\n");
+  const at = body.indexOf(`\n${CONCEPT_HEADING}\n`);
+  if (at === -1) return null;
+  const section = body.slice(at + CONCEPT_HEADING.length + 2).split(/^## /m)[0]!;
+  const found: Partial<Record<keyof Concept, string>> = {};
+  for (const [key, label] of CONCEPT_PARTS) {
+    const open = `- **${label}** — `;
+    const line = section.split("\n").find((l) => l.startsWith(open));
+    const value = line?.slice(open.length).trim();
+    if (value) found[key] = value;
+  }
+  if (!found.idea) return null;
+  const kind = readDesignMeta(designMd)?.kind;
+  return {
+    ...(found as { idea: string }),
+    ...(kind === "page" || kind === "app" ? { kind } : {}),
+  };
 }
 
 const LINES_OPEN = "<!-- tau-lines:";
@@ -301,6 +357,16 @@ export function leadLayout(style: StyleSpec, read: string, kind: LayoutSpec["kin
   return LAYOUTS[keys[parseInt(lineMark(read), 16) % keys.length]!];
 }
 
+/** The sentence that names it: one structure where the concept said which the app is, both where nothing did. */
+function leadLine(style: StyleSpec, choice: DesignChoice): string {
+  const name = (kind: LayoutSpec["kind"]) => leadLayout(style, choice.read, kind).name;
+  const kind = choice.concept?.kind;
+  if (kind) {
+    return `This ${kind} opens with **${name(kind)}**: build its first screen that way, and open the screens after it a different way.`;
+  }
+  return `If this is a page people read, it opens with **${name("page")}**; if it is something they operate, with **${name("app")}**. Build its first screen that way, and open the screens after it a different way.`;
+}
+
 /** What the agent is told about a light and dark switch that is already in the app. */
 const SWITCH_RULE =
   "- The app has its own light and dark switch: a small button fixed at the bottom left, put there by `index.html`, with the visitor's choice remembered. Do not build another, and keep both palettes working on every screen.";
@@ -350,7 +416,7 @@ ${choice.read}
 ${prose.overview}
 
 ${[...describeDials(choice.dials), describeEnergy(energyOf(choice))].map((line) => `- ${line}`).join("\n")}
-
+${conceptSection(choice.concept)}
 ## Colors
 ${prose.colors}
 
@@ -370,7 +436,7 @@ ${prose.layout}
 Build each screen on one of these structures, chosen for what the screen holds:
 ${layouts}
 
-If this is a page people read, it opens with **${leadLayout(style, choice.read, "page").name}**; if it is something they operate, with **${leadLayout(style, choice.read, "app").name}**. Build its first screen that way, and open the screens after it a different way.
+${leadLine(style, choice)}
 
 ## Elevation & Depth
 ${prose.elevation}
@@ -436,7 +502,7 @@ ${TOKEN_RULE}${backdropRule(style)}${switchRule(choice)}
 - Use the shadcn components as they are, and do not add radius, border, shadow, font or height classes to a Button, Card, Input, Badge, Tabs or Dialog — the skin decides those.
 ${describeDials(choice.dials).map((line) => `- ${line}`).join("\n")}
 - Where the design below does not say how to arrange a screen, build it on one of: ${layouts}.
-
+${conceptSection(choice.concept)}
 Everything below this line is the design as the user wrote it. Follow it.
 
 ${theirs}

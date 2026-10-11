@@ -368,6 +368,32 @@ export interface DesignReference {
   mimeType: string;
 }
 
+/**
+ * What an app is about, as distinct from how it looks: decided once, from the
+ * brief, before anything is built (`concept.ts`). It belongs to the app, so it
+ * stays through a change of style. Every part but the idea may be missing.
+ */
+export interface Concept {
+  /** A name for the idea, a colon, and what it means for this app. */
+  idea: string;
+  /** Something people read and decide on, or something they operate. */
+  kind?: "page" | "app";
+  /** The words for the browser tab. Written into `index.html` once, not kept in the design file. */
+  title?: string;
+  /** One sentence for a search result or a shared link. As `title`. */
+  description?: string;
+  /** How it talks to people, and what it must never be. */
+  voice?: string;
+  /** The one thing a visitor would describe to a friend. */
+  moment?: string;
+  /** For a page: what the first screen says and shows. */
+  opening?: string;
+  /** For a page: the photograph it opens with, or "none" and why. */
+  picture?: string;
+  /** What a stranger should think five seconds in. */
+  glance?: string;
+}
+
 /** What was decided for one app: a style, and how it is tuned. */
 export interface DesignChoice {
   style: StyleKey;
@@ -390,6 +416,8 @@ export interface DesignChoice {
    * picked, a design they brought — and then it follows the dials (`bands.ts`).
    */
   energy?: number;
+  /** What the app is about. Omitted when nothing decided it. */
+  concept?: Concept;
   /** "Reading this as …" — one sentence on what is being built and how it should feel. */
   read: string;
   /**

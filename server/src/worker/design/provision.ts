@@ -33,6 +33,7 @@ import { loadStanding } from "../agent/context/standing";
 import type { StackContext } from "../lib/appStack";
 import { applyDesign, type ApplyResult } from "./apply";
 import { normalizeDesignConfig } from "./config";
+import { conceive, type Conceived } from "./concept";
 import { directDesign, type DirectorResult } from "./director";
 import { imageReadingAvailable, readDesignImage } from "./fromImage";
 import { parseImportedDesign } from "./importDesign";
@@ -46,6 +47,12 @@ type Usage = NonNullable<DirectorResult["usage"]>;
 export interface StartedDesign extends DirectorResult {
   /** The call that read a design from a picture, when one was made. */
   readingUsage?: Usage;
+  /**
+   * What the app is about, still being decided when the look already is
+   * (`concept.ts`). Never rejects: it resolves with no concept when none could
+   * be had.
+   */
+  conceiving: Promise<Conceived>;
 }
 
 /**
@@ -186,7 +193,10 @@ export function startDesign(projectId: string, agentBrief: string): Promise<Star
       .join("\n\n");
     const imported = config.designMd ? parseImportedDesign(config.designMd) : undefined;
     const decided = await directDesign(brief, projectId, config, imported);
-    return fromPicture ? { ...decided, readingUsage: fromPicture.usage } : decided;
+    // Started here and not waited for: it takes ten seconds or so, the look is
+    // needed sooner, and it is only wanted when the design file is written.
+    const conceiving = conceive(brief, decided.choice, projectId);
+    return { ...decided, conceiving, ...(fromPicture ? { readingUsage: fromPicture.usage } : {}) };
   })();
 }
 
@@ -199,10 +209,13 @@ export async function finishDesign(
   pending: Promise<StartedDesign>,
 ): Promise<{ choice: DesignChoice; result: ApplyResult } | null> {
   try {
-    const { choice, usage, readingUsage } = await pending;
+    const { choice: looked, usage, readingUsage, conceiving } = await pending;
     if (readingUsage) await meterModelCall(ctx, readingUsage, "design from image");
     if (usage) await meterModelCall(ctx, usage, "design director");
-    const result = await applyDesign(ctx, choice);
+    const result = await applyDesign(ctx, looked, conceiving.then((c) => c.concept));
+    const conceived = await conceiving;
+    if (conceived.usage) await meterModelCall(ctx, conceived.usage, "design concept");
+    const choice = result.concept ? { ...looked, concept: result.concept } : looked;
     await noteInsights(ctx.jobId, {
       design: { style: choice.style, accent: choice.accent, mode: choice.mode, source: choice.source, read: choice.read },
     });
