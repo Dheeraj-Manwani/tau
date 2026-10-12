@@ -1,4 +1,5 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "motion/react";
 import { Popover } from "radix-ui";
 import {
@@ -34,6 +35,7 @@ import {
 import { PreviewPane } from "@/src/features/project/PreviewPane";
 import { previewSrc } from "@/src/features/project/previewUrl";
 import { ToolsPane } from "@/src/features/project/ToolsPane";
+import { projectToolParams } from "./toolNavigation";
 
 // Lazy so the editor's heavy deps (CodeMirror + file icons) only load when the
 // Code tab is first opened, not on initial project render.
@@ -60,6 +62,7 @@ const DEVICES: {
 ];
 
 function TabToggle() {
+  const [params, setParams] = useSearchParams();
   const activeTab = useProjectStore((s) => s.activeTab);
   const setActiveTab = useProjectStore((s) => s.setActiveTab);
   const isWriting = useProjectStore((s) => s.writingPath !== null);
@@ -73,7 +76,12 @@ function TabToggle() {
         <button
           key={id}
           type="button"
-          onClick={() => setActiveTab(id)}
+          onClick={() => {
+            const next = new URLSearchParams(params);
+            next.set("tab", id);
+            setParams(next);
+            setActiveTab(id);
+          }}
           aria-pressed={activeTab === id}
           className={cn(
             "relative flex h-8 items-center rounded-[7px] px-3 text-xs font-semibold tracking-wide uppercase transition-colors",
@@ -353,6 +361,18 @@ export function RightPanel() {
   const previewDevice = useProjectStore((s) => s.previewDevice);
   const isChatOpen = useProjectStore((s) => s.isChatOpen);
   const toggleChat = useProjectStore((s) => s.toggleChat);
+  const setActiveTab = useProjectStore((s) => s.setActiveTab);
+  const [params, setParams] = useSearchParams();
+
+  useEffect(() => {
+    if (params.get("publish") === "1") {
+      setParams(projectToolParams(params, "publish", "overview"), { replace: true });
+      setActiveTab("tools");
+    } else {
+      const tab = params.get("tab");
+      if (tab === "tools" || tab === "preview" || tab === "code") setActiveTab(tab);
+    }
+  }, [projectId, params, setParams, setActiveTab]);
 
   return (
     <div className="flex h-full min-w-0 flex-col bg-[var(--space-void)]">

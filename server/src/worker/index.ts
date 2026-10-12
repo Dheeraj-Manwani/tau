@@ -147,6 +147,19 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
   try {
     const sandbox = await provisionSandbox(projectId, userId, jobId);
 
+    // Restoring a sandbox can migrate the manifest. Those files are included in
+    // this build, so capture its source version after preparation, not when the
+    // request was queued. Keep it fixed during the build so later edits remain
+    // unpublished, including after a rollback to this deployment.
+    const source = await prisma.project.findUniqueOrThrow({
+      where: { id: projectId },
+      select: { headSequence: true },
+    });
+    await prisma.deployment.update({
+      where: { id: deployment.id },
+      data: { sequence: source.headSequence },
+    });
+
     // The server first, because it is the part most likely to fail and the part
     // that costs nothing to find out about: nothing external has been touched.
     let bundle: Awaited<ReturnType<typeof buildBackendBundle>> | null = null;

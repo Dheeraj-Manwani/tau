@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { Gamepad2Icon, ShuffleIcon } from "lucide-react";
+import { ShuffleIcon } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 import { cn } from "@/src/lib/utils";
@@ -25,7 +25,6 @@ export function BuildLoaderCard({
   tipCount,
   onSelectTip,
   onShuffle,
-  onPlay,
   onFeedback,
   reduceMotion,
 }: {

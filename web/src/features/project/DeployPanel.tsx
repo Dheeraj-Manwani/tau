@@ -1,770 +1,218 @@
-import { motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import { Popover } from "radix-ui";
 import {
-  AlertTriangleIcon,
-  BanIcon,
-  CheckCircle2Icon,
+  ArrowRightIcon,
   ChevronDownIcon,
-  CopyIcon,
-  DownloadIcon,
-  ExternalLinkIcon,
   LoaderCircleIcon,
   RocketIcon,
-  WrenchIcon,
-  XCircleIcon,
+  XIcon,
 } from "lucide-react";
-import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
-import { api } from "@/src/lib/api-client";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { cn } from "@/src/lib/utils";
 import { useProjectStore } from "@/src/stores/useProjectStore";
-import { useBalance } from "@/src/features/billing/api";
-import { useUpgradeModalStore } from "@/src/features/billing/useUpgradeModalStore";
-import { useSendMessage } from "@/src/features/project/useSendMessage";
+import { billingKeys } from "@/src/features/billing/api";
+import { deployedAgo, useDeployStatus } from "./deploy";
+import { publishPresentation, publishToneClass } from "./publishPresentation";
 import {
-  AddressPicker,
-  BuyCredits,
-  IdentitySection,
-} from "@/src/features/project/IdentitySection";
-import { useNameCheck } from "@/src/features/project/deploy";
-import {
-  deployedAgo,
-  formatBytes,
-  historyLabel,
-  publishFailureError,
-  publishLabel,
-  useDeployStatus,
-  usePublishProject,
-  useRollbackDeploy,
-  useUnpublish,
-  type DeployFailure,
-  type DeployStatus,
-  type DeploymentSummary,
-} from "@/src/features/project/deploy";
+  useProjectToolNavigation,
+  type PublishSection,
+} from "./toolNavigation";
 
-/**
- * The Publish button and its panel.
- *
- * Deliberately the same shape as the GitHub panel next to it: a status dot on
- * a round trigger, a popover with the current state and one primary action -
- * because they answer the same question ("where has this code gone?") and
- * should not need to be learned twice.
- */
-
-/** Colour of the dot on the trigger: green live, amber stale, blue building, red suspended. */
-function dotClass(status: DeployStatus | undefined): string | null {
-  if (!status) return null;
-  if (status.suspended) return "bg-red-500";
-  if (status.inProgress) return "bg-blue-500";
-  if (!status.live) return null;
-  return status.unpublishedChanges > 0 ? "bg-amber-400" : "bg-green-500";
-}
-
+/** Unpublished apps open Publish directly; other states offer a navigational summary. */
 export function DeployPanel() {
   const projectId = useProjectStore((s) => s.projectId);
-  const { data: status, isLoading } = useDeployStatus(projectId);
+  const query = useDeployStatus(projectId);
+  const status = query.data;
   const [open, setOpen] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const publishRequested = searchParams.get("publish") === "1";
+  const openTool = useProjectToolNavigation();
+  const qc = useQueryClient();
+  const previous = useRef<{
+    projectId: string | null;
+    inProgress: boolean;
+  } | null>(null);
 
-  const dot = dotClass(status);
-
-  const onOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (publishRequested) {
-      const next = new URLSearchParams(searchParams);
-      next.delete("publish");
-      setSearchParams(next, { replace: true });
+  // Always mounted in the topbar: completion is reported even after leaving Tools.
+  useEffect(() => {
+    if (!status) return;
+    const before = previous.current;
+    previous.current = { projectId, inProgress: status.inProgress };
+    if (
+      before?.projectId !== projectId ||
+      !before.inProgress ||
+      status.inProgress
+    )
+      return;
+    if (
+      status.lastFailure?.schemaChanges?.length &&
+      !status.lastFailure.changedSince
+    ) {
+      toast("Publishing needs your review: database changes were detected.");
+    } else if (status.lastFailure) {
+      toast.error(
+        status.live
+          ? "The update failed. Your previous version is still live."
+          : "Publishing failed. Open Publish to see what happened.",
+      );
+    } else if (status.live) {
+      toast.success("Your new version is live");
+      void qc.invalidateQueries({ queryKey: billingKeys.balance });
     }
-  };
+  }, [status, projectId, qc]);
 
+  const presentation = status ? publishPresentation(status) : null;
+  const label =
+    presentation?.label ?? (query.isError ? "Status unavailable" : "Checking…");
+  const go = (section: PublishSection) => {
+    setOpen(false);
+    openTool("publish", section);
+  };
+  const url = status?.primaryUrl ?? status?.url;
+  const unpublished = presentation?.label === "Publish";
   const trigger = (
-    <motion.button
+    <button
       type="button"
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
-      aria-label="Publish"
-      className="relative flex h-9 shrink-0 items-center gap-1.5 rounded-[8px] bg-blue-500 px-3.5 text-sm font-semibold text-blue-900 shadow-[0_0_16px_rgba(96,165,250,0.35)] transition-colors hover:bg-blue-400"
-    >
-      {status?.inProgress ? (
-        <LoaderCircleIcon className="size-4 animate-spin" />
-      ) : (
-        <RocketIcon className="size-4" />
+      aria-label={label}
+      onClick={unpublished ? () => go("overview") : undefined}
+      className={cn(
+        "flex h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring sm:h-9",
+        unpublished
+          ? "border-transparent bg-blue-500 text-blue-900 hover:bg-blue-400"
+          : "border-silver-200 bg-space-surface text-silver-900 hover:bg-space-overlay",
       )}
-      Publish
-      {dot && !status?.inProgress && (
+    >
+      {presentation?.tone === "busy" || query.isLoading ? (
+        <LoaderCircleIcon className="size-3.5 animate-spin motion-reduce:animate-none" />
+      ) : unpublished ? (
+        <RocketIcon className="size-3.5" />
+      ) : (
         <span
+          aria-hidden="true"
           className={cn(
-            "absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-[var(--space-void)]",
-            dot,
+            "size-1.5 rounded-full",
+            publishToneClass[presentation?.tone ?? "neutral"],
           )}
         />
       )}
-    </motion.button>
+      {label}
+      {!unpublished && <ChevronDownIcon className="size-3.5 text-current opacity-60" />}
+    </button>
   );
 
+  if (unpublished) return trigger;
+
   return (
-    <Popover.Root
-      open={open || publishRequested}
-      onOpenChange={onOpenChange}
-    >
+    <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>{trigger}</Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
           align="end"
           sideOffset={8}
-          className="z-50 max-h-[var(--radix-popover-content-available-height)] w-80 overflow-y-auto rounded-xl border border-silver-400/30 bg-space-surface p-4 text-left shadow-2xl outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+          collisionPadding={12}
+          aria-label="Deployment summary"
+          className="z-50 max-h-[var(--radix-popover-content-available-height)] w-[340px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border border-silver-200 bg-space-surface p-4 text-silver-900 outline-none"
         >
-          <Popover.Arrow className="fill-space-surface" />
-          <div className="mb-3 flex items-center gap-2">
-            <RocketIcon className="size-4 text-silver-900" />
-            <span className="font-heading text-sm font-medium text-silver-900">
-              Publish
-            </span>
+          <div className="flex items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-xs font-medium">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "size-1.5 rounded-full",
+                  publishToneClass[presentation?.tone ?? "neutral"],
+                )}
+              />
+              {!status
+                ? query.isError
+                  ? "Status unavailable"
+                  : "Checking status…"
+                : status.suspended
+                  ? "Site suspended"
+                  : status?.live
+                    ? "Production · Live"
+                    : status?.inProgress
+                      ? "Publishing"
+                      : status?.url
+                        ? "Reserved address"
+                        : "Not published yet"}
+            </p>
+            <Popover.Close
+              aria-label="Close deployment summary"
+              className="flex size-7 items-center justify-center rounded-md text-silver-600 hover:bg-space-overlay"
+            >
+              <XIcon className="size-3.5" />
+            </Popover.Close>
           </div>
-
-          {isLoading || !status ? (
-            <div className="flex items-center gap-2 py-6 text-sm text-silver-600">
-              <LoaderCircleIcon className="size-4 animate-spin" />
-              Loading…
-            </div>
-          ) : (
-            <PanelBody
-              projectId={projectId}
-              status={status}
-              onClose={() => onOpenChange(false)}
-            />
+          {url && (
+            <button
+              type="button"
+              onClick={() => go("identity")}
+              className="mt-3 flex w-full items-center justify-between gap-2 text-left text-sm font-medium text-blue-500 hover:text-blue-300"
+            >
+              <span className="min-w-0 break-all">
+                {url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+              </span>
+              <ArrowRightIcon className="size-3.5 shrink-0" />
+            </button>
           )}
+          {status?.live && !status.suspended && (
+            <p className="mt-1.5 text-[11px] text-silver-600">
+              Published{" "}
+              {deployedAgo(status.live.completedAt ?? status.live.createdAt)} ·{" "}
+              <span className="font-mono">{status.live.id.slice(0, 8)}</span>
+            </p>
+          )}
+          <p
+            className={cn(
+              "mt-3 rounded-lg p-3 text-xs leading-relaxed",
+              presentation?.tone === "warning"
+                ? "bg-amber-500/10 text-amber-200"
+                : presentation?.tone === "error"
+                  ? "bg-red-500/10 text-red-200"
+                  : "bg-space-overlay text-silver-600",
+            )}
+          >
+            {query.isError
+              ? "Couldn't refresh deployment status. Open Publish to retry."
+              : (presentation?.detail ?? "Checking your publishing status…")}
+          </p>
+          {query.isError && status && (
+            <p className="mt-2 text-[11px] text-silver-600">
+              Last successful check:{" "}
+              {new Date(query.dataUpdatedAt).toLocaleTimeString()}
+            </p>
+          )}
+          <div className="mt-3 border-t border-silver-200 pt-2">
+            {(
+              [
+                [
+                  "overview",
+                  status?.inProgress
+                    ? "View publish progress"
+                    : status?.live
+                      ? status.unpublishedChanges > 0 || status.lastFailure
+                        ? "Publish update"
+                        : "View publishing"
+                      : "Set up publishing",
+                ],
+                ["activity", "Activity & build output"],
+                ["history", "Deployment history"],
+                ["manage", "Manage publishing"],
+              ] as [PublishSection, string][]
+            ).map(([section, text]) => (
+              <button
+                key={section}
+                type="button"
+                onClick={() => go(section)}
+                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-1.5 text-left text-xs hover:bg-space-overlay focus-visible:outline-2 focus-visible:outline-ring sm:min-h-9"
+              >
+                {text}
+                <ArrowRightIcon className="size-3.5 text-silver-600" />
+              </button>
+            ))}
+          </div>
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
-  );
-}
-
-function PanelBody({
-  projectId,
-  status,
-  onClose,
-}: {
-  projectId: string | null;
-  status: DeployStatus;
-  onClose: () => void;
-}) {
-  const publish = usePublishProject(projectId);
-  const { data: balance } = useBalance();
-
-  // The address, chosen once. null while the owner has not touched the suggestion.
-  const [typedName, setTypedName] = useState<string | null>(null);
-  const choosing = !status.slug && status.suggestedName !== null;
-  const addressWanted = typedName ?? status.suggestedName;
-  const addressCheck = useNameCheck(
-    choosing ? projectId : null,
-    choosing ? addressWanted : null,
-  );
-  // A typed address that is known to be unavailable holds the button.
-  const addressBlocked =
-    choosing &&
-    typedName !== null &&
-    addressCheck.data?.name === typedName.trim().toLowerCase() &&
-    !addressCheck.data.available;
-
-  // The first publish of a project is paid for, so the button says what it costs
-  // and, when the balance cannot cover it, gives way to buying credits. Only
-  // known once the balance has loaded: until then it is not called short.
-  const fee = status.publishFee;
-  const feeDue = fee.due && !status.live;
-  const short = feeDue && balance !== undefined && balance.credits.available < fee.credits;
-
-  // A failed publish leaves the previous build serving, so a failure and a
-  // caveat on the live site can both be true at once.
-  const caveat = status.live?.error ?? null;
-  const suspended = status.suspended;
-  const busy = status.inProgress || publish.isPending;
-
-  return (
-    <div className="space-y-3">
-      {status.url ? (
-        <LiveUrl url={status.primaryUrl ?? status.url} live={suspended ? null : status.live} />
-      ) : (
-        <p className="text-xs leading-relaxed text-silver-600">
-          Publish your app to a public URL anyone can open. No account, no setup
-          needed. Tau builds it and puts it online for you.
-        </p>
-      )}
-
-      {suspended && (
-        <Notice tone="error" icon={BanIcon}>
-          Tau has suspended this site, so visitors see a notice instead of your
-          app.
-          {suspended.reason && (
-            <span className="mt-1 block text-red-100">{suspended.reason}</span>
-          )}
-        </Notice>
-      )}
-
-      {status.serverWarning && (
-        <Notice tone="warning" icon={AlertTriangleIcon}>
-          {status.serverWarning}
-        </Notice>
-      )}
-
-      {status.lastFailure && (
-        <FailureNotice
-          projectId={projectId}
-          failure={status.lastFailure}
-          onSent={onClose}
-          onConfirmSchema={() => publish.mutate({ confirmSchemaChange: true })}
-          confirming={busy}
-        />
-      )}
-
-      {caveat && (
-        <Notice tone="warning" icon={AlertTriangleIcon}>
-          {caveat}
-        </Notice>
-      )}
-
-      <BadgeRow />
-
-      {choosing && (
-        <AddressPicker
-          projectId={projectId}
-          suggested={status.suggestedName!}
-          domain={status.domain}
-          value={typedName}
-          onChange={setTypedName}
-        />
-      )}
-
-      <IdentitySection projectId={projectId} />
-
-      {status.backendPublished && <RefreshSecrets projectId={projectId} />}
-
-      {status.backendPublished && <ServerLogs projectId={projectId} />}
-
-      {status.databasePublished && <ExportData projectId={projectId} />}
-      {status.storagePublished && (
-        <div className="rounded-lg border border-border/60 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
-          Your published app has its own files. Files uploaded in the preview are not copied. See them under Tools → Storage.
-        </div>
-      )}
-
-      <button
-        type="button"
-        disabled={busy || !!suspended || short || addressBlocked}
-        onClick={() => publish.mutate(choosing ? (addressWanted ?? undefined) : undefined)}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {busy ? (
-          <>
-            <LoaderCircleIcon className="size-4 animate-spin" />
-            Publishing…
-          </>
-        ) : (
-          <>
-            <RocketIcon className="size-4" />
-            {status.live
-              ? "Publish update"
-              : feeDue
-                ? `Publish · ${fee.credits} credits`
-                : "Publish"}
-          </>
-        )}
-      </button>
-      {feeDue && balance !== undefined && (
-        <p className="text-center text-[11px] text-silver-600">
-          First publish of a project. Updates are free. Balance{" "}
-          {Math.floor(balance.credits.available)}.
-        </p>
-      )}
-      {short && <BuyCredits>Publishing needs {fee.credits} credits.</BuyCredits>}
-
-      <p className="text-center text-[11px] text-silver-600">
-        {publishLabel(status)}
-      </p>
-
-      <History projectId={projectId} status={status} />
-
-      {status.live && <TakeOffline projectId={projectId} />}
-    </div>
-  );
-}
-
-/**
- * The newest publish failed. The same one-click fix the preview offers for a
- * build error: the error and the end of the build log go to tau in a block the
- * chat does not show, behind one plain sentence.
- *
- * Once the project has changed since the failure the button goes: whatever was
- * wrong may already be fixed, and the next step is to publish again.
- */
-function FailureNotice({
-  projectId,
-  failure,
-  onSent,
-  onConfirmSchema,
-  confirming,
-}: {
-  projectId: string | null;
-  failure: DeployFailure;
-  onSent: () => void;
-  onConfirmSchema: () => void;
-  confirming: boolean;
-}) {
-  const setChatOpen = useProjectStore((s) => s.setChatOpen);
-  const { send, canSend, isSending } = useSendMessage(projectId ?? undefined);
-
-  // The publish stopped to ask, not because anything is broken: nothing was
-  // published and the live site is as it was.
-  if (failure.schemaChanges && !failure.changedSince) {
-    return (
-      <Notice tone="warning" icon={AlertTriangleIcon}>
-        {failure.error}
-        <ul className="mt-1.5 list-disc space-y-0.5 pl-4">
-          {failure.schemaChanges.map((c) => (
-            <li key={c.message}>{c.message}</li>
-          ))}
-        </ul>
-        <button
-          type="button"
-          onClick={onConfirmSchema}
-          disabled={confirming}
-          className="mt-2 flex items-center gap-1.5 rounded-full bg-brand px-2.5 py-1 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40"
-        >
-          <RocketIcon className="size-3.5" />
-          Publish anyway
-        </button>
-      </Notice>
-    );
-  }
-
-  if (failure.changedSince) {
-    return (
-      <Notice tone="warning" icon={AlertTriangleIcon}>
-        The last publish failed, and the project has changed since. Publish
-        again to try the new version.
-      </Notice>
-    );
-  }
-
-  const fix = () => {
-    const sent = send(
-      "Publishing failed. Fix what stops the production build so the app can be published.",
-      { buildError: publishFailureError(failure) },
-    );
-    if (!sent) return;
-    // The answer arrives in the chat, so get this panel out of its way.
-    setChatOpen(true);
-    onSent();
-  };
-
-  return (
-    <Notice tone="error" icon={XCircleIcon}>
-      {failure.error}
-      <button
-        type="button"
-        onClick={fix}
-        disabled={!canSend}
-        title={
-          canSend
-            ? "Send this error to tau"
-            : "tau is already working on something"
-        }
-        className="mt-2 flex items-center gap-1.5 rounded-full bg-brand px-2.5 py-1 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40 disabled:hover:bg-brand"
-      >
-        {isSending ? (
-          <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        ) : (
-          <WrenchIcon className="size-3.5" />
-        )}
-        Fix with tau
-      </button>
-    </Notice>
-  );
-}
-
-/**
- * The last few publishes, with a way back to any that can still be served.
- *
- * Closed by default: most visits to this panel are to publish or copy the
- * link, and the list is only interesting on the day something went wrong.
- * Rolling back has no confirmation because it destroys nothing: the build it
- * replaces stays in this same list, one click from being live again.
- */
-function History({
-  projectId,
-  status,
-}: {
-  projectId: string | null;
-  status: DeployStatus;
-}) {
-  const [open, setOpen] = useState(false);
-  const rollback = useRollbackDeploy(projectId);
-
-  if (status.deployments.length === 0) return null;
-
-  const blocked = status.inProgress || !!status.suspended || rollback.isPending;
-
-  return (
-    <div className="border-t border-silver-400/20 pt-2">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-md px-1 py-1 text-[11px] font-medium text-silver-600 transition-colors hover:text-silver-900"
-      >
-        History
-        <ChevronDownIcon
-          className={cn("size-3.5 transition-transform", open && "rotate-180")}
-        />
-      </button>
-
-      {open && (
-        <ul className="mt-1 max-h-44 space-y-0.5 overflow-y-auto">
-          {status.deployments.map((d) => (
-            <li
-              key={d.id}
-              className="flex items-center gap-2 rounded-md px-1 py-1.5 text-[11px]"
-            >
-              <span
-                className={cn(
-                  "size-1.5 shrink-0 rounded-full",
-                  d.isLive
-                    ? "bg-green-500"
-                    : d.status === "FAILED"
-                      ? "bg-red-500"
-                      : "bg-silver-400",
-                )}
-              />
-              <span className="min-w-0 flex-1 truncate">
-                <span className="text-silver-900">{historyLabel(d)}</span>
-                <span className="text-silver-600">
-                  {" · "}
-                  {deployedAgo(d.createdAt)}
-                  {d.sizeBytes > 0 && ` · ${formatBytes(d.sizeBytes)}`}
-                </span>
-              </span>
-              {d.canRollback && (
-                <button
-                  type="button"
-                  disabled={blocked}
-                  onClick={() => rollback.mutate(d.id)}
-                  className="flex shrink-0 items-center gap-1 rounded-md border border-silver-400/30 px-1.5 py-0.5 font-medium text-silver-900 transition-colors hover:bg-space-overlay disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {rollback.isPending && rollback.variables === d.id && (
-                    <LoaderCircleIcon className="size-3 animate-spin" />
-                  )}
-                  {status.live ? "Roll back" : "Restore"}
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-/**
- * Taking the site offline, behind a second click.
- *
- * It is undoable (the build stays in the history for a week, and publishing
- * again is always possible), but for as long as it lasts every link the owner
- * has shared is dead, which is worth one sentence before it happens.
- */
-function TakeOffline({ projectId }: { projectId: string | null }) {
-  const [confirming, setConfirming] = useState(false);
-  const unpublish = useUnpublish(projectId);
-
-  if (!confirming) {
-    return (
-      <button
-        type="button"
-        onClick={() => setConfirming(true)}
-        className="block w-full rounded-md py-1 text-center text-[11px] text-silver-600 transition-colors hover:text-red-300"
-      >
-        Take offline
-      </button>
-    );
-  }
-
-  return (
-    <div className="rounded-lg border border-red-500/25 bg-red-500/10 p-2.5">
-      <p className="text-[11px] leading-relaxed text-red-200">
-        Take this site offline? The link stops working until you publish again.
-        The address stays yours.
-      </p>
-      <div className="mt-2 flex justify-end gap-1.5">
-        <button
-          type="button"
-          disabled={unpublish.isPending}
-          onClick={() => setConfirming(false)}
-          className="rounded-md px-2 py-1 text-[11px] font-medium text-silver-900 transition-colors hover:bg-space-overlay disabled:opacity-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          disabled={unpublish.isPending}
-          onClick={() => unpublish.mutate()}
-          className="flex items-center gap-1 rounded-md bg-red-500 px-2 py-1 text-[11px] font-medium text-white transition-colors hover:bg-red-400 disabled:opacity-60"
-        >
-          {unpublish.isPending && (
-            <LoaderCircleIcon className="size-3 animate-spin" />
-          )}
-          Take offline
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Free plan only: says the published site carries the "Built with tau" badge
- * and offers the way to remove it. Pro sites have no badge, so nothing to say.
- */
-function BadgeRow() {
-  const { data: balance } = useBalance();
-  const openUpgrade = useUpgradeModalStore((s) => s.openModal);
-  if (balance?.plan !== "FREE") return null;
-
-  return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border border-silver-400/20 bg-space-void/40 px-3 py-2">
-      <span className="text-[11px] leading-relaxed text-silver-600">
-        Shows a “Built with tau” badge
-      </span>
-      <button
-        type="button"
-        onClick={() => openUpgrade("Upgrade to Pro to remove this badge")}
-        className="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-silver-900 transition-colors hover:bg-space-overlay"
-      >
-        Remove
-        <span className="rounded-full bg-brand/10 px-1.5 py-px text-[10px] font-semibold text-brand">
-          PRO
-        </span>
-      </button>
-    </div>
-  );
-}
-
-function LiveUrl({
-  url,
-  live,
-}: {
-  url: string;
-  live: DeploymentSummary | null;
-}) {
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied");
-    } catch {
-      toast.error("Couldn't copy the link");
-    }
-  };
-
-  // Hostname alone is the readable form; the full URL stays in the link target
-  // and on the clipboard.
-  const display = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
-
-  return (
-    <div className="rounded-lg border border-silver-400/20 bg-space-void/40 p-3">
-      <div className="mb-1.5 flex items-center gap-1.5">
-        {live ? (
-          <CheckCircle2Icon className="size-3.5 text-green-500" />
-        ) : (
-          <AlertTriangleIcon className="size-3.5 text-amber-400" />
-        )}
-        <span className="text-[11px] text-silver-600">
-          {live ? "Live at" : "Reserved address"}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-1">
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          className="min-w-0 flex-1 truncate text-sm font-medium text-silver-900 underline-offset-2 hover:underline"
-        >
-          {display}
-        </a>
-        <button
-          type="button"
-          onClick={() => void copy()}
-          aria-label="Copy link"
-          className="flex size-7 shrink-0 items-center justify-center rounded-md text-silver-600 transition-colors hover:bg-space-overlay hover:text-silver-900"
-        >
-          <CopyIcon className="size-3.5" />
-        </button>
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          aria-label="Open site"
-          className="flex size-7 shrink-0 items-center justify-center rounded-md text-silver-600 transition-colors hover:bg-space-overlay hover:text-silver-900"
-        >
-          <ExternalLinkIcon className="size-3.5" />
-        </a>
-      </div>
-
-      {live && (
-        <p className="mt-1.5 text-[11px] text-silver-600">
-          {live.fileCount} files · {formatBytes(live.sizeBytes)}
-        </p>
-      )}
-    </div>
-  );
-}
-
-/**
- * Secrets are copied into the live server when it is published, so one added or
- * changed afterwards only reaches it on the next publish, or here, without a rebuild.
- */
-function RefreshSecrets({ projectId }: { projectId: string | null }) {
-  const [busy, setBusy] = useState(false);
-  const refresh = async () => {
-    if (!projectId || busy) return;
-    setBusy(true);
-    try {
-      await api.post(`/project/${projectId}/deploy/refresh-secrets`);
-      toast.success("Your live server now has your latest secrets");
-    } catch (err) {
-      const message = (err as { message?: unknown })?.message;
-      toast.error(typeof message === "string" && message ? message : "Couldn't update the live server. Try again in a minute.");
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <div className="rounded-lg border border-border/60 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
-      Changed a secret after publishing? The live server keeps the ones it was published with.
-      <button
-        type="button"
-        onClick={refresh}
-        disabled={busy}
-        className="mt-1.5 block text-foreground underline-offset-2 hover:underline disabled:opacity-50"
-      >
-        {busy ? "Updating…" : "Update secrets on the live server"}
-      </button>
-    </div>
-  );
-}
-
-/** What the live server printed in the last hour. Loaded on request, never polled. */
-function ServerLogs({ projectId }: { projectId: string | null }) {
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [logs, setLogs] = useState<string | null>(null);
-
-  const load = async () => {
-    if (!projectId || busy) return;
-    setBusy(true);
-    try {
-      const res = await api.get<{ logs: string }>(`/project/${projectId}/deploy/logs`);
-      setLogs(res.data.logs);
-    } catch {
-      toast.error("Couldn't read the server's logs. Try again in a minute.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="rounded-lg border border-border/60 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
-      <button
-        type="button"
-        onClick={() => {
-          const next = !open;
-          setOpen(next);
-          if (next && logs === null) void load();
-        }}
-        className="flex w-full items-center justify-between text-foreground"
-      >
-        Server logs
-        <ChevronDownIcon className={cn("size-3.5 transition-transform", open && "rotate-180")} />
-      </button>
-      {open && (
-        <div className="mt-2">
-          <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-black/30 p-2 font-mono text-[10px] text-silver-800">
-            {busy && logs === null
-              ? "Loading…"
-              : logs
-                ? logs
-                : "Nothing printed in the last hour. Secrets are hidden from these lines."}
-          </pre>
-          <button
-            type="button"
-            onClick={load}
-            disabled={busy}
-            className="mt-1.5 text-foreground underline-offset-2 hover:underline disabled:opacity-50"
-          >
-            {busy ? "Refreshing…" : "Refresh"}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Download the published database as CSV files. */
-function ExportData({ projectId }: { projectId: string | null }) {
-  const [busy, setBusy] = useState(false);
-  const download = async () => {
-    if (!projectId || busy) return;
-    setBusy(true);
-    try {
-      const res = await api.get<Blob>(`/project/${projectId}/database/export`, { responseType: "blob" });
-      const url = URL.createObjectURL(res.data);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "data-export.zip";
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      toast.error("Couldn't export your data. Try again in a minute.");
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <div className="rounded-lg border border-border/60 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
-      Your published app has its own database. Preview data is not copied to it.
-      <button
-        type="button"
-        onClick={download}
-        disabled={busy}
-        className="mt-1.5 flex items-center gap-1.5 text-foreground underline-offset-2 hover:underline disabled:opacity-50"
-      >
-        <DownloadIcon className="size-3.5" />
-        {busy ? "Preparing…" : "Download your data (CSV)"}
-      </button>
-    </div>
-  );
-}
-
-function Notice({
-  tone,
-  icon: Icon,
-  children,
-}: {
-  tone: "warning" | "error";
-  icon: typeof AlertTriangleIcon;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex gap-2 rounded-lg border p-2.5 text-[11px] leading-relaxed",
-        tone === "warning"
-          ? "border-amber-500/25 bg-amber-500/10 text-amber-200"
-          : "border-red-500/25 bg-red-500/10 text-red-200",
-      )}
-    >
-      <Icon className="mt-px size-3.5 shrink-0" />
-      <div className="min-w-0">{children}</div>
-    </div>
   );
 }

@@ -52,6 +52,7 @@ const SLUG_ATTEMPTS = 5;
 export interface DeploymentSummary {
   id: string;
   status: DeploymentStatus;
+  target: Deployment["target"];
   fileCount: number;
   sizeBytes: number;
   error: string | null;
@@ -162,6 +163,7 @@ function toSummary(
   return {
     id: deployment.id,
     status: deployment.status,
+    target: deployment.target,
     fileCount: deployment.fileCount,
     sizeBytes: deployment.sizeBytes,
     error: deployment.error,
@@ -273,11 +275,23 @@ export async function getDeployStatus(
     deployments.find((d) => d.id === project.liveDeploymentId) ?? null;
   const newest = deployments[0];
 
-  // Files touched since the live build was made — the same "is this stale?"
-  // signal the GitHub panel shows for unpushed changes.
+  // The visual-edit helpers are preview-only (`apply: "serve"` in the tagger).
+  // Tau refreshes them on sandbox restore; they do not change the public app.
   const unpublishedChanges = live
     ? await prisma.projectFile.count({
-        where: { projectId, lastSequence: { gt: live.sequence } },
+        where: {
+          projectId,
+          lastSequence: { gt: live.sequence },
+          path: {
+            notIn: [
+              ".tau/tagger.ts",
+              ".tau/runtime.js",
+              // Older manifests stored absolute sandbox paths.
+              "/home/user/app/.tau/tagger.ts",
+              "/home/user/app/.tau/runtime.js",
+            ],
+          },
+        },
       })
     : 0;
 

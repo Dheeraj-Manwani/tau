@@ -368,7 +368,9 @@ export function AddressPicker({
         )}
         aria-live="polite"
       >
-        {stale || !result
+        {check.isError && !stale ? (
+          <>Couldn't check this address. <button type="button" onClick={() => void check.retry()} className="text-blue-500 underline">Try again</button></>
+        ) : stale || !result
           ? "Checking…"
           : result.available
             ? "Available."

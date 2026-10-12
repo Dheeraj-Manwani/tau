@@ -1,13 +1,18 @@
-import { useState, type ComponentType } from "react";
-import { GlobeIcon, HardDriveIcon, LockIcon } from "lucide-react";
+import { type ComponentType } from "react";
+import { useSearchParams } from "react-router-dom";
+import { GlobeIcon, HardDriveIcon, LockIcon, RocketIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
 import { DomainsPane } from "@/src/features/project/DomainsPane";
 import { KeysPane } from "@/src/features/project/KeysPane";
 import { StoragePane } from "@/src/features/project/StoragePane";
+import { PublishPane } from "./PublishPane";
+import { useDeployStatus } from "./deploy";
+import { publishPresentation, publishToneClass } from "./publishPresentation";
+import { selectedProjectTool, useProjectToolNavigation, type ProjectTool } from "./toolNavigation";
 
 interface ToolEntry {
-  id: string;
+  id: ProjectTool;
   label: string;
   icon: typeof LockIcon;
   group: string;
@@ -18,11 +23,16 @@ interface ToolEntry {
 const TOOLS: ToolEntry[] = [
   { id: "secrets", label: "Secrets", icon: LockIcon, group: "Setup", pane: KeysPane },
   { id: "storage", label: "Storage", icon: HardDriveIcon, group: "Setup", pane: StoragePane },
-  { id: "domains", label: "Domains", icon: GlobeIcon, group: "Publish", pane: DomainsPane },
+  { id: "publish", label: "Publish", icon: RocketIcon, group: "Delivery", pane: PublishPane },
+  { id: "domains", label: "Domains", icon: GlobeIcon, group: "Delivery", pane: DomainsPane },
 ];
 
 export function ToolsPane({ projectId }: { projectId: string }) {
-  const [toolId, setToolId] = useState(TOOLS[0]!.id);
+  const [params] = useSearchParams();
+  const toolId = selectedProjectTool(params);
+  const openTool = useProjectToolNavigation();
+  const { data: deploy } = useDeployStatus(projectId);
+  const domainsLocked = !deploy?.live;
   const tool = TOOLS.find((t) => t.id === toolId) ?? TOOLS[0]!;
   const Pane = tool.pane;
 
@@ -30,12 +40,12 @@ export function ToolsPane({ projectId }: { projectId: string }) {
     <div className="flex h-full min-w-0 flex-col bg-[var(--space-void)] sm:flex-row">
       <nav
         aria-label="Project tools"
-        className="shrink-0 border-b border-[var(--silver-200)] bg-[var(--space-surface)] p-3 sm:w-44 sm:border-r sm:border-b-0 lg:w-48"
+        className="flex shrink-0 flex-wrap gap-1 border-b border-[var(--silver-200)] bg-[var(--space-surface)] p-2 sm:block sm:w-44 sm:border-r sm:border-b-0 sm:p-3 lg:w-48"
       >
         {TOOLS.map((item, i) => (
           <div key={item.id}>
             {(i === 0 || TOOLS[i - 1]!.group !== item.group) && (
-              <p className={cn("mb-3 px-2 pt-1 text-[11px] font-medium uppercase tracking-wider text-[var(--silver-600)]", i > 0 && "mt-4")}>
+              <p className={cn("mb-3 hidden px-2 pt-1 text-[11px] font-medium uppercase tracking-wider text-[var(--silver-600)] sm:block", i > 0 && "mt-4")}>
                 {item.group}
               </p>
             )}
@@ -43,9 +53,10 @@ export function ToolsPane({ projectId }: { projectId: string }) {
               type="button"
               aria-current={tool.id === item.id ? "page" : undefined}
               aria-controls={`project-${item.id}`}
-              onClick={() => setToolId(item.id)}
+              title={item.id === "domains" && domainsLocked ? "Deploy your app to unlock domains" : undefined}
+              onClick={() => openTool(item.id)}
               className={cn(
-                "mb-1 flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-ring",
+                "flex min-h-9 w-full items-center gap-2.5 rounded-lg px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-ring sm:mb-1",
                 tool.id === item.id
                   ? "bg-[var(--space-overlay)] text-[var(--silver-900)]"
                   : "text-[var(--silver-600)] hover:bg-[var(--space-overlay)]/60 hover:text-[var(--silver-900)]",
@@ -53,6 +64,8 @@ export function ToolsPane({ projectId }: { projectId: string }) {
             >
               <item.icon className="size-4 shrink-0" />
               {item.label}
+              {item.id === "domains" && domainsLocked && <LockIcon aria-hidden="true" className="ml-auto size-3.5 shrink-0 text-[var(--silver-600)]" />}
+              {item.id === "publish" && deploy && <span aria-hidden="true" className={cn("ml-auto size-1.5 rounded-full", publishToneClass[publishPresentation(deploy).tone])} />}
             </button>
           </div>
         ))}

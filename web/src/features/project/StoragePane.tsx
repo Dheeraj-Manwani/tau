@@ -1,5 +1,5 @@
 import { useMemo, useState, type MouseEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   DownloadIcon,
   EyeIcon,
@@ -310,7 +310,10 @@ const ENV_LABEL: Record<StorageEnv, string> = { PREVIEW: "Preview", LIVE: "Live"
 /** Tools → Storage: the files this app has stored, with usage against the allowance. */
 export function StoragePane({ projectId }: { projectId: string }) {
   const overview = useProjectStorage(projectId);
-  const [env, setEnv] = useState<StorageEnv>("PREVIEW");
+  const [params] = useSearchParams();
+  const [env, setEnv] = useState<StorageEnv>(() =>
+    params.get("storageEnv") === "LIVE" ? "LIVE" : "PREVIEW",
+  );
   const [search, setSearch] = useState("");
   const prefix = useDebounced(search.trim(), 300);
   // What is picked belongs to one list; another environment or search is another list.

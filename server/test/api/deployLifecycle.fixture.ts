@@ -42,8 +42,9 @@ function matches(row: Row, where: Row | undefined): boolean {
       if (!same(value, cond)) return false;
       continue;
     }
-    const c = cond as { in?: unknown[]; lt?: Date | number; gt?: Date | number };
+    const c = cond as { in?: unknown[]; notIn?: unknown[]; lt?: Date | number; gt?: Date | number };
     if (c.in && !c.in.includes(value)) return false;
+    if (c.notIn?.includes(value)) return false;
     // SQL semantics: a comparison against NULL is never true.
     if (c.lt !== undefined && !(value != null && (value as Date) < c.lt)) {
       return false;
@@ -198,6 +199,29 @@ mock.module("@/api/lib/queue", () => ({
   },
 }));
 
+let editDuringBuild = false;
+const realSandbox = await import("@/worker/lib/sandbox");
+mock.module("@/worker/lib/sandbox", () => ({
+  ...realSandbox,
+  provisionSandbox: async () => {
+    // Preparation changes a build input after the request captured sequence 1.
+    project().headSequence = 2;
+    tables.projectFile.push({ projectId: PROJECT, path: "vite.config.ts", lastSequence: 2 });
+    return {};
+  },
+}));
+const realDeploy = await import("@/worker/lib/deploy");
+mock.module("@/worker/lib/deploy", () => ({
+  ...realDeploy,
+  buildAndUpload: async () => {
+    if (editDuringBuild) {
+      project().headSequence = 3;
+      tables.projectFile[0]!.lastSequence = 3;
+    }
+    return { outputDir: "dist", fileCount: 3, sizeBytes: 400, buildLog: "Build succeeded" };
+  },
+}));
+
 const { env } = await import("@/lib/env");
 const { checkNameAvailable, getDeployStatus, requestDeploy, rollbackDeploy, unpublish } =
   await import("@/api/services/deploy.service");
@@ -206,6 +230,7 @@ const { suspendProjectSite, unsuspendProjectSite } = await import(
 );
 const { sweepDeployments } = await import("@/api/lib/deploySweep");
 const { invalidateSiteLookup } = await import("@/api/lib/siteLookup");
+const { processJob } = await import("@/worker/index");
 const express = (await import("express")).default;
 const siteRoutes = (await import("@/api/routes/sites.routes")).default;
 
@@ -265,6 +290,7 @@ beforeEach(() => {
   objects.clear();
   enqueued.length = 0;
   failDeletes = false;
+  editDuringBuild = false;
   balanceMicro = 300_000_000n;
   env.CREDITS_ENFORCE = false;
   invalidateSiteLookup(SLUG);
@@ -290,6 +316,13 @@ beforeEach(() => {
 });
 
 describe("rollback", () => {
+  test("reports each deployment's target for the publishing timeline", async () => {
+    row("new").target = "FULLSTACK";
+    row("old").target = "STATIC";
+    const status = await getDeployStatus(PROJECT, OWNER);
+    expect(status.live?.target).toBe("FULLSTACK");
+    expect(status.deployments.find((d) => d.id === "old")?.target).toBe("STATIC");
+  });
   test("puts the earlier build back and supersedes the one it replaces", async () => {
     expect(await (await visit()).text()).toBe("<h1>new</h1>");
 
@@ -583,6 +616,45 @@ describe("who may publish", () => {
 });
 
 describe("the status the panel reads", () => {
+  test("preview helper refreshes do not count as unpublished site changes", async () => {
+    for (const path of [
+      ".tau/tagger.ts", ".tau/runtime.js",
+      "/home/user/app/.tau/tagger.ts", "/home/user/app/.tau/runtime.js",
+    ]) {
+      tables.projectFile.push({ projectId: PROJECT, path, lastSequence: 2 });
+    }
+    expect((await getDeployStatus(PROJECT, OWNER)).unpublishedChanges).toBe(0);
+    tables.projectFile[0]!.lastSequence = 3;
+    tables.projectFile.push({ projectId: PROJECT, path: ".tau/deploy.json", lastSequence: 4 });
+    expect((await getDeployStatus(PROJECT, OWNER)).unpublishedChanges).toBe(2);
+  });
+
+  test("a fresh publish includes preparation changes in its source version", async () => {
+    const result = await requestDeploy(PROJECT, OWNER);
+    expect(row(result.deploymentId).sequence).toBe(1);
+    await processJob({
+      jobId: result.jobId, projectId: PROJECT, userId: OWNER,
+      prompt: "", effort: "LOW", type: "DEPLOY",
+    });
+    expect(row(result.deploymentId).status).toBe("READY");
+    expect(row(result.deploymentId).sequence).toBe(2);
+    expect((await getDeployStatus(PROJECT, OWNER)).unpublishedChanges).toBe(0);
+  });
+
+  test("edits after preparation stay unpublished and rollback retains its source version", async () => {
+    editDuringBuild = true;
+    const result = await requestDeploy(PROJECT, OWNER);
+    await processJob({
+      jobId: result.jobId, projectId: PROJECT, userId: OWNER,
+      prompt: "", effort: "LOW", type: "DEPLOY",
+    });
+    expect(row(result.deploymentId).sequence).toBe(2);
+    expect((await getDeployStatus(PROJECT, OWNER)).unpublishedChanges).toBe(1);
+    await rollbackDeploy(PROJECT, "old", OWNER);
+    expect(row("old").sequence).toBe(1);
+    expect((await getDeployStatus(PROJECT, OWNER)).unpublishedChanges).toBe(2);
+  });
+
   test("says which builds can be rolled back to", async () => {
     build("purged", { purgedAt: new Date() });
     build("failed", { status: "FAILED", supersededAt: null });

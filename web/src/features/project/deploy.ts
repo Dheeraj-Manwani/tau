@@ -30,6 +30,8 @@ export type DeploymentStatus =
 export interface DeploymentSummary {
   id: string;
   status: DeploymentStatus;
+  /** Reported by newer servers; older servers still provide coarse status. */
+  target?: "STATIC" | "FULLSTACK";
   fileCount: number;
   sizeBytes: number;
   error: string | null;
@@ -87,6 +89,7 @@ export interface PublishResult {
 
 export const deployKeys = {
   status: (projectId: string) => ["project", projectId, "deploy"] as const,
+  action: (projectId: string) => ["project", projectId, "deployment-action"] as const,
 };
 
 export function useDeployStatus(projectId: string | null) {
@@ -104,6 +107,7 @@ export function useDeployStatus(projectId: string | null) {
 export function usePublishProject(projectId: string | null) {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: deployKeys.action(projectId ?? ""),
     // `name` is the address, chosen once, on a project's first publish.
     // `confirmSchemaChange` says yes to the database changes a publish stopped for.
     mutationFn: (arg?: string | { name?: string; confirmSchemaChange?: boolean }) => {
@@ -113,7 +117,7 @@ export function usePublishProject(projectId: string | null) {
         .then((r) => r.data);
     },
     onSuccess: () => {
-      toast.success("Publishing: building your app");
+      toast.success("Publish request accepted. Follow progress in Tools → Publish.");
       void qc.invalidateQueries({
         queryKey: deployKeys.status(projectId ?? ""),
       });
@@ -153,7 +157,12 @@ export function useNameCheck(projectId: string | null, name: string | null) {
     enabled: !!projectId && !!name && !!settled,
     staleTime: 10_000,
   });
-  return { data: query.data, checking: settled !== name || query.isFetching };
+  return {
+    data: query.data,
+    checking: settled !== name || query.isFetching,
+    isError: query.isError,
+    retry: query.refetch,
+  };
 }
 
 /** Lowercase letters, numbers and hyphens, as typed: what an address can hold. */
@@ -269,6 +278,7 @@ export function useGenerateLogo(projectId: string | null) {
 export function useRollbackDeploy(projectId: string | null) {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: deployKeys.action(projectId ?? ""),
     mutationFn: (deploymentId: string) =>
       api
         .post<DeployStatus>(
@@ -291,6 +301,7 @@ export function useRollbackDeploy(projectId: string | null) {
 export function useUnpublish(projectId: string | null) {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: deployKeys.action(projectId ?? ""),
     mutationFn: () =>
       api.delete<DeployStatus>(`/project/${projectId}/deploy`).then((r) => r.data),
     onSuccess: (status) => {
@@ -305,7 +316,7 @@ export function useUnpublish(projectId: string | null) {
   });
 }
 
-function errorMessage(err: unknown, fallback: string): string {
+export function errorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === "object" && "message" in err) {
     const m = (err as { message?: unknown }).message;
     if (typeof m === "string" && m) return m;
