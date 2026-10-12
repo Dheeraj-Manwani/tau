@@ -66,7 +66,7 @@ async function serveSite(
 
   const site = await resolveSite(slug);
   if (!site) {
-    notFound(res, "No app is published at this address yet.");
+    notFound(res, "No app is deployed at this address yet.");
     return;
   }
   if (site.state === "suspended") {

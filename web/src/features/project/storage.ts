@@ -120,7 +120,7 @@ export function useRotateStorageKey(projectId: string, env: StorageEnv) {
     onSuccess: (data) =>
       toast.success(
         data.appliedToLiveApp === false
-          ? `Key replaced. Your published app picks it up on its next publish, and the old key works for ${data.previousKeyValidForHours} hours.`
+          ? `Key replaced. Your deployed app picks it up on its next deploy, and the old key works for ${data.previousKeyValidForHours} hours.`
           : `Key replaced. The old one stops working in ${data.previousKeyValidForHours} hours.`,
       ),
     onError: (err: unknown) => toast.error(errorMessage(err, "Couldn't replace the key")),

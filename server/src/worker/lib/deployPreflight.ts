@@ -111,19 +111,19 @@ const BLOCKING: Pattern[] = [
     code: "bun_api",
     re: /\bBun\s*\.|\bfrom\s*['"]bun['"]|['"]bun:[a-z]+['"]/,
     message:
-      "Your server uses Bun-only features (Bun.* or bun: imports). Published apps run on Node, which does not have them. Ask tau to rewrite it with standard Node and web APIs.",
+      "Your server uses Bun-only features (Bun.* or bun: imports). Deployed apps run on Node, which does not have them. Ask tau to rewrite it with standard Node and web APIs.",
   },
   {
     code: "embedded_database",
     re: /['"](?:bun:sqlite|better-sqlite3|sqlite3|node:sqlite)['"]/,
     message:
-      "Your server keeps data in a file-based SQLite database. A published app has no disk that lasts, so that data would be lost. Ask tau to use the project's Postgres database instead.",
+      "Your server keeps data in a file-based SQLite database. A deployed app has no disk that lasts, so that data would be lost. Ask tau to use the project's Postgres database instead.",
   },
   {
     code: "websocket",
     re: /\bupgradeWebSocket\b|from\s*['"]hono\/ws['"]|from\s*['"]ws['"]|require\(\s*['"]ws['"]\s*\)|\bWebSocketServer\b/,
     message:
-      "Your server uses WebSockets. Published apps can't hold a connection open, so they aren't supported. Ask tau to use regular requests, or polling, instead.",
+      "Your server uses WebSockets. Deployed apps can't hold a connection open, so they aren't supported. Ask tau to use regular requests, or polling, instead.",
   },
 ];
 
@@ -132,13 +132,13 @@ const WARNING: Pattern[] = [
     code: "local_files",
     re: /\b(?:writeFile|writeFileSync|appendFile|appendFileSync|createWriteStream|mkdirSync|rmSync|unlinkSync)\b/,
     message:
-      "Your server writes files to disk. A published app can't keep them: anything written is gone by the next request. Keep small data in the database instead, and pictures or documents in tau file storage: ask tau to turn it on.",
+      "Your server writes files to disk. A deployed app can't keep them: anything written is gone by the next request. Keep small data in the database instead, and pictures or documents in tau file storage: ask tau to turn it on.",
   },
   {
     code: "scheduled_work",
     re: /\bsetInterval\s*\(|from\s*['"]node-cron['"]|from\s*['"]cron['"]/,
     message:
-      "Your server runs work on a timer. A published app only runs while a request is being handled, so scheduled work won't happen on its own.",
+      "Your server runs work on a timer. A deployed app only runs while a request is being handled, so scheduled work won't happen on its own.",
   },
 ];
 
@@ -203,7 +203,7 @@ export function preflight(input: PreflightInput): PreflightReport {
       blockers.push({
         code: "no_default_export",
         message:
-          "server/index.ts must end with `export default { port: 3000, fetch: app.fetch }` so it can be published. Ask tau to restore it.",
+          "server/index.ts must end with `export default { port: 3000, fetch: app.fetch }` so it can be deployed. Ask tau to restore it.",
         files: ["server/index.ts"],
       });
     }
@@ -239,7 +239,7 @@ export function preflight(input: PreflightInput): PreflightReport {
       blockers.push({
         code: "pglite_outside_client",
         message:
-          "The database is opened somewhere other than server/db/client.ts. Publishing swaps that one file for the real database, so the other copy would lose its data. Ask tau to use `db` from server/db/client.ts everywhere.",
+          "The database is opened somewhere other than server/db/client.ts. Deploying swaps that one file for the real database, so the other copy would lose its data. Ask tau to use `db` from server/db/client.ts everywhere.",
         files: pglite,
       });
     }
@@ -269,7 +269,7 @@ export function preflight(input: PreflightInput): PreflightReport {
         blockers.push({
           code: "client_exports_used",
           message:
-            "Your code uses more from server/db/client.ts than `db` and `initDb`. Publishing replaces that file, and only those two exist afterwards. Ask tau to use only those.",
+            "Your code uses more from server/db/client.ts than `db` and `initDb`. Deploying replaces that file, and only those two exist afterwards. Ask tau to use only those.",
           files: offenders,
         });
       }
@@ -309,14 +309,14 @@ export function preflight(input: PreflightInput): PreflightReport {
       blockers.push({
         code: "storage_not_enabled",
         message:
-          "Your server uses tau file storage, but it isn't turned on for this app, so the published app would have no way to store a file. Ask tau to set up file storage, then publish again.",
+          "Your server uses tau file storage, but it isn't turned on for this app, so the deployed app would have no way to store a file. Ask tau to set up file storage, then deploy again.",
         files: storageReaders,
       });
     }
     for (const [name, at] of [...unsourced].sort(([a], [b]) => a.localeCompare(b))) {
       warnings.push({
         code: "env_missing",
-        message: `Your server reads ${name}, but no value has been added for it. That feature won't work on the published app until you add it.`,
+        message: `Your server reads ${name}, but no value has been added for it. That feature won't work on the deployed app until you add it.`,
         files: at,
       });
     }
@@ -328,12 +328,12 @@ export function preflight(input: PreflightInput): PreflightReport {
     if (total > ENV_LIMIT_BYTES) {
       blockers.push({
         code: "env_too_large",
-        message: `Your keys and settings add up to ${total} bytes, over the ${ENV_LIMIT_BYTES}-byte limit for a published app. Remove some, or shorten the long ones.`,
+        message: `Your keys and settings add up to ${total} bytes, over the ${ENV_LIMIT_BYTES}-byte limit for a deployed app. Remove some, or shorten the long ones.`,
       });
     } else if (total > ENV_WARN_BYTES) {
       warnings.push({
         code: "env_near_limit",
-        message: `Your keys and settings are ${total} of the ${ENV_LIMIT_BYTES} bytes a published app allows. Adding more may stop it publishing.`,
+        message: `Your keys and settings are ${total} of the ${ENV_LIMIT_BYTES} bytes a deployed app allows. Adding more may stop it deploying.`,
       });
     }
   }

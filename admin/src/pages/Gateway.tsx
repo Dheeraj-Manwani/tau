@@ -25,7 +25,7 @@ export default function Gateway() {
 
   return (
     <>
-      <PageHeader title="AI gateway" subtitle="Inference from published apps, by key and model alias" fetchedAt={fetchedAt} loading={loading} onRefresh={() => reload()}>
+      <PageHeader title="AI gateway" subtitle="Inference from deployed apps, by key and model alias" fetchedAt={fetchedAt} loading={loading} onRefresh={() => reload()}>
         <select className={inputClass} value={hours} onChange={(e) => setParams({ hours: e.target.value })} aria-label="Window">
           {WINDOWS.map(([h, text]) => (
             <option key={h} value={h}>

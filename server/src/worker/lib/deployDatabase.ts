@@ -21,7 +21,7 @@ export class SchemaChangeRequired extends DeployError {
   constructor(readonly changes: SchemaChange[]) {
     super(
       "The structure of your database changed in a way that cannot be applied automatically. " +
-        "Nothing was published, so your site is as it was. Review the changes below; if you publish anyway, " +
+        "Nothing was deployed, so your site is as it was. Review the changes below; if you deploy anyway, " +
         "tau takes a restore point first, adds what is new, and leaves existing data as it is.",
     );
     this.name = "SchemaChangeRequired";
@@ -50,12 +50,12 @@ export async function prepareDatabase(
   try {
     source = await sandbox.files.read(`${WORK_DIR}/${CLIENT_PATH}`);
   } catch {
-    throw new DeployError(`${CLIENT_PATH} is missing, so there is no database to publish. Ask the agent to restore it, then publish again.`);
+    throw new DeployError(`${CLIENT_PATH} is missing, so there is no database to deploy. Ask the agent to restore it, then deploy again.`);
   }
   const sql = extractInitSql(source);
   if (sql === null) {
     throw new DeployError(
-      "Tau could not read your database tables from initDb() in server/db/client.ts. Keep the table SQL as plain text in one client.exec() call, then publish again.",
+      "Tau could not read your database tables from initDb() in server/db/client.ts. Keep the table SQL as plain text in one client.exec() call, then deploy again.",
     );
   }
   const hash = schemaHash(sql);
@@ -76,6 +76,6 @@ export async function prepareDatabase(
   const branchId = diff.changes.length > 0 ? await branchDatabase(opts.projectId, `before-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}`) : null;
 
   const clientTs = productionDbClient(source, diff.additive);
-  if (clientTs === null) throw new DeployError("Tau could not prepare the production database client. Ask the agent to check server/db/client.ts, then publish again.");
+  if (clientTs === null) throw new DeployError("Tau could not prepare the production database client. Ask the agent to check server/db/client.ts, then deploy again.");
   return { clientTs, url, sql, hash, branchId, additive: diff.additive };
 }

@@ -8,12 +8,12 @@ import { projectKeys } from "@/src/features/project/api";
 import type { PreviewBuildError } from "@/src/features/project/types";
 
 /**
- * Publishing a project. Talks to `/project/:id/deploy`.
+ * Deploying a project. Talks to `/project/:id/deploy`.
  *
  * The build itself runs as a job and streams over the normal SSE channel, so
  * there is nothing to poll here in the usual case: the store invalidates this
  * query when the `deploy_ready` frame lands. `refetchInterval` covers only the
- * case where the panel is opened while a publish started in another tab.
+ * case where the panel is opened while a deploy started in another tab.
  */
 
 export type DeploymentStatus =
@@ -42,12 +42,12 @@ export interface DeploymentSummary {
   canRollback: boolean;
 }
 
-/** The newest publish, when it failed. */
+/** The newest deploy, when it failed. */
 export interface DeployFailure {
   error: string;
   /** Tail of the build output, for "Fix with tau". */
   buildLog: string | null;
-  /** The publish stopped for the owner to confirm database changes; what changed. */
+  /** The deploy stopped for the owner to confirm database changes; what changed. */
   schemaChanges: { kind: string; message: string }[] | null;
   /** The project has changed since, so the error may already be fixed. */
   changedSince: boolean;
@@ -56,7 +56,7 @@ export interface DeployFailure {
 export interface DeployStatus {
   slug: string | null;
   url: string | null;
-  /** The address offered before the first publish; null once it is fixed. */
+  /** The address offered before the first deploy; null once it is fixed. */
   suggestedName: string | null;
   /** `bytauai.pro`, or null where sites are served by path. */
   domain: string | null;
@@ -70,17 +70,17 @@ export interface DeployStatus {
   /** Set when tau has taken the site down; `reason` is for the owner. */
   suspended: { reason: string | null } | null;
   lastFailure: DeployFailure | null;
-  /** First publish of a project costs `credits`; `due` is false once paid. */
+  /** First deploy of a project costs `credits`; `due` is false once paid. */
   publishFee: { credits: number; due: boolean };
-  /** The app has its own published database, so its data can be exported. */
+  /** The app has its own deployed database, so its data can be exported. */
   databasePublished: boolean;
   /** The live version has a hosted server, so its recent log lines can be read. */
   backendPublished: boolean;
-  /** The published app has its own file storage, separate from the preview's. */
+  /** The deployed app has its own file storage, separate from the preview's. */
   storagePublished: boolean;
 }
 
-export interface PublishResult {
+export interface DeployResult {
   jobId: string;
   deploymentId: string;
   slug: string;
@@ -104,26 +104,26 @@ export function useDeployStatus(projectId: string | null) {
   });
 }
 
-export function usePublishProject(projectId: string | null) {
+export function useDeployProject(projectId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationKey: deployKeys.action(projectId ?? ""),
-    // `name` is the address, chosen once, on a project's first publish.
-    // `confirmSchemaChange` says yes to the database changes a publish stopped for.
+    // `name` is the address, chosen once, on a project's first deploy.
+    // `confirmSchemaChange` says yes to the database changes a deploy stopped for.
     mutationFn: (arg?: string | { name?: string; confirmSchemaChange?: boolean }) => {
       const body = typeof arg === "string" ? { name: arg } : (arg ?? {});
       return api
-        .post<PublishResult>(`/project/${projectId}/deploy`, body.name || body.confirmSchemaChange ? body : {})
+        .post<DeployResult>(`/project/${projectId}/deploy`, body.name || body.confirmSchemaChange ? body : {})
         .then((r) => r.data);
     },
     onSuccess: () => {
-      toast.success("Publish request accepted. Follow progress in Tools → Publish.");
+      toast.success("Deploy request accepted. Follow progress in Tools → Deploy.");
       void qc.invalidateQueries({
         queryKey: deployKeys.status(projectId ?? ""),
       });
     },
     onError: (err: unknown) =>
-      toast.error(errorMessage(err, "Couldn't start publishing")),
+      toast.error(errorMessage(err, "Couldn't start deploying")),
   });
 }
 
@@ -237,16 +237,18 @@ function refreshAfterIdentityChange(
   void qc.invalidateQueries({ queryKey: identityKeys.get(id) });
   void qc.invalidateQueries({ queryKey: deployKeys.status(id) });
   void qc.invalidateQueries({ queryKey: projectKeys.tree(id) });
+  void qc.invalidateQueries({ queryKey: projectKeys.file(id, "public/favicon.png") });
   void qc.invalidateQueries({ queryKey: billingKeys.balance });
 }
 
 export function useSaveIdentity(projectId: string | null) {
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: deployKeys.action(projectId ?? ""),
     mutationFn: (input: SaveIdentityInput) =>
       api.put(`/project/${projectId}/identity`, input).then((r) => r.data),
     onSuccess: () => {
-      toast.success("Saved");
+      toast.success("Saved. Deploy changes to update the live site.");
       refreshAfterIdentityChange(qc, projectId);
     },
     onError: (err: unknown) => {
@@ -298,7 +300,7 @@ export function useRollbackDeploy(projectId: string | null) {
   });
 }
 
-export function useUnpublish(projectId: string | null) {
+export function useTakeSiteOffline(projectId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationKey: deployKeys.action(projectId ?? ""),
@@ -331,20 +333,20 @@ export function formatBytes(bytes: number): string {
 }
 
 /** What the panel says under the button. */
-export function publishLabel(status: DeployStatus | undefined): string {
+export function deployLabel(status: DeployStatus | undefined): string {
   if (!status) return "";
   if (status.suspended) return "Suspended";
-  if (status.inProgress) return "Publishing…";
+  if (status.inProgress) return "Deploying…";
   if (!status.live) {
     // Only a build that went live is ever SUPERSEDED, so one in the history
     // with nothing live means the site was taken offline.
     return status.deployments.some((d) => d.status === "SUPERSEDED")
       ? "Offline"
-      : "Not published yet";
+      : "Not deployed yet";
   }
   if (status.unpublishedChanges > 0) {
     const n = status.unpublishedChanges;
-    return `${n} change${n === 1 ? "" : "s"} since last publish`;
+    return `${n} change${n === 1 ? "" : "s"} since last deploy`;
   }
   return "Up to date";
 }
@@ -361,7 +363,7 @@ export function historyLabel(deployment: DeploymentSummary): string {
     case "PROVISIONING":
     case "UPLOADING":
     case "VERIFYING":
-      return "Publishing";
+      return "Deploying";
     default:
       // Went live and was replaced. Once its files have been cleared out it
       // stays in the list as a record, with nothing left to roll back to.
@@ -390,13 +392,13 @@ const BUILD_ERROR_MESSAGE_MAX = 8000;
 const BUILD_ERROR_FRAME_MAX = 4000;
 
 /**
- * What "Fix with tau" sends for a failed publish.
+ * What "Fix with tau" sends for a failed deploy.
  *
  * The log is cut from the front, not the back: a build prints the error it
  * stopped on last, and the stored log is already a tail that can be a few
  * characters over the API's limit.
  */
-export function publishFailureError(failure: DeployFailure): PreviewBuildError {
+export function deployFailureError(failure: DeployFailure): PreviewBuildError {
   const log = failure.buildLog?.trim();
   return {
     source: "publish",

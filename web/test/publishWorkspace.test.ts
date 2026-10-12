@@ -6,13 +6,13 @@ import type {
 import {
   deploymentDuration,
   deploymentSteps,
-  publishPresentation,
-  publishSectionAvailability,
-} from "../src/features/project/publishPresentation";
+  deployPresentation,
+  deploySectionAvailability,
+} from "../src/features/project/deployPresentation";
 import {
   projectToolParams,
   selectedProjectTool,
-  selectedPublishSection,
+  selectedDeploySection,
 } from "../src/features/project/toolNavigation";
 
 const deployment: DeploymentSummary = {
@@ -52,8 +52,8 @@ const failure = {
   changedSince: false,
 };
 
-describe("publish section availability", () => {
-  const unpublished: DeployStatus = {
+describe("deployment tab availability", () => {
+  const first: DeployStatus = {
     ...status,
     slug: null,
     url: null,
@@ -61,98 +61,91 @@ describe("publish section availability", () => {
     deployments: [],
     suggestedName: "sample",
   };
-
-  test("a first publish shows only the overview", () => {
-    expect(publishSectionAvailability(unpublished)).toEqual({
+  test("first deployment offers overview and identity before any URL exists", () => {
+    expect(deploySectionAvailability(first)).toEqual({
       overview: true,
-      activity: false,
-      identity: false,
-      production: false,
-      history: false,
-      manage: false,
+      identity: true,
+      deployments: false,
+      resources: false,
     });
   });
-
-  test("activity appears as soon as a request starts, before a row arrives", () => {
-    expect(publishSectionAvailability(unpublished, true).activity).toBe(true);
+  test("deployment activity appears while a request waits for its first row", () => {
+    expect(deploySectionAvailability(first, true).deployments).toBe(true);
     expect(
-      publishSectionAvailability({ ...unpublished, inProgress: true }).activity,
+      deploySectionAvailability({ ...first, inProgress: true }).deployments,
     ).toBe(true);
-    expect(publishSectionAvailability(unpublished, true).history).toBe(false);
   });
-
-  test("a static live site keeps its details but has no resources group", () => {
-    expect(publishSectionAvailability(status)).toEqual({
+  test("static sites have deployments without an empty resources tab", () => {
+    expect(deploySectionAvailability(status)).toEqual({
       overview: true,
-      activity: true,
       identity: true,
-      production: false,
-      history: true,
-      manage: true,
+      deployments: true,
+      resources: false,
     });
     for (const resource of [
       "backendPublished",
       "databasePublished",
       "storagePublished",
-    ] as const) {
+    ] as const)
       expect(
-        publishSectionAvailability({ ...status, [resource]: true }).production,
+        deploySectionAvailability({ ...status, [resource]: true }).resources,
       ).toBe(true);
-    }
   });
-
-  test("offline sites retain their address and attempts without empty management", () => {
-    const available = publishSectionAvailability({
-      ...status,
-      live: null,
-      deployments: [{ ...deployment, status: "SUPERSEDED", isLive: false }],
-    });
-    expect(available.identity).toBe(true);
-    expect(available.activity).toBe(true);
-    expect(available.history).toBe(true);
-    expect(available.manage).toBe(false);
+  test("offline sites retain their identity and deployment history", () => {
+    expect(
+      deploySectionAvailability({
+        ...status,
+        live: null,
+        deployments: [{ ...deployment, status: "SUPERSEDED", isLive: false }],
+      }).deployments,
+    ).toBe(true);
   });
-
-  test("failure output remains available even before history refreshes", () => {
-    const available = publishSectionAvailability({
-      ...unpublished,
-      lastFailure: { ...failure, buildLog: "Build output" },
-    });
-    expect(available.activity).toBe(true);
-    expect(available.history).toBe(false);
+  test("a failure or schema review remains accessible before history refreshes", () => {
+    expect(
+      deploySectionAvailability({ ...first, lastFailure: failure }).deployments,
+    ).toBe(true);
+    expect(
+      deploySectionAvailability({
+        ...first,
+        lastFailure: {
+          ...failure,
+          schemaChanges: [{ kind: "add", message: "Review" }],
+        },
+      }).deployments,
+    ).toBe(true);
   });
 });
 
 describe("publishing status summary", () => {
   test("an update failure preserves the live status with a warning", () => {
-    const view = publishPresentation({ ...status, lastFailure: failure });
+    const view = deployPresentation({ ...status, lastFailure: failure });
     expect(view.label).toBe("Deployed");
     expect(view.tone).toBe("warning");
     expect(view.detail).toContain("previous version is still live");
   });
   test("a reserved URL and a failed first publish are never live", () => {
     expect(
-      publishPresentation({ ...status, live: null, deployments: [] }).label,
-    ).toBe("Publish");
+      deployPresentation({ ...status, live: null, deployments: [] }).label,
+    ).toBe("Deploy");
     expect(
-      publishPresentation({
+      deployPresentation({
         ...status,
         live: null,
         deployments: [],
         lastFailure: failure,
       }).label,
-    ).toBe("Publish failed");
+    ).toBe("Deploy failed");
   });
   test("suspension overrides activity, and offline retains its identity", () => {
     expect(
-      publishPresentation({
+      deployPresentation({
         ...status,
         inProgress: true,
         suspended: { reason: "Suspended" },
       }).label,
     ).toBe("Suspended");
     expect(
-      publishPresentation({
+      deployPresentation({
         ...status,
         live: null,
         deployments: [{ ...deployment, status: "SUPERSEDED", isLive: false }],
@@ -162,7 +155,7 @@ describe("publishing status summary", () => {
   });
   test("schema decisions are amber and do not imply a first publish is live", () => {
     expect(
-      publishPresentation({
+      deployPresentation({
         ...status,
         live: null,
         lastFailure: {
@@ -172,7 +165,7 @@ describe("publishing status summary", () => {
       }).label,
     ).toBe("Needs review");
     expect(
-      publishPresentation({ ...status, unpublishedChanges: 2 }).detail,
+      deployPresentation({ ...status, unpublishedChanges: 2 }).detail,
     ).toContain("2 files changed");
   });
 });
@@ -212,7 +205,7 @@ describe("reported deployment progress", () => {
     ).toEqual([
       {
         id: "stopped",
-        label: "Publishing stopped",
+        label: "Deployment stopped",
         detail: "Stopped",
         state: "failed",
       },
@@ -232,24 +225,51 @@ describe("reported deployment progress", () => {
 describe("publishing navigation", () => {
   test("shortcuts preserve unrelated project params and remove legacy flags", () => {
     const original = new URLSearchParams("publish=1&job=abc&storageEnv=LIVE");
-    const routed = projectToolParams(original, "publish", "history");
+    const routed = projectToolParams(original, "deploy", "deployments");
     expect(routed.get("tab")).toBe("tools");
-    expect(routed.get("tool")).toBe("publish");
-    expect(routed.get("publishSection")).toBe("history");
+    expect(routed.get("tool")).toBe("deploy");
+    expect(routed.get("deploySection")).toBe("deployments");
     expect(routed.get("job")).toBe("abc");
     expect(routed.has("publish")).toBe(false);
     expect(routed.has("storageEnv")).toBe(false);
     expect(original.get("publish")).toBe("1");
   });
+  test("old accordion links map into the combined workspace", () => {
+    expect(selectedProjectTool(new URLSearchParams("tool=publish"))).toBe(
+      "deploy",
+    );
+    for (const [old, section] of [
+      ["activity", "deployments"],
+      ["history", "deployments"],
+      ["identity", "identity"],
+      ["production", "resources"],
+      ["manage", "overview"],
+    ])
+      expect(
+        selectedDeploySection(new URLSearchParams(`publishSection=${old}`)),
+      ).toBe(section);
+    expect(
+      selectedDeploySection(
+        new URLSearchParams("deploySection=resources&publishSection=history"),
+      ),
+    ).toBe("resources");
+    expect(
+      projectToolParams(
+        new URLSearchParams("tool=publish&publishSection=identity"),
+        "deploy",
+        "identity",
+      ).toString(),
+    ).toBe("tool=deploy&tab=tools&deploySection=identity");
+  });
   test("legacy deep links and unknown values resolve safely", () => {
     expect(
       selectedProjectTool(new URLSearchParams("publish=1&tool=storage")),
-    ).toBe("publish");
+    ).toBe("deploy");
     expect(selectedProjectTool(new URLSearchParams("tool=unknown"))).toBe(
       "secrets",
     );
     expect(
-      selectedPublishSection(new URLSearchParams("publishSection=unknown")),
+      selectedDeploySection(new URLSearchParams("publishSection=unknown")),
     ).toBe("overview");
     expect(
       projectToolParams(

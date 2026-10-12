@@ -49,7 +49,7 @@ export function DeleteProjectDialog({
         onDeleted?.(id);
       },
       onError: (err) => {
-        // A 409 is the server saying why not yet (a publish or a run still in
+        // A 409 is the server saying why not yet (a deploy or a run still in
         // progress), in words meant for the owner.
         toast.error(
           err instanceof ApiError && err.status === 409 ? err.message : "Failed to delete project",

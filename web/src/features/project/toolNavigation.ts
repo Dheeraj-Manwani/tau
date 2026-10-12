@@ -1,55 +1,56 @@
 import { useSearchParams } from "react-router-dom";
 
-export type ProjectTool = "secrets" | "storage" | "publish" | "domains";
-export type PublishSection =
-  "overview" | "activity" | "identity" | "production" | "history" | "manage";
-const tools: ProjectTool[] = ["secrets", "storage", "publish", "domains"];
-const sections: PublishSection[] = [
+export type ProjectTool = "secrets" | "storage" | "deploy" | "domains";
+export type DeploySection =
+  "overview" | "identity" | "deployments" | "resources";
+const tools: ProjectTool[] = ["secrets", "storage", "deploy", "domains"];
+const sections: DeploySection[] = [
   "overview",
-  "activity",
   "identity",
-  "production",
-  "history",
-  "manage",
+  "deployments",
+  "resources",
 ];
 
 export function selectedProjectTool(params: URLSearchParams): ProjectTool {
   const value = params.get("tool") as ProjectTool;
-  return params.get("publish") === "1"
-    ? "publish"
-    : tools.includes(value)
-      ? value
-      : "secrets";
+  if (params.get("publish") === "1" || params.get("tool") === "publish")
+    return "deploy";
+  return tools.includes(value) ? value : "secrets";
 }
 
-export function selectedPublishSection(
-  params: URLSearchParams,
-): PublishSection {
-  const value = params.get("publishSection") as PublishSection;
-  return sections.includes(value) ? value : "overview";
+/** Old links still resolve into the new four-tab workspace. */
+export function selectedDeploySection(params: URLSearchParams): DeploySection {
+  const value = params.get("deploySection") ?? params.get("publishSection");
+  if (value === "activity" || value === "history") return "deployments";
+  if (value === "production") return "resources";
+  if (value === "manage") return "overview";
+  return sections.includes(value as DeploySection)
+    ? (value as DeploySection)
+    : "overview";
 }
 
 export function projectToolParams(
   params: URLSearchParams,
   tool: ProjectTool,
-  section?: PublishSection,
+  section?: DeploySection,
 ) {
   const next = new URLSearchParams(params);
   next.delete("publish");
+  next.delete("publishSection");
+  next.delete("deploySection");
   next.set("tab", "tools");
   next.set("tool", tool);
-  next.delete("publishSection");
-  if (tool === "publish" && section) next.set("publishSection", section);
+  if (tool === "deploy" && section) next.set("deploySection", section);
   if (tool !== "storage") next.delete("storageEnv");
   return next;
 }
 
-/** Shared by the topbar shortcuts and the tools themselves. No deployment mutation. */
+/** Navigation only; deployment mutations live in Tools → Deploy. */
 export function useProjectToolNavigation() {
   const [params, setParams] = useSearchParams();
   return (
     tool: ProjectTool,
-    section?: PublishSection,
+    section?: DeploySection,
     productionStorage = false,
   ) => {
     const next = projectToolParams(params, tool, section);

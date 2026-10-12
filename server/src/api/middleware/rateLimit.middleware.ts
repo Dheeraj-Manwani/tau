@@ -83,7 +83,7 @@ export const publishRateLimiter = rateLimit({
   keyGenerator: (req: Request) =>
     req.user?.id ?? ipKeyGenerator(req.ip ?? "unknown"),
   message: {
-    error: "Too many publishes. Please try again in a little while.",
+    error: "Too many deployments. Please try again in a little while.",
   },
 });
 

@@ -9,12 +9,12 @@ const base: QuotaInput = {
   alreadyLiveBackend: false,
 };
 
-test("a publish within both limits is allowed", () => {
+test("a deploy within both limits is allowed", () => {
   expect(quotaProblem(base)).toBeNull();
   expect(quotaProblem({ ...base, publishesToday: 4 })).toBeNull();
 });
 
-test("the daily publish limit refuses the next one with the count and the limit", () => {
+test("the daily deploy limit refuses the next one with the count and the limit", () => {
   const problem = quotaProblem({ ...base, publishesToday: 5 });
   expect(problem).toContain("5 times");
   expect(problem).toContain("(5)");
@@ -28,7 +28,7 @@ test("an app that already has its backend live takes no new slot", () => {
   expect(quotaProblem({ ...base, otherLiveBackends: 1, alreadyLiveBackend: true })).toBeNull();
 });
 
-test("a static publish is never held back by the backend limit", () => {
+test("a static deploy is never held back by the backend limit", () => {
   expect(quotaProblem({ ...base, needsBackend: false, otherLiveBackends: 3 })).toBeNull();
 });
 

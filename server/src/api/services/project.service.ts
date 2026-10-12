@@ -997,7 +997,7 @@ export async function stopProjectJobs(projectId: string, waitMs = DELETE_STOP_WA
   });
   // A publish cannot be stopped half way, and waiting one out is minutes.
   if (active.some((j) => j.type === JobType.DEPLOY && bus.isResident(j.id))) {
-    throw Errors.conflict("This project is being published. Wait for that to finish, then delete it.");
+    throw Errors.conflict("This project is being deployed. Wait for that to finish, then delete it.");
   }
   for (const job of active) {
     // Also for one still waiting its turn: the runner skips a job stopped before it started.

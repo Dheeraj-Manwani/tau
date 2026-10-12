@@ -152,7 +152,7 @@ export async function addDomain(projectId: string, userId: string, input: string
   // A domain serves the published app, and the routing record is built from the
   // app's own address. Before that there is nothing to point it at.
   if (!project.slug) {
-    throw Errors.conflict("Publish your app once before connecting a domain, so there is something to show on it.");
+    throw Errors.conflict("Deploy your app once before connecting a domain, so there is something to show on it.");
   }
 
   const held = await prisma.domain.count({ where: { projectId } });

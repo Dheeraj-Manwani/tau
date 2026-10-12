@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import {
   deployedAgo,
   historyLabel,
-  publishFailureError,
-  publishLabel,
+  deployFailureError,
+  deployLabel,
   type DeployStatus,
   type DeploymentSummary,
 } from "../src/features/project/deploy";
@@ -47,29 +47,29 @@ function status(over: Partial<DeployStatus> = {}): DeployStatus {
 
 describe("the line under the Publish button", () => {
   test("a live site is up to date or counts its changes", () => {
-    expect(publishLabel(status())).toBe("Up to date");
-    expect(publishLabel(status({ unpublishedChanges: 1 }))).toBe("1 change since last publish");
-    expect(publishLabel(status({ unpublishedChanges: 4 }))).toBe("4 changes since last publish");
+    expect(deployLabel(status())).toBe("Up to date");
+    expect(deployLabel(status({ unpublishedChanges: 1 }))).toBe("1 change since last deploy");
+    expect(deployLabel(status({ unpublishedChanges: 4 }))).toBe("4 changes since last deploy");
   });
 
   test("a project that never published is not called offline", () => {
-    expect(publishLabel(status({ slug: null, url: null, live: null, deployments: [] }))).toBe(
-      "Not published yet",
+    expect(deployLabel(status({ slug: null, url: null, live: null, deployments: [] }))).toBe(
+      "Not deployed yet",
     );
     // A first publish that failed never went live either.
     expect(
-      publishLabel(status({ live: null, deployments: [deployment({ status: "FAILED", canRollback: false })] })),
-    ).toBe("Not published yet");
+      deployLabel(status({ live: null, deployments: [deployment({ status: "FAILED", canRollback: false })] })),
+    ).toBe("Not deployed yet");
   });
 
   test("a site taken offline says so", () => {
-    expect(publishLabel(status({ live: null, deployments: [deployment()] }))).toBe("Offline");
+    expect(deployLabel(status({ live: null, deployments: [deployment()] }))).toBe("Offline");
   });
 
   // Suspended wins: nothing else about the site is true for a visitor.
   test("a suspended site says so whatever else is going on", () => {
-    expect(publishLabel(status({ suspended: { reason: null }, unpublishedChanges: 3 }))).toBe("Suspended");
-    expect(publishLabel(status({ suspended: { reason: "Reported." }, live: null }))).toBe("Suspended");
+    expect(deployLabel(status({ suspended: { reason: null }, unpublishedChanges: 3 }))).toBe("Suspended");
+    expect(deployLabel(status({ suspended: { reason: "Reported." }, live: null }))).toBe("Suspended");
   });
 });
 
@@ -79,7 +79,7 @@ describe("a row of the history", () => {
     expect(historyLabel(deployment())).toBe("Earlier version");
     expect(historyLabel(deployment({ canRollback: false }))).toBe("Expired");
     expect(historyLabel(deployment({ status: "FAILED", canRollback: false }))).toBe("Failed");
-    expect(historyLabel(deployment({ status: "BUILDING", canRollback: false }))).toBe("Publishing");
+    expect(historyLabel(deployment({ status: "BUILDING", canRollback: false }))).toBe("Deploying");
   });
 
   test("says when, briefly", () => {
@@ -100,16 +100,16 @@ describe("what Fix with tau sends for a failed publish", () => {
 
   test("marks it as a publish failure and carries the error and the log", () => {
     expect(
-      publishFailureError({ error, buildLog: "error TS1005: '}' expected.", changedSince: false }),
+      deployFailureError({ error, buildLog: "error TS1005: '}' expected.", changedSince: false }),
     ).toEqual({ source: "publish", message: error, frame: "error TS1005: '}' expected." });
   });
 
   test("leaves the log out when there is none", () => {
-    expect(publishFailureError({ error, buildLog: null, changedSince: false })).toEqual({
+    expect(deployFailureError({ error, buildLog: null, changedSince: false })).toEqual({
       source: "publish",
       message: error,
     });
-    expect(publishFailureError({ error, buildLog: "  \n", changedSince: false })).not.toHaveProperty("frame");
+    expect(deployFailureError({ error, buildLog: "  \n", changedSince: false })).not.toHaveProperty("frame");
   });
 
   // The API rejects a frame over 4000 characters, and the stored log is a
@@ -117,7 +117,7 @@ describe("what Fix with tau sends for a failed publish", () => {
   // The error a build stops on is at the end.
   test("keeps the end of a long log within the API's limit", () => {
     const buildLog = `…\n${"x".repeat(3_990)}THE ERROR`;
-    const sent = publishFailureError({ error, buildLog, changedSince: false });
+    const sent = deployFailureError({ error, buildLog, changedSince: false });
     expect(sent.frame).toHaveLength(4000);
     expect(sent.frame).toEndWith("THE ERROR");
   });

@@ -224,12 +224,12 @@ describe("adding a domain", () => {
     expect(domains).toHaveLength(0);
   });
 
-  test("a project that has not been published has nothing to show on a domain", async () => {
+  test("a project that has not been deployed has nothing to show on a domain", async () => {
     projects.length = 0;
     project({ slug: null });
     const err = await failure(() => addDomain("p1", "u1", "www.example.com"));
     expect(err.statusCode).toBe(409);
-    expect(err.message).toContain("Publish");
+    expect(err.message).toContain("Deploy");
   });
 
   test("a project may have five", async () => {

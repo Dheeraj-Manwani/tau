@@ -267,7 +267,7 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
           PUBLISH_FEE_MICRO,
           `publish-fee:${projectId}`,
           LedgerType.PUBLISH_FEE,
-          "first publish",
+          "first deploy",
           { enforce: env.CREDITS_ENFORCE, tx },
         );
         await tx.project.update({
@@ -351,7 +351,7 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
     const err: unknown =
       raised instanceof InsufficientCreditsError
         ? new DeployError(
-            `Not enough credits to publish. A project's first publish costs ${toCredits(PUBLISH_FEE_MICRO)} credits. Nothing was charged.`,
+            `Not enough credits to deploy. A project's first deploy costs ${toCredits(PUBLISH_FEE_MICRO)} credits. Nothing was charged.`,
           )
         : raised instanceof LambdaEnvError
           ? new DeployError(raised.message)
@@ -365,7 +365,7 @@ async function runDeployJob(payload: DispatchPayload): Promise<void> {
           status: DeploymentStatus.FAILED,
           error: isUserFacing
             ? err.message
-            : "Something went wrong while publishing. Try again.",
+            : "Something went wrong while deploying. Try again.",
           buildLog: isUserFacing ? (err.buildLog ?? null) : null,
           completedAt: new Date(),
         },
@@ -447,7 +447,7 @@ async function runJob(payload: DispatchPayload): Promise<void> {
       await markFailed(
         jobId,
         err,
-        err instanceof DeployError ? err.message : "Couldn't publish your app",
+        err instanceof DeployError ? err.message : "Couldn't deploy your app",
       );
     }
     return;

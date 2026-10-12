@@ -38,12 +38,12 @@ export interface QuotaInput {
 /** The sentence shown to the owner, or null when the publish may go ahead. */
 export function quotaProblem(q: QuotaInput): string | null {
   if (q.publishesToday >= q.limits.publishesPerAppPerDay) {
-    return `This app has been published ${q.publishesToday} times in the last 24 hours, which is the limit on your plan (${q.limits.publishesPerAppPerDay}). Try again later.`;
+    return `This app has been deployed ${q.publishesToday} times in the last 24 hours, which is the limit on your plan (${q.limits.publishesPerAppPerDay}). Try again later.`;
   }
   if (q.needsBackend && !q.alreadyLiveBackend && q.otherLiveBackends >= q.limits.backendApps) {
     return q.limits.backendApps === 1
-      ? "Your plan can keep one app with a server live at a time, and you already have one. Take that app offline, or upgrade, to publish this one."
-      : `Your plan can keep ${q.limits.backendApps} apps with a server live at a time, and you already have that many. Take one offline, or upgrade, to publish this one.`;
+      ? "Your plan can keep one app with a server live at a time, and you already have one. Take that app offline, or upgrade, to deploy this one."
+      : `Your plan can keep ${q.limits.backendApps} apps with a server live at a time, and you already have that many. Take one offline, or upgrade, to deploy this one.`;
   }
   return null;
 }

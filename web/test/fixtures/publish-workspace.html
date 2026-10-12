@@ -3,10 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Publish workspace verification</title>
+    <title>Deploy workspace verification</title>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="./publishWorkspaceHarness.tsx"></script>
+    <script type="module">
+      const params = new URLSearchParams(location.search);
+      if (params.get("viewport") === "phone") {
+        params.delete("viewport");
+        const frame = document.createElement("iframe");
+        frame.title = "Phone deployment workspace";
+        frame.src = `./publish-workspace.html?${params}`;
+        frame.style.cssText = "width:390px;max-width:100%;height:844px;border:0;display:block;margin:auto";
+        document.body.style.cssText = "margin:0;background:#080808";
+        document.getElementById("root").append(frame);
+      } else {
+        await import("./publishWorkspaceHarness.tsx");
+      }
+    </script>
   </body>
 </html>

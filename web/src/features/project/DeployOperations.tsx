@@ -17,19 +17,19 @@ import {
   errorMessage,
   formatBytes,
   historyLabel,
-  publishFailureError,
+  deployFailureError,
   useRollbackDeploy,
-  useUnpublish,
+  useTakeSiteOffline,
   type DeployFailure,
   type DeployStatus,
 } from "./deploy";
 
-export const publishButtonClass =
+export const deployButtonClass =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-silver-200 bg-space-overlay px-3 py-2 text-xs font-medium text-silver-900 transition-colors hover:bg-silver-200 focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-9";
-export const publishPrimaryClass =
+export const deployPrimaryClass =
   "border-transparent bg-blue-500 text-blue-900 hover:bg-blue-400";
 
-export function PublishNotice({
+export function DeployNotice({
   children,
   tone = "warning",
 }: {
@@ -56,7 +56,7 @@ export function PublishNotice({
   );
 }
 
-export function PublishFailure({
+export function DeployFailureNotice({
   projectId,
   failure,
   blocked,
@@ -73,17 +73,17 @@ export function PublishFailure({
   const setChatOpen = useProjectStore((s) => s.setChatOpen);
   const review = !!failure.schemaChanges?.length && !failure.changedSince;
   return (
-    <PublishNotice tone={review || failure.changedSince ? "warning" : "error"}>
+    <DeployNotice tone={review || failure.changedSince ? "warning" : "error"}>
       <p className="font-medium">
         {review
           ? "Review database changes"
           : failure.changedSince
-            ? "The project changed since the last failed publish"
-            : "The last publish did not go live"}
+            ? "The project changed since the last failed deployment"
+            : "The last deployment did not go live"}
       </p>
       <p className="mt-1">
         {failure.changedSince
-          ? "Publish the current version to try the updated files."
+          ? "Deploy the current version to try the updated files."
           : failure.error}
       </p>
       {review && (
@@ -101,9 +101,9 @@ export function PublishFailure({
             type="button"
             disabled={confirmDisabled}
             onClick={onConfirmSchema}
-            className={cn(publishButtonClass, publishPrimaryClass, "mt-3")}
+            className={cn(deployButtonClass, deployPrimaryClass, "mt-3")}
           >
-            Confirm changes & publish
+            Confirm changes & deploy
           </button>
         </>
       )}
@@ -115,13 +115,13 @@ export function PublishFailure({
             onClick={() => {
               if (
                 send(
-                  "Publishing failed. Fix what stops the production build so the app can be published.",
-                  { buildError: publishFailureError(failure) },
+                  "Deploying failed. Fix what stops the production build so the app can be deployed.",
+                  { buildError: deployFailureError(failure) },
                 )
               )
                 setChatOpen(true);
             }}
-            className={cn(publishButtonClass, publishPrimaryClass, "mt-3")}
+            className={cn(deployButtonClass, deployPrimaryClass, "mt-3")}
           >
             {isSending ? (
               <LoaderCircleIcon className="size-3.5 animate-spin" />
@@ -138,11 +138,11 @@ export function PublishFailure({
           )}
         </>
       )}
-    </PublishNotice>
+    </DeployNotice>
   );
 }
 
-export function PublishHistory({
+export function DeploymentHistory({
   projectId,
   status,
   blocked,
@@ -200,7 +200,7 @@ export function PublishHistory({
                   type="button"
                   disabled={blocked || rollback.isPending}
                   onClick={() => setRestoring(deployment.id)}
-                  className={publishButtonClass}
+                  className={deployButtonClass}
                 >
                   {status.live ? "Roll back" : "Restore"}
                 </button>
@@ -228,7 +228,7 @@ export function PublishHistory({
                   deployment.status === "SUPERSEDED" && (
                     <p>
                       This version's files are no longer available to restore.
-                      Publish the current project instead.
+                      Deploy the current project instead.
                     </p>
                   )}
               </div>
@@ -250,7 +250,7 @@ export function PublishHistory({
               type="button"
               disabled={rollback.isPending}
               onClick={() => setRestoring(null)}
-              className={publishButtonClass}
+              className={deployButtonClass}
             >
               Cancel
             </button>
@@ -262,7 +262,7 @@ export function PublishHistory({
                   onSuccess: () => setRestoring(null),
                 })
               }
-              className={cn(publishButtonClass, publishPrimaryClass)}
+              className={cn(deployButtonClass, deployPrimaryClass)}
             >
               {rollback.isPending ? "Restoring…" : "Restore this version"}
             </button>
@@ -286,7 +286,7 @@ export function TakeOffline({
   blocked: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const unpublish = useUnpublish(projectId);
+  const takeOffline = useTakeSiteOffline(projectId);
   return (
     <div>
       <p className="text-xs leading-relaxed text-silver-600">
@@ -297,7 +297,7 @@ export function TakeOffline({
           type="button"
           disabled={blocked}
           onClick={() => setConfirming(true)}
-          className={cn(publishButtonClass, "mt-3 text-red-300")}
+          className={cn(deployButtonClass, "mt-3 text-red-300")}
         >
           Take site offline
         </button>
@@ -308,29 +308,32 @@ export function TakeOffline({
           </p>
           <p className="mt-1 text-xs text-silver-600">
             Visitors will no longer see your app. You can restore an available
-            version or publish again.
+            version or deploy again.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={unpublish.isPending}
+              disabled={takeOffline.isPending}
               onClick={() => setConfirming(false)}
-              className={publishButtonClass}
+              className={deployButtonClass}
             >
               Keep online
             </button>
             <button
               type="button"
-              disabled={blocked || unpublish.isPending}
-              onClick={() => unpublish.mutate()}
-              className={cn(publishButtonClass, "text-red-300")}
+              disabled={blocked || takeOffline.isPending}
+              onClick={() => takeOffline.mutate()}
+              className={cn(deployButtonClass, "text-red-300")}
             >
-              {unpublish.isPending ? "Taking offline…" : "Take offline"}
+              {takeOffline.isPending ? "Taking offline…" : "Take offline"}
             </button>
           </div>
-          {unpublish.isError && (
+          {takeOffline.isError && (
             <p role="alert" className="mt-2 text-xs text-red-300">
-              {errorMessage(unpublish.error, "Couldn't take the site offline.")}
+              {errorMessage(
+                takeOffline.error,
+                "Couldn't take the site offline.",
+              )}
             </p>
           )}
         </div>
@@ -339,7 +342,7 @@ export function TakeOffline({
   );
 }
 
-export function PublishBadge() {
+export function DeployBadge() {
   const { data: balance } = useBalance();
   const openUpgrade = useUpgradeModalStore((s) => s.openModal);
   if (balance?.plan !== "FREE") return null;
@@ -371,7 +374,7 @@ export function RefreshSecrets({
       <button
         type="button"
         disabled={busy || blocked}
-        className={publishButtonClass}
+        className={deployButtonClass}
         onClick={async () => {
           if (busy || blocked) return;
           setBusy(true);
@@ -430,7 +433,7 @@ export function ServerLogs({ projectId }: { projectId: string }) {
           setOpen(!open);
           if (!open && logs === null) void load();
         }}
-        className={publishButtonClass}
+        className={deployButtonClass}
       >
         Server logs
         <ChevronDownIcon className={cn("size-3.5", open && "rotate-180")} />
@@ -453,7 +456,7 @@ export function ServerLogs({ projectId }: { projectId: string }) {
             type="button"
             disabled={busy}
             onClick={() => void load()}
-            className={cn(publishButtonClass, "mt-2")}
+            className={cn(deployButtonClass, "mt-2")}
           >
             {busy ? "Refreshing…" : "Refresh logs"}
           </button>
@@ -477,7 +480,7 @@ export function ExportData({
       <button
         type="button"
         disabled={busy || blocked}
-        className={publishButtonClass}
+        className={deployButtonClass}
         onClick={async () => {
           if (busy || blocked) return;
           setBusy(true);

@@ -124,7 +124,7 @@ export default function ProjectDetail() {
 
 /**
  * The project's public address and the one thing an operator does to it:
- * suspend it. Shown for a project that has never published too, so "is there
+ * suspend it. Shown for a project that has never deployed too, so "is there
  * anything public here" has an answer either way.
  */
 function PublishedSiteCard({ project, onChange }: { project: ProjectDetailData["project"]; onChange: () => void }) {
@@ -133,18 +133,18 @@ function PublishedSiteCard({ project, onChange }: { project: ProjectDetailData["
     ? ({ tone: "critical", text: "Suspended" } as const)
     : project.liveDeploymentId
       ? ({ tone: "good", text: "Live" } as const)
-      : ({ tone: "neutral", text: project.slug ? "Offline" : "Never published" } as const);
+      : ({ tone: "neutral", text: project.slug ? "Offline" : "Never deployed" } as const);
 
   return (
     <Card
-      title="Published site"
+      title="Deployed site"
       action={
         project.slug &&
         (suspended ? (
           <ConfirmButton
             label="Lift suspension"
             title="Put this site back?"
-            description="The address goes back to serving whatever build was live when it was suspended, and the owner can publish again. Nothing was deleted, so there is nothing to restore."
+            description="The address goes back to serving whatever build was live when it was suspended, and the owner can deploy again. Nothing was deleted, so there is nothing to restore."
             variant="primary"
             closeOnSuccess
             onConfirm={async () => {
@@ -173,7 +173,7 @@ function PublishedSiteCard({ project, onChange }: { project: ProjectDetailData["
   );
 }
 
-/** The reason is required: the owner reads it in their Publish panel. */
+/** The reason is required: the owner reads it in their Deploy panel. */
 function SuspendSiteButton({ projectId, onDone }: { projectId: string; onDone: () => void }) {
   return (
     <ReasonButton
@@ -181,11 +181,11 @@ function SuspendSiteButton({ projectId, onDone }: { projectId: string; onDone: (
       title="Suspend this site?"
       description={
         <>
-          Every page at its address shows &quot;This site has been suspended&quot; within seconds, and the owner cannot publish or roll back
+          Every page at its address shows &quot;This site has been suspended&quot; within seconds, and the owner cannot deploy or roll back
           until it is lifted. Its stored files are suspended with it: no uploads and no download addresses. Nothing is deleted.
         </>
       }
-      hint="Reason (the owner sees this in their Publish panel)"
+      hint="Reason (the owner sees this in their Deploy panel)"
       placeholder="e.g. This page imitates a bank sign-in form."
       confirmLabel="Suspend site"
       busyLabel="Suspending…"

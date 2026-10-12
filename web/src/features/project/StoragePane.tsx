@@ -243,7 +243,7 @@ function ClearPreviewDialog({
           <AlertDialogTitle className="text-silver-900">Clear preview files?</AlertDialogTitle>
           <AlertDialogDescription className="text-silver-600">
             {count === 1 ? "The 1 file" : `All ${count} files`} uploaded while testing the app in the preview will be
-            permanently deleted. Files on your published app are not touched.
+            permanently deleted. Files on your deployed app are not touched.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="border-t border-border pt-4">
@@ -285,7 +285,7 @@ function RotateKeyDialog({
           <AlertDialogTitle className="text-silver-900">Replace the storage key?</AlertDialogTitle>
           <AlertDialogDescription className="text-silver-600">
             {env === "LIVE"
-              ? "Your published app gets a new key within a few seconds, without being rebuilt. "
+              ? "Your deployed app gets a new key within a few seconds, without being rebuilt. "
               : "Your app gets a new key and its server restarts to pick it up. "}
             The old key keeps working for 24 hours, then stops. Do this if you think the key has leaked. Your files are
             not touched.
@@ -402,7 +402,7 @@ export function StoragePane({ projectId }: { projectId: string }) {
               <span>
                 Files your app keeps for its users. They stay when the preview is rebuilt, and only your app&apos;s
                 server can read them. Files uploaded while testing in the preview are separate from the ones on your
-                published app.
+                deployed app.
               </span>
             </p>
 
@@ -507,7 +507,7 @@ export function StoragePane({ projectId }: { projectId: string }) {
                         ? "Try a different folder."
                         : env === "PREVIEW"
                           ? "Files uploaded while you test the app will show up here."
-                          : "Files uploaded on your published app will show up here."}
+                          : "Files uploaded on your deployed app will show up here."}
                     </p>
                   </div>
                 ) : (

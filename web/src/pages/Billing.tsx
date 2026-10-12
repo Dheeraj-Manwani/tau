@@ -90,7 +90,7 @@ const LEDGER_LABELS: Record<string, string> = {
   // actively misleading on a bill.
   GATEWAY_DEBIT: "App AI usage",
   // Not a model run: a flat price for putting an app online, or for its logo.
-  PUBLISH_FEE: "Publish fee",
+  PUBLISH_FEE: "Deploy fee",
   LOGO_FEE: "App logo",
   REFUND: "Refund",
   EXPIRE: "Expired credits",
@@ -231,7 +231,7 @@ function BalanceCard() {
 const PRO_FEATURES = [
   "5,000 credits per month",
   "No tau badge on your previews and sites",
-  "Generate logos for your published apps with AI",
+  "Generate logos for your deployed apps with AI",
   "Your builds move to the front",
   "Credits reset monthly",
 ];

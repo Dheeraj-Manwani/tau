@@ -6,9 +6,9 @@ import { cn } from "@/src/lib/utils";
 import { DomainsPane } from "@/src/features/project/DomainsPane";
 import { KeysPane } from "@/src/features/project/KeysPane";
 import { StoragePane } from "@/src/features/project/StoragePane";
-import { PublishPane } from "./PublishPane";
+import { DeployPane } from "./DeployPane";
 import { useDeployStatus } from "./deploy";
-import { publishPresentation, publishToneClass } from "./publishPresentation";
+import { deployPresentation, deployToneClass } from "./deployPresentation";
 import { selectedProjectTool, useProjectToolNavigation, type ProjectTool } from "./toolNavigation";
 
 interface ToolEntry {
@@ -23,7 +23,7 @@ interface ToolEntry {
 const TOOLS: ToolEntry[] = [
   { id: "secrets", label: "Secrets", icon: LockIcon, group: "Setup", pane: KeysPane },
   { id: "storage", label: "Storage", icon: HardDriveIcon, group: "Setup", pane: StoragePane },
-  { id: "publish", label: "Publish", icon: RocketIcon, group: "Delivery", pane: PublishPane },
+  { id: "deploy", label: "Deploy", icon: RocketIcon, group: "Delivery", pane: DeployPane },
   { id: "domains", label: "Domains", icon: GlobeIcon, group: "Delivery", pane: DomainsPane },
 ];
 
@@ -65,7 +65,7 @@ export function ToolsPane({ projectId }: { projectId: string }) {
               <item.icon className="size-4 shrink-0" />
               {item.label}
               {item.id === "domains" && domainsLocked && <LockIcon aria-hidden="true" className="ml-auto size-3.5 shrink-0 text-[var(--silver-600)]" />}
-              {item.id === "publish" && deploy && <span aria-hidden="true" className={cn("ml-auto size-1.5 rounded-full", publishToneClass[publishPresentation(deploy).tone])} />}
+              {item.id === "deploy" && deploy && <span aria-hidden="true" className={cn("ml-auto size-1.5 rounded-full", deployToneClass[deployPresentation(deploy).tone])} />}
             </button>
           </div>
         ))}

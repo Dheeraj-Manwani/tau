@@ -303,7 +303,7 @@ export async function downloadProjectZip(projectId: string): Promise<void> {
 export function useProjectFile(
   projectId: string | undefined,
   path: string,
-  options: { enabled: boolean },
+  options: { enabled: boolean; staleTime?: number },
 ) {
   return useQuery({
     queryKey: projectKeys.file(projectId ?? "", path),
@@ -314,7 +314,7 @@ export function useProjectFile(
         )
         .then((r) => r.data),
     enabled: Boolean(projectId && path) && options.enabled,
-    staleTime: Infinity,
+    staleTime: options.staleTime ?? Infinity,
     retry: false,
   });
 }

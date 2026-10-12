@@ -523,7 +523,7 @@ function Business({ d }: { d: OverviewData }) {
         <Stat label="Promo redemptions" value={int(d.business.promoRedemptions7d)} sub="last 7 days" />
       </StatGrid>
       <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Card title="Publishes (24h)">{counts(d.deploys24h)}</Card>
+        <Card title="Deployments (24h)">{counts(d.deploys24h)}</Card>
         <Card title="Attachments (24h)">{counts(d.attachments24h)}</Card>
         <Card title="Subscriptions">{counts(d.business.subscriptions)}</Card>
         <Card title="Credit ledger (24h)">

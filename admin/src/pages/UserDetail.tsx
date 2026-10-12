@@ -149,7 +149,7 @@ function Body({ d, onChange }: { d: UserDetailData; onChange: () => void }) {
       </div>
 
       <Section title="Projects" description="Most recently active first">
-        <Table head={["Project", "Template", "Sandbox", "Published", "Updated"]} empty="No projects.">
+        <Table head={["Project", "Template", "Sandbox", "Deployed", "Updated"]} empty="No projects.">
           {d.projectList.map((p) => (
             <tr key={p.id}>
               <Td>
@@ -198,7 +198,7 @@ function Body({ d, onChange }: { d: UserDetailData; onChange: () => void }) {
             ))}
           </Table>
         </Section>
-        <Section title="Deployed-app AI usage (7d)" description="Spend from their published apps through the AI gateway">
+        <Section title="Deployed-app AI usage (7d)" description="Spend from their deployed apps through the AI gateway">
           <Table head={["Alias", "Requests", "Tokens", "Credits"]} empty="No gateway traffic this week.">
             {d.gatewaySpend7dByAlias.map((g) => (
               <tr key={g.alias}>

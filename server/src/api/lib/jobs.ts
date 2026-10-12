@@ -88,7 +88,7 @@ export async function terminateStrandedJob(
       },
       data: {
         status: DeploymentStatus.FAILED,
-        error: "This publish stopped unexpectedly. Try publishing again.",
+        error: "This deployment stopped unexpectedly. Try deploying again.",
         completedAt: new Date(),
       },
     })

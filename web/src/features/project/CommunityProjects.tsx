@@ -34,7 +34,7 @@ export function CommunityProjects() {
         </div>
         <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground sm:flex">
           <span className="size-1.5 rounded-full bg-emerald-400" />
-          Published sites
+          Deployed sites
         </span>
       </div>
       {isLoading ? (
@@ -80,7 +80,7 @@ export function CommunityProjects() {
               Good things are taking shape.
             </p>
             <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">
-              As builders refine and publish their projects, you’ll find a
+              As builders refine and deploy their projects, you’ll find a
               selection of their live sites here.
             </p>
           </div>
@@ -132,7 +132,7 @@ export function CommunityProjects() {
         </div>
       )}
       <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
-        Featuring live sites published in the last 90 days, shaped through at
+        Featuring live sites deployed in the last 90 days, shaped through at
         least three build prompts.
       </p>
     </section>

@@ -136,7 +136,7 @@ async function runBuild(
 
   if (!(await hasBuildScript(sandbox))) {
     throw new DeployError(
-      "This project has no build script, so there is nothing to publish yet.",
+      "This project has no build script, so there is nothing to deploy yet.",
     );
   }
 
@@ -152,7 +152,7 @@ async function runBuild(
   const retry = await run(sandbox, "bunx vite build", timeoutMs);
   if (retry.exitCode !== 0) {
     throw new DeployError(
-      "The build failed. Ask the agent to fix the errors, then publish again.",
+      "The build failed. Ask the agent to fix the errors, then deploy again.",
       tail(`${first.output}\n${retry.output}`),
     );
   }
@@ -161,7 +161,7 @@ async function runBuild(
   return {
     log: tail(`${first.output}\n${retry.output}`),
     warning:
-      "Published, but the project's type check failed. The app was bundled anyway — the errors are worth fixing.",
+      "Deployed, but the project's type check failed. The app was bundled anyway — the errors are worth fixing.",
   };
 }
 

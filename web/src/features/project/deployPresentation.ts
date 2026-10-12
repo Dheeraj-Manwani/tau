@@ -4,7 +4,7 @@ import type {
   DeployStatus,
 } from "./deploy";
 
-export type PublishTone = "live" | "warning" | "busy" | "error" | "neutral";
+export type DeployTone = "live" | "warning" | "busy" | "error" | "neutral";
 const active: DeploymentStatus[] = [
   "QUEUED",
   "VALIDATING",
@@ -19,27 +19,25 @@ export function activeDeployment(status: DeployStatus) {
   );
 }
 
-/** Show a group only when it has publishing details or an action to offer. */
-export function publishSectionAvailability(
+/** Identity is editable before first deployment; empty data tabs stay hidden. */
+export function deploySectionAvailability(
   status: DeployStatus,
-  requestingPublish = false,
+  requestingDeploy = false,
 ) {
   return {
     overview: true,
-    activity: !!(
+    deployments: !!(
       status.deployments.length ||
       status.live ||
       status.inProgress ||
-      requestingPublish ||
-      status.lastFailure?.buildLog
+      requestingDeploy ||
+      status.lastFailure
     ),
-    identity: !!(status.primaryUrl || status.url),
-    production:
+    identity: true,
+    resources:
       status.backendPublished ||
       status.databasePublished ||
       status.storagePublished,
-    history: status.deployments.length > 0,
-    manage: !!(status.live || status.suspended),
   };
 }
 
@@ -52,20 +50,20 @@ export const stageLabels: Partial<Record<DeploymentStatus, string>> = {
   VERIFYING: "Verify server",
 };
 
-export function publishPresentation(status: DeployStatus) {
+export function deployPresentation(status: DeployStatus) {
   if (status.suspended)
     return {
       label: "Suspended",
-      tone: "error" as PublishTone,
+      tone: "error" as DeployTone,
       detail:
         status.suspended.reason ??
-        "Visitors see a suspension notice. Publishing is unavailable.",
+        "Visitors see a suspension notice. Deployment is unavailable.",
     };
   if (status.inProgress) {
     const attempt = activeDeployment(status);
     return {
-      label: "Publishing…",
-      tone: "busy" as PublishTone,
+      label: "Deploying…",
+      tone: "busy" as DeployTone,
       detail: `${attempt ? stageLabels[attempt.status] : "Waiting to start"}…`,
     };
   }
@@ -78,7 +76,7 @@ export function publishPresentation(status: DeployStatus) {
       label: "Deployed",
       tone: (status.lastFailure || status.live.error || n > 0
         ? "warning"
-        : "live") as PublishTone,
+        : "live") as DeployTone,
       detail: review
         ? "Database changes need your review. Your previous version is live."
         : status.lastFailure
@@ -86,38 +84,38 @@ export function publishPresentation(status: DeployStatus) {
           : status.live.error
             ? status.live.error
             : n > 0
-              ? `${n} file${n === 1 ? "" : "s"} changed since last publish.`
+              ? `${n} file${n === 1 ? "" : "s"} changed since last deployment.`
               : "Your app is up to date.",
     };
   }
   if (review)
     return {
       label: "Needs review",
-      tone: "warning" as PublishTone,
+      tone: "warning" as DeployTone,
       detail:
-        "Review the database changes before publishing. No version is live.",
+        "Review the database changes before deploying. No version is live.",
     };
   const offline = status.deployments.some((d) => d.status === "SUPERSEDED");
   if (offline)
     return {
       label: "Offline",
-      tone: "neutral" as PublishTone,
+      tone: "neutral" as DeployTone,
       detail: "Your site is offline. The public address stays reserved.",
     };
   if (status.lastFailure)
     return {
-      label: "Publish failed",
-      tone: "error" as PublishTone,
-      detail: "Publishing failed. No version is live yet.",
+      label: "Deploy failed",
+      tone: "error" as DeployTone,
+      detail: "Deploying failed. No version is live yet.",
     };
   return {
-    label: "Publish",
-    tone: "neutral" as PublishTone,
+    label: "Deploy",
+    tone: "neutral" as DeployTone,
     detail: "Give your app a public address anyone can open.",
   };
 }
 
-export const publishToneClass: Record<PublishTone, string> = {
+export const deployToneClass: Record<DeployTone, string> = {
   live: "bg-emerald-400",
   warning: "bg-amber-400",
   busy: "bg-blue-400",
@@ -125,7 +123,7 @@ export const publishToneClass: Record<PublishTone, string> = {
   neutral: "bg-silver-400",
 };
 
-export interface PublishStep {
+export interface DeployStep {
   id: string;
   label: string;
   detail: string;
@@ -136,12 +134,12 @@ export interface PublishStep {
 export function deploymentSteps(
   deployment: DeploymentSummary,
   needsReview = false,
-): PublishStep[] {
+): DeployStep[] {
   if (deployment.status === "FAILED")
     return [
       {
         id: "stopped",
-        label: needsReview ? "Review database changes" : "Publishing stopped",
+        label: needsReview ? "Review database changes" : "Deployment stopped",
         detail: deployment.error ?? "This attempt did not go live.",
         state: needsReview ? "review" : "failed",
       },
@@ -153,7 +151,7 @@ export function deploymentSteps(
     {
       id: "QUEUED",
       label: "Waiting to start",
-      detail: "Your publish request is queued for the publisher.",
+      detail: "Your deploy request is queued for the deployment worker.",
     },
     ...(fullstack
       ? [
@@ -178,7 +176,7 @@ export function deploymentSteps(
       detail:
         deployment.fileCount > 0
           ? `Uploading ${deployment.fileCount} production files.`
-          : "Copying the production files to your published app.",
+          : "Copying the production files to your deployed app.",
     },
     ...(fullstack
       ? [

@@ -47,7 +47,7 @@ beforeEach(() => {
 const run = (clientTs: string | null, confirmed = false) => prepareDatabase(sandboxWith(clientTs), { projectId: "p1", jobId: "j", confirmed });
 
 describe("prepareDatabase", () => {
-  test("a first publish creates the database and produces a production client", async () => {
+  test("a first deploy creates the database and produces a production client", async () => {
     const r = await run(clientWith(V1));
     expect(calls).toEqual(["ensure"]);
     expect(r.url).toBe("postgres://x");
@@ -71,7 +71,7 @@ describe("prepareDatabase", () => {
     expect(calls).toEqual(["ensure"]);
   });
 
-  test("a change that cannot be applied stops the publish before anything is created, listing it", async () => {
+  test("a change that cannot be applied stops the deploy before anything is created, listing it", async () => {
     live = liveFrom(V1);
     const err = await run(clientWith(V1.replace("title text NOT NULL", "name text NOT NULL"))).catch((e) => e);
     expect(err).toBeInstanceOf(SchemaChangeRequired);

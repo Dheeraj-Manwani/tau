@@ -40,7 +40,7 @@ export default function Jobs() {
 
   return (
     <>
-      <PageHeader title="Jobs" subtitle="Builds, previews and publishes" fetchedAt={fetchedAt} loading={loading} onRefresh={() => reload()}>
+      <PageHeader title="Jobs" subtitle="Builds, previews and deployments" fetchedAt={fetchedAt} loading={loading} onRefresh={() => reload()}>
         <select className={inputClass} value={status} onChange={(e) => set("status", e.target.value)} aria-label="Status">
           {STATUSES.map(([value, text]) => (
             <option key={value} value={value}>

@@ -136,7 +136,7 @@ export function validateLambdaEnv(vars: Record<string, string>): void {
   const bad = Object.keys(vars).filter((n) => n.startsWith("AWS_") || RESERVED_ENV.has(n));
   if (bad.length > 0) {
     throw new LambdaEnvError(
-      `${bad.join(", ")} can't be used as ${bad.length === 1 ? "a key name" : "key names"} in a published app: AWS reserves ${bad.length === 1 ? "it" : "them"}. Rename ${bad.length === 1 ? "it" : "them"} and update where your server reads ${bad.length === 1 ? "it" : "them"}.`,
+      `${bad.join(", ")} can't be used as ${bad.length === 1 ? "a key name" : "key names"} in a deployed app: AWS reserves ${bad.length === 1 ? "it" : "them"}. Rename ${bad.length === 1 ? "it" : "them"} and update where your server reads ${bad.length === 1 ? "it" : "them"}.`,
     );
   }
   const total = Object.entries(vars).reduce((sum, [k, v]) => sum + Buffer.byteLength(k) + Buffer.byteLength(v), 0);
@@ -528,7 +528,7 @@ export async function refreshBackendEnv(args: { projectId: string; deploymentId:
   const alias = aliasName(args.deploymentId);
 
   const current = (await api.listAliases(fn)).find((a) => a.alias === alias);
-  if (!current) throw new Error("This version's server is no longer deployed. Publish again.");
+  if (!current) throw new Error("This version's server is no longer deployed. Deploy again.");
   const role = await api.getRole(fn);
   if (!role) throw new Error(`The function ${fn} exists but its role does not.`);
 

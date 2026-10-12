@@ -44,21 +44,21 @@ export function DomainsPane({ projectId }: { projectId: string }) {
   const add = useAddDomain(projectId);
   const navigateToTool = useProjectToolNavigation();
 
-  const published = !!deploy?.live;
+  const deployed = !!deploy?.live;
   const connect = () => {
     const hostname = input.trim();
-    if (!published || !hostname || add.isPending) return;
+    if (!deployed || !hostname || add.isPending) return;
     add.mutate(hostname, { onSuccess: () => setInput("") });
   };
 
   return (
     <div className="relative h-full overflow-hidden">
       <div
-        inert={!published || undefined}
-        aria-hidden={!published || undefined}
+        inert={!deployed || undefined}
+        aria-hidden={!deployed || undefined}
         className={cn(
           "h-full overflow-y-auto p-4 sm:p-6",
-          !published && "pointer-events-none select-none blur-[2px]",
+          !deployed && "pointer-events-none select-none blur-[2px]",
         )}
       >
         <div className="mx-auto max-w-2xl space-y-5">
@@ -89,12 +89,12 @@ export function DomainsPane({ projectId }: { projectId: string }) {
               aria-label="Domain"
               spellCheck={false}
               autoCapitalize="none"
-              disabled={!published}
+              disabled={!deployed}
               className="min-w-0 flex-1 rounded-lg border border-[var(--silver-200)] bg-[var(--space-surface)] px-3 py-2 text-sm text-[var(--silver-900)] outline-none placeholder:text-[var(--silver-600)] focus:border-brand disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={!published || !input.trim() || add.isPending}
+              disabled={!deployed || !input.trim() || add.isPending}
               className="flex shrink-0 items-center gap-1.5 rounded-lg bg-brand px-3.5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {add.isPending && (
@@ -128,7 +128,7 @@ export function DomainsPane({ projectId }: { projectId: string }) {
           <Guidance />
         </div>
       </div>
-      {!published && (
+      {!deployed && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/45 p-6">
           <div className="max-w-xs text-center">
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-[var(--silver-900)] shadow-sm">
@@ -144,10 +144,10 @@ export function DomainsPane({ projectId }: { projectId: string }) {
             </div>
             <button
               type="button"
-              onClick={() => navigateToTool("publish", "overview")}
+              onClick={() => navigateToTool("deploy", "overview")}
               className="mt-5 rounded-lg bg-brand px-3.5 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand/90"
             >
-              Open Publish
+              Open Deploy
             </button>
           </div>
         </div>

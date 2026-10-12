@@ -316,7 +316,7 @@ beforeEach(() => {
 });
 
 describe("rollback", () => {
-  test("reports each deployment's target for the publishing timeline", async () => {
+  test("reports each deployment's target for the deploying timeline", async () => {
     row("new").target = "FULLSTACK";
     row("old").target = "STATIC";
     const status = await getDeployStatus(PROJECT, OWNER);
@@ -389,7 +389,7 @@ describe("rollback", () => {
     expect(err.statusCode).toBe(409);
   });
 
-  test("refuses while a publish or an agent run is in progress", async () => {
+  test("refuses while a deploy or an agent run is in progress", async () => {
     for (const type of ["DEPLOY", "GENERATION"]) {
       tables.job.length = 0;
       tables.job.push({ id: "j1", projectId: PROJECT, type, status: "RUNNING" });
@@ -424,7 +424,7 @@ describe("take offline", () => {
 
     const res = await visit();
     expect(res.status).toBe(404);
-    expect(await res.text()).toContain("No app is published at this address yet.");
+    expect(await res.text()).toContain("No app is deployed at this address yet.");
   });
 
   test("the build that was serving can be put back without a rebuild", async () => {
@@ -446,7 +446,7 @@ describe("take offline", () => {
   });
 
   // A publish would move the pointer straight back; an agent run would not.
-  test("refuses during a publish, but not during an agent run", async () => {
+  test("refuses during a deploy, but not during an agent run", async () => {
     tables.job.push({ id: "j1", projectId: PROJECT, type: "DEPLOY", status: "RUNNING" });
     const err = await failure(() => unpublish(PROJECT, OWNER));
     expect(err.statusCode).toBe(409);
@@ -558,7 +558,7 @@ describe("a suspended site", () => {
     expect(project().siteSuspendedReason).toBeNull();
   });
 
-  test("the owner is told why, and cannot publish or roll back", async () => {
+  test("the owner is told why, and cannot deploy or roll back", async () => {
     await suspendProjectSite(PROJECT, "Phishing page reported by a visitor.");
 
     const status = await getDeployStatus(PROJECT, OWNER);
@@ -592,13 +592,13 @@ describe("a suspended site", () => {
   });
 });
 
-describe("who may publish", () => {
+describe("who may deploy", () => {
   test("an unverified email is refused before anything is created", async () => {
     tables.user[0]!.emailVerifiedAt = null;
 
     const err = await failure(() => requestDeploy(PROJECT, OWNER));
     expect(err.statusCode).toBe(403);
-    expect(err.message).toBe("Verify your email to publish.");
+    expect(err.message).toBe("Verify your email to deploy.");
     expect(tables.job).toHaveLength(0);
     expect(tables.deployment).toHaveLength(2);
     expect(enqueued).toHaveLength(0);
@@ -629,7 +629,7 @@ describe("the status the panel reads", () => {
     expect((await getDeployStatus(PROJECT, OWNER)).unpublishedChanges).toBe(2);
   });
 
-  test("a fresh publish includes preparation changes in its source version", async () => {
+  test("a fresh deploy includes preparation changes in its source version", async () => {
     const result = await requestDeploy(PROJECT, OWNER);
     expect(row(result.deploymentId).sequence).toBe(1);
     await processJob({
@@ -672,13 +672,13 @@ describe("the status the panel reads", () => {
       status: "FAILED",
       supersededAt: null,
       createdAt: new Date(),
-      error: "The build failed. Ask the agent to fix the errors, then publish again.",
+      error: "The build failed. Ask the agent to fix the errors, then deploy again.",
       buildLog: "src/App.tsx(3,1): error TS1005: '}' expected.",
     });
 
     const status = await getDeployStatus(PROJECT, OWNER);
     expect(status.lastFailure).toEqual({
-      error: "The build failed. Ask the agent to fix the errors, then publish again.",
+      error: "The build failed. Ask the agent to fix the errors, then deploy again.",
       buildLog: "src/App.tsx(3,1): error TS1005: '}' expected.",
       schemaChanges: null,
       changedSince: false,
@@ -697,26 +697,26 @@ describe("the status the panel reads", () => {
     expect((await getDeployStatus(PROJECT, OWNER)).lastFailure?.changedSince).toBe(true);
   });
 
-  test("an older failure behind a good publish is not reported", async () => {
+  test("an older failure behind a good deploy is not reported", async () => {
     build("failed", { status: "FAILED", supersededAt: null, createdAt: daysAgo(5), error: "x" });
 
     expect((await getDeployStatus(PROJECT, OWNER)).lastFailure).toBeNull();
   });
 });
 
-describe("the publish fee", () => {
+describe("the deploy fee", () => {
   const unpaid = () => {
     project().publishFeePaidAt = null;
   };
 
-  test("the status says what the first publish costs and whether it is still due", async () => {
+  test("the status says what the first deploy costs and whether it is still due", async () => {
     expect((await getDeployStatus(PROJECT, OWNER)).publishFee).toEqual({ credits: 200, due: false });
 
     unpaid();
     expect((await getDeployStatus(PROJECT, OWNER)).publishFee).toEqual({ credits: 200, due: true });
   });
 
-  test("a first publish with too few credits is refused at the request, before any job", async () => {
+  test("a first deploy with too few credits is refused at the request, before any job", async () => {
     unpaid();
     env.CREDITS_ENFORCE = true;
     balanceMicro = 199_999_999n;
@@ -888,7 +888,7 @@ describe("choosing the address", () => {
     expect(await checkNameAvailable(NEW, OWNER, "TAKEN-ONE")).toMatchObject({ available: false });
   });
 
-  test("after the first publish the check says locked, and there is no suggestion", async () => {
+  test("after the first deploy the check says locked, and there is no suggestion", async () => {
     fresh();
     await requestDeploy(NEW, OWNER, "chosen");
 

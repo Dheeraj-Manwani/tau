@@ -35,7 +35,7 @@ import {
 import { PreviewPane } from "@/src/features/project/PreviewPane";
 import { previewSrc } from "@/src/features/project/previewUrl";
 import { ToolsPane } from "@/src/features/project/ToolsPane";
-import { projectToolParams } from "./toolNavigation";
+import { selectedDeploySection, projectToolParams } from "./toolNavigation";
 
 // Lazy so the editor's heavy deps (CodeMirror + file icons) only load when the
 // Code tab is first opened, not on initial project render.
@@ -365,8 +365,8 @@ export function RightPanel() {
   const [params, setParams] = useSearchParams();
 
   useEffect(() => {
-    if (params.get("publish") === "1") {
-      setParams(projectToolParams(params, "publish", "overview"), { replace: true });
+    if (params.get("publish") === "1" || params.get("tool") === "publish") {
+      setParams(projectToolParams(params, "deploy", selectedDeploySection(params)), { replace: true });
       setActiveTab("tools");
     } else {
       const tab = params.get("tab");
@@ -402,7 +402,7 @@ export function RightPanel() {
 
         <div
           className="flex items-center gap-1"
-          aria-label="Project sharing and publishing"
+          aria-label="Project sharing and deployment"
           data-tour="ship"
         >
           <GithubPanel />

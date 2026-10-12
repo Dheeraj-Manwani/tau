@@ -88,7 +88,7 @@ export async function readPreflightFiles(sandbox: Sandbox): Promise<Record<strin
 /** The sentence a failed validation shows the owner: every blocker, as a list. */
 export function blockersMessage(blockers: Issue[]): string {
   if (blockers.length === 1) return blockers[0]!.message;
-  return `Your server can't be published yet:\n${blockers.map((b) => `- ${b.message}`).join("\n")}`;
+  return `Your server can't be deployed yet:\n${blockers.map((b) => `- ${b.message}`).join("\n")}`;
 }
 
 /**
@@ -107,7 +107,7 @@ export async function validateBackend(
   if (opts.level === "database" && !databaseHostingAvailable()) {
     blockers.push({
       code: "database_hosting_unavailable",
-      message: "Hosting for apps with a database is coming soon. For now, publish the front end only, or export your project and host it elsewhere.",
+      message: "Hosting for apps with a database is coming soon. For now, deploy the front end only, or export your project and host it elsewhere.",
     });
   }
   if (blockers.length > 0) throw new DeployError(blockersMessage(blockers));
@@ -266,7 +266,7 @@ export async function buildBackendBundle(
     `rm -rf ${SCRATCH_DIR} && mkdir -p ${SCRATCH_DIR} && tar -cf - --exclude=./node_modules --exclude=./data --exclude=./.env --exclude=./.env.* --exclude=./.git --exclude=./dist --exclude=./.tau/publish --exclude=./.tau/logs . | tar -xf - -C ${SCRATCH_DIR} && ln -s "$PWD/node_modules" ${SCRATCH_DIR}/node_modules`,
     90_000,
   );
-  if (copy.exitCode !== 0) throw new Error(`Could not prepare the publish copy: ${copy.output.slice(-300)}`);
+  if (copy.exitCode !== 0) throw new Error(`Could not prepare the deploy copy: ${copy.output.slice(-300)}`);
 
   await sandbox.files.write(`${WORK_DIR}/${SCRATCH_DIR}/server/lambda.ts`, lambdaEntry());
 
@@ -279,7 +279,7 @@ export async function buildBackendBundle(
     await sandbox.files.write(`${WORK_DIR}/${SCRATCH_DIR}/server/db/package.json`, '{"name":"tau-db","private":true}');
     const added = await run(sandbox, `cd ${SCRATCH_DIR}/server/db && bun add pg@8 2>&1`, 120_000);
     if (added.exitCode !== 0) {
-      throw new Error(`Could not add the Postgres driver to the publish copy: ${added.output.slice(-300)}`);
+      throw new Error(`Could not add the Postgres driver to the deploy copy: ${added.output.slice(-300)}`);
     }
   }
 
@@ -294,7 +294,7 @@ export async function buildBackendBundle(
   const bundled = await run(sandbox, bundleCommand, 180_000);
   if (bundled.exitCode !== 0) {
     throw new DeployError(
-      "Your server could not be bundled for publishing. Ask the agent to fix the errors, then publish again.",
+      "Your server could not be bundled for deploying. Ask the agent to fix the errors, then deploy again.",
       tail(bundled.output),
     );
   }
@@ -333,8 +333,8 @@ export async function buildBackendBundle(
     log.warn("deploy.backend.smoke_failed", { jobId: opts.jobId, projectId: opts.projectId, status: smoke.status });
     throw new DeployError(
       smoke.status === null
-        ? "Your server doesn't start the way a published app runs it. It may rely on something that only works while you are building. Ask the agent to fix it, then publish again."
-        : `Your server started, but GET /api/health answered ${smoke.status} instead of 200. Ask the agent to fix it, then publish again.`,
+        ? "Your server doesn't start the way a deployed app runs it. It may rely on something that only works while you are building. Ask the agent to fix it, then deploy again."
+        : `Your server started, but GET /api/health answered ${smoke.status} instead of 200. Ask the agent to fix it, then deploy again.`,
       tail(ran.output),
     );
   }

@@ -154,7 +154,7 @@ function isRestorable(deployment: Deployment): boolean {
 }
 
 const SUSPENDED_MESSAGE =
-  "This site has been suspended, so it can't be published or rolled back.";
+  "This site has been suspended, so it can't be deployed or rolled back.";
 
 function toSummary(
   deployment: Deployment,
@@ -193,12 +193,12 @@ function serverWarningFor(templateKey: string): string | null {
   if (backendHostingAvailable()) {
     // The server is published too. A database is the part that is not yet.
     return template.hasDb
-      ? "This project has a database, and publishing a database isn't available yet. Publishing will stop and tell you so; your preview is unaffected."
+      ? "This project has a database, and deploying a database isn't available yet. Deploying will stop and tell you so; your preview is unaffected."
       : null;
   }
   return template.hasDb
-    ? "This project has a backend and a database. Publishing ships the front-end only — anything that calls the API or stores data won't work on the published site yet."
-    : "This project has a backend. Publishing ships the front-end only — anything that calls the API won't work on the published site yet.";
+    ? "This project has a backend and a database. Deploying ships the front-end only — anything that calls the API or stores data won't work on the deployed site yet."
+    : "This project has a backend. Deploying ships the front-end only — anything that calls the API won't work on the deployed site yet.";
 }
 
 /** `https://{hostname}` of the project's active primary domain, if it has one. */
@@ -214,7 +214,7 @@ async function primaryUrlOf(projectId: string): Promise<string | null> {
 export async function exportPublishedData(projectId: string, userId: string): Promise<Uint8Array> {
   const project = await ownedProject(projectId, userId);
   const url = await getDatabaseUrl(projectId);
-  if (!url) throw Errors.notFound("This project has no published database.");
+  if (!url) throw Errors.notFound("This project has no deployed database.");
   const live = project.liveDeploymentId
     ? await prisma.deployment.findUnique({ where: { id: project.liveDeploymentId }, select: { schemaSql: true } })
     : null;
@@ -234,7 +234,7 @@ export async function refreshSecretsNow(projectId: string, userId: string): Prom
   const out = await refreshLiveBackend(projectId);
   if (out.status === "skipped") {
     throw out.reason === "publish_in_progress"
-      ? Errors.conflict("A publish is in progress. Its result will include your latest secrets.")
+      ? Errors.conflict("A deploy is in progress. Its result will include your latest secrets.")
       : Errors.badRequest("This app has no hosted server to refresh.");
   }
   return { refreshed: true };
@@ -326,7 +326,7 @@ export async function getDeployStatus(
     lastFailure:
       newest?.status === DeploymentStatus.FAILED
         ? {
-            error: newest.error ?? "Publishing failed.",
+            error: newest.error ?? "Deploying failed.",
             buildLog: newest.buildLog,
             schemaChanges: Array.isArray(newest.schemaChanges)
               ? (newest.schemaChanges as { kind: string; message: string }[])
@@ -496,7 +496,7 @@ export async function requestDeploy(
     select: { emailVerifiedAt: true },
   });
   if (!user?.emailVerifiedAt) {
-    throw Errors.forbidden("Verify your email to publish.");
+    throw Errors.forbidden("Verify your email to deploy.");
   }
 
   // Nothing is charged here: the fee is taken when the first build goes live, so
@@ -506,14 +506,14 @@ export async function requestDeploy(
     const { available } = await getBalance(userId);
     if (available < PUBLISH_FEE_MICRO) {
       throw Errors.paymentRequired(
-        `Publishing a project for the first time costs ${toCredits(PUBLISH_FEE_MICRO)} credits. You have ${Math.floor(toCredits(available))}.`,
+        `Deploying a project for the first time costs ${toCredits(PUBLISH_FEE_MICRO)} credits. You have ${Math.floor(toCredits(available))}.`,
       );
     }
   }
 
   const fileCount = await prisma.projectFile.count({ where: { projectId } });
   if (fileCount === 0) {
-    throw Errors.badRequest("Nothing to publish yet — build something first");
+    throw Errors.badRequest("Nothing to deploy yet — build something first");
   }
 
   // Plan limits (C12). Refused before a sandbox is spent; nothing is deleted.
@@ -535,7 +535,7 @@ export async function requestDeploy(
       const active = await projectRepo.findActiveJob(projectId, tx);
       if (active) {
         throw active.type === JobType.DEPLOY
-          ? Errors.conflict("A publish is already in progress")
+          ? Errors.conflict("A deploy is already in progress")
           : Errors.conflict("generation in progress");
       }
 
@@ -611,7 +611,7 @@ export async function rollbackDeploy(
       const active = await projectRepo.findActiveJob(projectId, tx);
       if (active) {
         throw active.type === JobType.DEPLOY
-          ? Errors.conflict("A publish is already in progress")
+          ? Errors.conflict("A deploy is already in progress")
           : Errors.conflict("generation in progress");
       }
 
@@ -633,11 +633,11 @@ export async function rollbackDeploy(
       }
       if (!WENT_LIVE.includes(target.status)) {
         throw Errors.conflict(
-          "Only a version that was published can be restored",
+          "Only a version that was deployed can be restored",
         );
       }
       const gone = Errors.conflict(
-        "That version's files are no longer stored. Publish again instead.",
+        "That version's files are no longer stored. Deploy again instead.",
       );
       if (!isRestorable(target)) throw gone;
 
@@ -710,7 +710,7 @@ export async function unpublish(
       });
       if (building) {
         throw Errors.conflict(
-          "A publish is in progress. Wait for it to finish, then take the site offline.",
+          "A deploy is in progress. Wait for it to finish, then take the site offline.",
         );
       }
 

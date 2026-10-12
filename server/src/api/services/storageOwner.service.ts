@@ -166,7 +166,7 @@ export async function rotateKey(projectId: string, userId: string, env: OwnerEnv
  */
 async function rotateLiveKey(projectId: string, userId: string) {
   const live = await prisma.storageKey.findFirst({ where: { projectId, env: "LIVE", status: "ACTIVE" }, select: { id: true } });
-  if (!live) throw Errors.badRequest("This app has not been published with file storage yet.");
+  if (!live) throw Errors.badRequest("This app has not been deployed with file storage yet.");
 
   await rotateStorageKey(projectId, userId, "LIVE");
   log.info("storage.key_rotated", { projectId, env: "LIVE" });

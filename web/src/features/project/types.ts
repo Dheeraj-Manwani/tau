@@ -42,9 +42,9 @@ export interface PreviewBuildError {
   /** The offending source excerpt with its caret. */
   frame?: string;
   /**
-   * `publish` when the failure is a publish's production build rather than the
-   * preview: then `message` is what the Publish panel said and `frame` is the
-   * tail of the build log. See `publishFailureError` in `deploy.ts`.
+   * `publish` when the failure is a deployment's production build rather than the
+   * preview: then `message` is what the Deploy panel said and `frame` is the
+   * tail of the build log. See `deployFailureError` in `deploy.ts`.
    */
   source?: "preview" | "publish";
 }

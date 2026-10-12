@@ -133,6 +133,16 @@ if (scenario === "offline")
       canRollback: true,
     })),
   };
+let identity = {
+  title: "Atlas",
+  description: "A sample app",
+  icon: "default",
+  projectName: "Atlas",
+  plan: "FREE",
+  prices: { publishFee: 200, logoUpload: 25, logoGeneration: 20 },
+  canGenerate: true,
+  generationsLeftToday: 2,
+};
 let mutations = 0;
 let lastBody = "";
 const commit = () =>
@@ -216,18 +226,15 @@ api.defaults.adapter = async (config) => {
     };
   else if (url === "/credits/balance")
     data = { plan: "FREE", credits: { available: 500 } };
-  else if (url.endsWith("/identity"))
-    data = {
-      title: "Atlas",
-      description: "A sample app",
-      icon: "default",
-      projectName: "Atlas",
-      plan: "FREE",
-      prices: { publishFee: 200, logoUpload: 25, logoGeneration: 20 },
-      canGenerate: true,
-      generationsLeftToday: 2,
-    };
-  else if (url.endsWith("/deploy/logs"))
+  else if (url.endsWith("/identity")) {
+    if (method === "put") {
+      const body = JSON.parse(config.data);
+      identity = { ...identity, ...body };
+      status = { ...status, unpublishedChanges: status.unpublishedChanges + 1 };
+      commit();
+    }
+    data = identity;
+  } else if (url.endsWith("/deploy/logs"))
     data = {
       logs: "[server] Listening on port 3000\n[server] GET /health 200",
     };

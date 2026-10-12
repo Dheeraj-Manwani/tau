@@ -16,7 +16,7 @@ import { HONO_SERVER_INDEX } from "@/worker/templates/shared";
 // scaffold the way a publish does (bun build, ESM, for Node) and running it
 // under Node through the stand-in for Lambda's streaming handler.
 
-describe("what the owner is told when the server cannot be published", () => {
+describe("what the owner is told when the server cannot be deployed", () => {
   const issue = (message: string) => ({ code: "x", message });
 
   test("one blocker is just its sentence", () => {
@@ -24,7 +24,7 @@ describe("what the owner is told when the server cannot be published", () => {
   });
 
   test("several are a list, in order", () => {
-    expect(blockersMessage([issue("First."), issue("Second.")])).toBe("Your server can't be published yet:\n- First.\n- Second.");
+    expect(blockersMessage([issue("First."), issue("Second.")])).toBe("Your server can't be deployed yet:\n- First.\n- Second.");
   });
 });
 
@@ -222,7 +222,7 @@ export default { port: 3000, fetch: app.fetch }
     expect(result.buildOutput).toContain("does-not-exist");
   }, 60_000);
 
-  test("the zip a publish uploads holds exactly one file, index.mjs, with the bundle in it", async () => {
+  test("the zip a deploy uploads holds exactly one file, index.mjs, with the bundle in it", async () => {
     const { zipSync } = await import("fflate");
     const root = project("zip", { "server/index.ts": HONO_SERVER_INDEX });
     await bundleAndSmoke(root);
