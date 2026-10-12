@@ -3,7 +3,7 @@ title: Attachments
 description: Images, PDFs and pasted content in the composer: what tau does with them, the size limits, and what mobile omits.
 section: build
 order: 5
-updated: 2026-07-30
+updated: 2026-10-12
 ---
 
 You can attach files to any message. A screenshot of a layout is usually a faster
@@ -43,6 +43,17 @@ original file on every turn.
 > Attach the file, wait for **Ready**, then send. Sending while an attachment is
 > still extracting means the agent gets the message without its content.
 
+## Putting your own picture in the app
+
+An attached picture or PDF can also go into the app itself. Say where you want
+it — "use the attached photo of me as the portrait at the top" — and tau saves
+that exact file into the project and builds the page around it. It works for a
+photo, a logo, a product shot, or a PDF the page should link to, such as a CV.
+
+Tau only does this when you ask for the file to appear. A screenshot sent to show
+a layout or a bug is read, not placed. Other documents and pasted text are used
+for what they say and are not added to the app as files.
+
 ## Using attachments well
 
 **A screenshot for layout.** "Like this, but our colours" with a screenshot
@@ -57,6 +68,9 @@ schema from real data more reliably than from your description of it.
 
 **A screenshot of the bug.** Something rendering wrong is much easier to fix from
 a picture than from a description of the picture.
+
+**Your own photo or logo.** Attach it and say where it goes. Tau uses the file you
+sent rather than finding a stand-in.
 
 ## On mobile
 

@@ -194,23 +194,39 @@ export type StorageReachability =
   | { ok: false; reason: "unconfigured" | "unset" | "loopback" | "private" | "malformed"; detail: string };
 
 /**
+ * The address a generated app calls for storage: `TAU_STORAGE_URL`, or `/storage`
+ * on the origin of `TAU_API_URL` when that is unset. One server answers both, so
+ * production needs only the gateway's address. The explicit setting is for an
+ * instance whose `TAU_API_URL` points somewhere else (a tunnel in dev).
+ */
+function storageAddress(): { name: string; url: string } | null {
+  if (env.TAU_STORAGE_URL) return { name: "TAU_STORAGE_URL", url: env.TAU_STORAGE_URL };
+  if (!env.TAU_API_URL) return null;
+  try {
+    return { name: "TAU_STORAGE_URL (from TAU_API_URL)", url: `${new URL(env.TAU_API_URL).origin}/storage` };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Can a generated app use tau Cloud Storage from where it runs? Needs the
- * bucket configured on this instance and a public `TAU_STORAGE_URL`: the app's
+ * bucket configured on this instance and a public storage address: the app's
  * server calls it from a sandbox, and later from a published function.
  *
  * @param override Overridable for tests, for the reason given on {@link checkGatewayReachability}.
  */
 export function checkStorageReachability(override?: { configured?: boolean; url?: string }): StorageReachability {
   const configured = override ? override.configured !== false : storageConfigured();
-  const url = override ? override.url : env.TAU_STORAGE_URL;
+  const address = override ? (override.url ? { name: "TAU_STORAGE_URL", url: override.url } : null) : storageAddress();
   if (!configured) {
     return { ok: false, reason: "unconfigured", detail: "R2_STORAGE_BUCKET is not set, so this instance has no file storage." };
   }
-  if (!url) {
-    return { ok: false, reason: "unset", detail: "TAU_STORAGE_URL is not set. A generated app has no address to call." };
+  if (!address) {
+    return { ok: false, reason: "unset", detail: "Neither TAU_STORAGE_URL nor TAU_API_URL is set. A generated app has no address to call." };
   }
-  const problem = unreachableReason("TAU_STORAGE_URL", url);
-  return problem ? { ok: false, ...problem } : { ok: true, storageUrl: url.replace(/\/+$/, "") };
+  const problem = unreachableReason(address.name, address.url);
+  return problem ? { ok: false, ...problem } : { ok: true, storageUrl: address.url.replace(/\/+$/, "") };
 }
 
 /** The verdict with `TAU_GATEWAY_ALLOW_UNREACHABLE` applied, as {@link gatewayUsable} does. */
@@ -219,7 +235,7 @@ export function storageUsable(): StorageReachability {
   if (verdict.ok || verdict.reason === "unset" || verdict.reason === "unconfigured") return verdict;
   if (!env.TAU_GATEWAY_ALLOW_UNREACHABLE) return verdict;
   log.warn("storage.unreachable_allowed", { detail: verdict.detail });
-  return { ok: true, storageUrl: (env.TAU_STORAGE_URL as string).replace(/\/+$/, "") };
+  return { ok: true, storageUrl: (storageAddress() as { url: string }).url.replace(/\/+$/, "") };
 }
 
 export class GatewayUnreachableError extends Error {

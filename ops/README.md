@@ -239,7 +239,7 @@ dead rows show the owner a file that will not open.
 
 `R2_STORAGE_BUCKET` (storage is off without it), `R2_STORAGE_PUBLIC_URL` (the public address; the app gets permanent links when set), `R2_STORAGE_ACCESS_KEY_ID` and `_SECRET_ACCESS_KEY`
 (a token limited to the bucket; falls back to the main R2 pair), `TAU_STORAGE_URL` (the public address of
-`/storage`, as for `TAU_AI_URL`), `STORAGE_RPM`, `STORAGE_UPLOAD_TTL_SECONDS`, `STORAGE_URL_TTL_SECONDS`,
+`/storage`; optional, it defaults to `/storage` on the origin of `TAU_API_URL`), `STORAGE_RPM`, `STORAGE_UPLOAD_TTL_SECONDS`, `STORAGE_URL_TTL_SECONDS`,
 `STORAGE_PENDING_TTL_MS`, `STORAGE_ALERT_BYTES`, `STORAGE_UPLOAD_SPIKE_PER_HOUR`. The allowances per
 plan are constants in `server/src/lib/pricing.ts`.
 

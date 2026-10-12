@@ -11,7 +11,7 @@ import { readOrNull } from "@/worker/lib/appStack";
 import { DESIGN_PATH, readDesignMeta } from "@/worker/design/designMd";
 import { STYLES } from "@/worker/design/styles";
 import { isStyleKey } from "@/worker/design/types";
-import { asString, persistBinaryFile, toRelativePath, toWorkdirPath } from "./utils";
+import { asString, persistBinaryFile, publicPath, toWorkdirPath } from "./utils";
 
 const TOOL_NAME = "generate_image";
 
@@ -32,10 +32,7 @@ function extensionOf(mimeType: string): string {
  * ending `.png` would otherwise leave a file whose name lies about it.
  */
 export function imagePath(requested: string, mimeType: string): string {
-  const rel = toRelativePath(requested).replace(/^\/+/, "");
-  const inPublic = rel.startsWith("public/") ? rel : `public/${rel.split("/").pop()}`;
-  const stem = inPublic.replace(/\.[a-z0-9]{2,5}$/i, "");
-  return `${stem}.${extensionOf(mimeType)}`;
+  return publicPath(requested, extensionOf(mimeType));
 }
 
 /**

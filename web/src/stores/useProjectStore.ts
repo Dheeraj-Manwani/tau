@@ -428,6 +428,10 @@ function deriveActionItem(
         meta: { path: dest },
       };
     }
+    // No file link: the saved path can differ from the one asked for (the
+    // extension is corrected to match the file).
+    case "use_attachment":
+      return { kind: "download_asset", label: "Added your attached file" };
     case "push_to_github": {
       const title = String(input.title ?? "");
       const description = String(input.description ?? "").trim();

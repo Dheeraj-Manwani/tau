@@ -182,7 +182,10 @@ const envSchema = z.object({
   R2_STORAGE_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   // The address a generated app calls (`${TAU_STORAGE_URL}/uploads`). Public,
   // like TAU_AI_URL: it is used from a sandbox and from a published function.
-  TAU_STORAGE_URL: z.string().url().optional(),
+  // Unset, it is `/storage` on the origin of TAU_API_URL (`storageAddress` in
+  // worker/lib/aiEnv.ts), so production does not need to set it. A blank
+  // `TAU_STORAGE_URL=` line counts as unset rather than failing the boot.
+  TAU_STORAGE_URL: z.preprocess((v) => (v === "" ? undefined : v), z.string().url().optional()),
   // Requests a minute per storage key.
   // The bucket's public r2.dev address (`wrangler r2 bucket dev-url enable`). When set, a
   // stored file is read at `${R2_STORAGE_PUBLIC_URL}/{r2 key}`: a permanent public link, no

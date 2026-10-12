@@ -154,8 +154,10 @@ describe("system prompt — generation 2, every level", () => {
     // about 320 characters, with the detail in the `storage` guide.
     // 19_500 -> 19_600 for the `sections` guide: its index line and nothing
     // else, about 100 characters.
+    // 19_600 -> 19_900 for `use_attachment`: one bullet, about 270 characters,
+    // with the detail in the tool's description and the `assets` guide.
     for (const key of levels) {
-      expect(buildSystemPrompt({ templateKey: key }).length).toBeLessThan(19_600);
+      expect(buildSystemPrompt({ templateKey: key }).length).toBeLessThan(19_900);
     }
   });
 
@@ -271,7 +273,7 @@ describe("tools for generation 2", () => {
 
   test("the setup and guide tools exist only outside the generation-1 list", () => {
     const names = BASE_APP_TOOLS.map((t) => t.function.name);
-    expect(names).toEqual(["enable_storage", "add_backend", "add_database", "generate_image", "dispatch_design_reviewer", "inspect_preview", "read_doc"]);
+    expect(names).toEqual(["enable_storage", "add_backend", "add_database", "generate_image", "use_attachment", "dispatch_design_reviewer", "inspect_preview", "read_doc"]);
     const legacyNames = TOOL_DEFINITIONS.map((t) => t.function.name) as string[];
     for (const name of names) expect(legacyNames).not.toContain(name);
   });

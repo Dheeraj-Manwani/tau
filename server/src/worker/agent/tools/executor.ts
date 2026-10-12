@@ -46,6 +46,7 @@ import { dispatchVerifier } from "./sub-agents/dispatch-verifier";
 import { dispatchImplementer } from "./sub-agents/dispatch-implementer";
 import { dispatchDesignReviewer } from "./sub-agents/dispatch-design-reviewer";
 import { generateImageTool } from "./functions/generate-image";
+import { useAttachment } from "./functions/use-attachment";
 import { inspectPreviewTool } from "./functions/inspect-preview";
 import { markBeforeCommand, saveShellChanges } from "./functions/shell-changes";
 import { prisma } from "@/lib/prisma";
@@ -292,6 +293,8 @@ async function executeToolInner(
         return await deleteFile(input, sandbox, jobId, projectId, indexer);
       case "generate_image":
         return await generateImageTool(input, sandbox, jobId, projectId, userId, indexer);
+      case "use_attachment":
+        return await useAttachment(input, sandbox, jobId, projectId, userId, indexer);
       case "inspect_preview":
         return await inspectPreviewTool(input, sandbox, jobId);
       case "download_asset":

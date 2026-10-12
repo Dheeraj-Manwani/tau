@@ -16,6 +16,9 @@ When the app needs real imagery — product photos, hero and background images, 
 - Give an image a fixed aspect ratio or explicit width and height, so the page does not jump when it loads. Use `object-cover` when it has to fill a box.
 - For interface icons — arrows, menus, checkmarks — use `lucide-react`, which is installed. The asset tools are for pictures and brand marks.
 
+## A picture the user sent
+A picture attached to a message arrives as an `<attachment id="…" kind="image">` block holding a description of it, not the file. When it is meant to appear in the app — their portrait, their logo, a product shot — `use_attachment(id, "public/<name>.<ext>")` saves the file itself into the project and returns the `path` to use, with its width and height. Put it where they asked, and do not swap it for a searched or generated picture. An attached PDF is saved the same way, for a document the app links to. A screenshot sent to show a design or an error is not for the app.
+
 ## When nothing suitable turns up
 Do not use a mismatched or low-resolution image, and do not leave a broken one. A picture that is the right mood and the wrong subject is a mismatch too: a first screen is better with none than with one that says something else. Build that spot from the theme instead — a block of color, a gradient made from the theme tokens, a pattern — and tell the user which image they may want to supply.
 

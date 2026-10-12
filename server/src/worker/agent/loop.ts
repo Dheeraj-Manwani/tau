@@ -180,6 +180,7 @@ function toolsForRun(
 const FILE_MUTATING_TOOLS = new Set<string>([
   "create_file",
   "generate_image",
+  "use_attachment",
   "edit_file",
   "delete_file",
   "dispatch_implementer",

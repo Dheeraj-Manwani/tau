@@ -56,6 +56,7 @@ never persisted.
 | `web_search` | Looks things up while building |
 | `search_images` | Finds real images for your app |
 | `download_asset` | Fetches an image or file into the project |
+| `use_attachment` | Places a picture or PDF you attached to a message into your app |
 | `image_dimensions` | Reads an image's size, so layout can be right first time |
 
 Together these are why a tau-built page can have real photographs in it rather

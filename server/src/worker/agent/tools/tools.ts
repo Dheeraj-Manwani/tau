@@ -150,6 +150,30 @@ export const BASE_APP_TOOLS = [
   {
     type: "function",
     function: {
+      name: "use_attachment",
+      description:
+        "Save a picture or PDF the user attached into the project, so the app can show the file itself. An attachment reaches you as an `<attachment id=\"…\" name=\"…\" kind=\"…\">` block that describes the file; the file is never in the conversation, and this is the only way to get it. Use it when the user wants what they sent to appear in the app: their own photo on a portfolio, their logo in the header, a product shot, a CV to download. Not for a screenshot sent to show a design to follow or an error to fix. Returns the path to use in the app, and a picture's width and height.",
+      parameters: {
+        type: "object",
+        properties: {
+          attachment_id: {
+            type: "string",
+            description: "The `id` of the `<attachment>` block for the file.",
+          },
+          path: {
+            type: "string",
+            description:
+              "Where to save it under 'public/', named for what it shows, e.g. 'public/portrait.jpg'. The extension is corrected to match the file.",
+          },
+        },
+        required: ["attachment_id", "path"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "dispatch_design_reviewer",
       description:
         "Have the app looked at. You write markup and never see it rendered; this renders the screens you name at desktop and phone width, shows the screenshots to a reviewer that can see, and returns what it finds wrong: broken or overflowing layout, a phone layout that does not work, departures from the app's design, generic defaults, placeholder content, unreadable text. Each finding is marked [broken] (fix it) or [polish] (optional). Call it after you build or reshape a screen and fix what is broken; you may then call it once more for the same screens to confirm. A screen gets those two looks in a run and no more. It reviews what is on screen when it loads, and with steps, a screen after a button is pressed or a field filled; a page behind a login is not seen, and an embedded map or video may not render for it. It does not edit files.",

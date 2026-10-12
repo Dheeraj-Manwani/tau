@@ -31,6 +31,17 @@ export function toWorkdirPath(p: string): string {
   return rel === "" || rel === "." ? WORK_DIR : `${WORK_DIR}/${rel}`;
 }
 
+/**
+ * The path a file tau places for the agent is saved at: the one asked for,
+ * under `public/`, with the extension of what the bytes actually are. A file
+ * whose name lies about its type is served with the wrong content type.
+ */
+export function publicPath(requested: string, extension: string): string {
+  const rel = toRelativePath(requested).replace(/^\/+/, "");
+  const inPublic = rel.startsWith("public/") ? rel : `public/${rel.split("/").pop()}`;
+  return `${inPublic.replace(/\.[a-z0-9]{2,5}$/i, "")}.${extension}`;
+}
+
 export function chunkString(s: string, size: number): string[] {
   const chunks: string[] = [];
   for (let i = 0; i < s.length; i += size) {

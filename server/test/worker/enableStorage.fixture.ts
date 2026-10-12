@@ -131,6 +131,7 @@ beforeEach(() => {
   encryptionOn = true;
   env.R2_STORAGE_BUCKET = "tau-app-storage";
   env.TAU_STORAGE_URL = "https://api.tau.example.com/storage/";
+  env.TAU_API_URL = "https://api.tau.example.com/v1";
 });
 
 describe("enable_storage", () => {
@@ -188,8 +189,9 @@ describe("enable_storage", () => {
   test("refuses plainly, writing nothing, when storage is not configured or reachable", async () => {
     const cases: [string, () => void][] = [
       ["no bucket", () => { env.R2_STORAGE_BUCKET = undefined; }],
-      ["no address", () => { env.TAU_STORAGE_URL = undefined; }],
+      ["no address", () => { env.TAU_STORAGE_URL = undefined; env.TAU_API_URL = undefined; }],
       ["loopback address", () => { env.TAU_STORAGE_URL = "http://localhost:8080/storage"; }],
+      ["loopback gateway and no address", () => { env.TAU_STORAGE_URL = undefined; env.TAU_API_URL = "http://localhost:8080/v1"; }],
       ["no key encryption", () => { encryptionOn = false; }],
     ];
     for (const [, arrange] of cases) {
@@ -227,6 +229,7 @@ function beforeEachReset() {
   keysMinted = [];
   env.R2_STORAGE_BUCKET = "tau-app-storage";
   env.TAU_STORAGE_URL = "https://api.tau.example.com/storage/";
+  env.TAU_API_URL = "https://api.tau.example.com/v1";
   encryptionOn = true;
 }
 
@@ -270,6 +273,20 @@ describe("buildProjectEnv", () => {
     const vars = await buildProjectEnv("u", "p", "j", { aiEnabled: true });
     expect(vars.TAU_STORAGE_KEY).toBeUndefined();
     expect(keysMinted).toHaveLength(0);
+  });
+
+  test("without TAU_STORAGE_URL the address is /storage on the origin of TAU_API_URL", async () => {
+    env.TAU_STORAGE_URL = undefined;
+    env.TAU_API_URL = "https://gateway.tau.example.com/v1";
+    const vars = await buildProjectEnv("u", "p", "j", { aiEnabled: false, storage: "PREVIEW" });
+    expect(vars.TAU_STORAGE_URL).toBe("https://gateway.tau.example.com/storage");
+    expect(vars.TAU_STORAGE_KEY).toBe(SECRET);
+  });
+
+  test("TAU_STORAGE_URL wins over TAU_API_URL when both are set", async () => {
+    env.TAU_API_URL = "https://gateway.tau.example.com/v1";
+    const vars = await buildProjectEnv("u", "p", "j", { aiEnabled: false, storage: "PREVIEW" });
+    expect(vars.TAU_STORAGE_URL).toBe("https://api.tau.example.com/storage");
   });
 
   test("an unreachable storage address is skipped and the user's own keys still arrive", async () => {

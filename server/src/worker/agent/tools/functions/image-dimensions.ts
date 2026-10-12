@@ -118,7 +118,8 @@ function parseWebp(buf: Buffer): ImageMeta | null {
   return null;
 }
 
-function parseImageMeta(buf: Buffer): ImageMeta | null {
+/** Width, height and format from an image's leading bytes, or null for a format not read here. */
+export function parseImageMeta(buf: Buffer): ImageMeta | null {
   return (
     parsePng(buf) ??
     parseGif(buf) ??
