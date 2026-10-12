@@ -25,8 +25,8 @@ const live: DeploymentSummary = {
   fileCount: 24,
   sizeBytes: 340000,
   error: null,
-  createdAt: now,
-  completedAt: now,
+  createdAt: new Date(Date.now() - 80_000).toISOString(),
+  completedAt: new Date(Date.now() - 15_000).toISOString(),
   isLive: true,
   canRollback: false,
 };
@@ -42,6 +42,8 @@ let status: DeployStatus = {
     {
       ...live,
       id: "older123-5678",
+      createdAt: new Date(Date.now() - 86_400_000).toISOString(),
+      completedAt: new Date(Date.now() - 86_335_000).toISOString(),
       status: "SUPERSEDED",
       isLive: false,
       canRollback: true,
@@ -83,7 +85,7 @@ if (
   status = {
     ...status,
     deployments: [
-      { ...live, id: "failed12-5678", status: "FAILED", error, isLive: false },
+      { ...live, id: "failed12-5678", status: "FAILED", error, isLive: false, createdAt: now, completedAt: now },
       ...status.deployments,
     ],
     lastFailure: {

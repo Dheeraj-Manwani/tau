@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
+import { ToolPaneContent } from "./ToolPaneContent";
 import {
   useDeleteProjectSecret,
   useProjectSecrets,
@@ -285,8 +286,8 @@ export function KeysPane({ projectId }: { projectId: string }) {
   );
 
   return (
-    <div className="h-full overflow-y-auto bg-[var(--space-void)]">
-      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
+    <div className="h-full overflow-y-auto bg-[var(--space-void)] [scrollbar-gutter:stable]">
+      <ToolPaneContent>
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-medium text-[var(--silver-900)]">Secrets</h2>
           <button
@@ -346,7 +347,7 @@ export function KeysPane({ projectId }: { projectId: string }) {
             ))}
           </ul>
         )}
-      </div>
+      </ToolPaneContent>
     </div>
   );
 }

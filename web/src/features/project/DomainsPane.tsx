@@ -14,6 +14,7 @@ import {
 import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
+import { ToolPaneContent } from "./ToolPaneContent";
 import { useDeployStatus } from "@/src/features/project/deploy";
 import { useProjectToolNavigation } from "@/src/features/project/toolNavigation";
 import {
@@ -57,11 +58,11 @@ export function DomainsPane({ projectId }: { projectId: string }) {
         inert={!deployed || undefined}
         aria-hidden={!deployed || undefined}
         className={cn(
-          "h-full overflow-y-auto p-4 sm:p-6",
+          "h-full overflow-y-auto [scrollbar-gutter:stable]",
           !deployed && "pointer-events-none select-none blur-[2px]",
         )}
       >
-        <div className="mx-auto max-w-2xl space-y-5">
+        <ToolPaneContent className="space-y-5">
           <header>
             <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--silver-900)]">
               <GlobeIcon className="size-4" />
@@ -126,7 +127,7 @@ export function DomainsPane({ projectId }: { projectId: string }) {
           )}
 
           <Guidance />
-        </div>
+        </ToolPaneContent>
       </div>
       {!deployed && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/45 p-6">

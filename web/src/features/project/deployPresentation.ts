@@ -14,9 +14,22 @@ const active: DeploymentStatus[] = [
   "VERIFYING",
 ];
 export function activeDeployment(status: DeployStatus) {
-  return status.deployments.find((deployment) =>
-    active.includes(deployment.status),
-  );
+  return status.deployments.find(deploymentIsActive);
+}
+
+export function deploymentIsActive(deployment: DeploymentSummary) {
+  return active.includes(deployment.status);
+}
+
+/** Include the live version once, even when it falls outside the history window. */
+export function newestDeployments(status: DeployStatus): DeploymentSummary[] {
+  const deployments = new Map(status.deployments.map((deployment) => [deployment.id, deployment]));
+  if (status.live && !deployments.has(status.live.id)) deployments.set(status.live.id, status.live);
+  const requestedAt = (deployment: DeploymentSummary) => {
+    const time = Date.parse(deployment.createdAt);
+    return Number.isFinite(time) ? time : 0;
+  };
+  return [...deployments.values()].sort((a, b) => requestedAt(b) - requestedAt(a));
 }
 
 /** Identity is editable before first deployment; empty data tabs stay hidden. */

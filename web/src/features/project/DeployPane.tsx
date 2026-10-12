@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
-  CheckIcon,
   CopyIcon,
   ArrowRightIcon,
   LockIcon,
@@ -12,9 +11,11 @@ import {
 import toast from "react-hot-toast";
 import { useIsMutating } from "@tanstack/react-query";
 import { cn } from "@/src/lib/utils";
+import { ToolPaneContent } from "./ToolPaneContent";
 import { useProjectStore } from "@/src/stores/useProjectStore";
 import { useBalance } from "@/src/features/billing/api";
 import { AppLogo } from "./AppLogo";
+import { DeploymentList } from "./DeploymentList";
 import { AddressPicker, BuyCredits, IdentitySection } from "./IdentitySection";
 import {
   deployKeys,
@@ -28,9 +29,6 @@ import {
   useDeployProject,
 } from "./deploy";
 import {
-  activeDeployment,
-  deploymentDuration,
-  deploymentSteps,
   deployPresentation,
   deploySectionAvailability,
   deployToneClass,
@@ -43,8 +41,6 @@ import {
 import {
   ExportData,
   DeployBadge,
-  DeployFailureNotice,
-  DeploymentHistory,
   DeployNotice,
   RefreshSecrets,
   ServerLogs,
@@ -137,24 +133,26 @@ export function DeployPane({ projectId }: { projectId: string }) {
 
   if (!status)
     return (
-      <div className="p-6 text-sm text-silver-600" role="status">
-        {query.isError ? (
-          <>
-            <p>Couldn't load deployment status.</p>
-            <button
-              type="button"
-              onClick={() => void query.refetch()}
-              className={cn(deployButtonClass, "mt-3")}
-            >
-              Try again
-            </button>
-          </>
-        ) : (
-          <p className="flex items-center gap-2">
-            <LoaderCircleIcon className="size-4 animate-spin motion-reduce:animate-none" />
-            Loading deployment status…
-          </p>
-        )}
+      <div className="h-full overflow-y-auto [scrollbar-gutter:stable]">
+        <ToolPaneContent className="text-sm text-silver-600" role="status">
+          {query.isError ? (
+            <>
+              <p>Couldn't load deployment status.</p>
+              <button
+                type="button"
+                onClick={() => void query.refetch()}
+                className={cn(deployButtonClass, "mt-3")}
+              >
+                Try again
+              </button>
+            </>
+          ) : (
+            <p className="flex items-center gap-2">
+              <LoaderCircleIcon className="size-4 animate-spin motion-reduce:animate-none" />
+              Loading deployment status…
+            </p>
+          )}
+        </ToolPaneContent>
       </div>
     );
 
@@ -180,10 +178,6 @@ export function DeployPane({ projectId }: { projectId: string }) {
   const review =
     !!status.lastFailure?.schemaChanges?.length &&
     !status.lastFailure.changedSince;
-  const attempt =
-    activeDeployment(status) ?? status.deployments[0] ?? status.live;
-  const steps = attempt ? deploymentSteps(attempt, review) : [];
-  const duration = attempt ? deploymentDuration(attempt) : null;
   const cannotDeploy =
     blocked ||
     identityDirty ||
@@ -228,9 +222,9 @@ export function DeployPane({ projectId }: { projectId: string }) {
   return (
     <div
       ref={root}
-      className="h-full overflow-y-auto px-4 py-5 text-silver-900 sm:px-6"
+      className="h-full overflow-y-auto text-silver-900 [scrollbar-gutter:stable]"
     >
-      <div className="mx-auto max-w-3xl space-y-5 pb-8">
+      <ToolPaneContent className="space-y-5 pb-8">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-lg font-medium">Deploy</h1>
@@ -589,148 +583,14 @@ export function DeployPane({ projectId }: { projectId: string }) {
             hidden={section !== "deployments"}
             className="space-y-4 outline-none"
           >
-            {status.lastFailure && !status.inProgress && (
-              <DeployFailureNotice
-                projectId={projectId}
-                failure={status.lastFailure}
-                blocked={blocked || identityDirty}
-                confirmDisabled={cannotDeploy}
-                onConfirmSchema={() => start(true)}
-              />
-            )}
-            {(attempt || busy) && (
-              <section className="rounded-xl border border-silver-200 bg-space-surface p-4 sm:p-5">
-                <h2 className="mb-1 text-sm font-medium">
-                  {busy ? "Current deployment" : "Latest deployment"}
-                </h2>
-                <p className="mb-4 text-xs text-silver-600">
-                  {busy
-                    ? "Deployment continues if you leave this tab."
-                    : "Reported stages from the latest attempt."}
-                </p>
-                {busy && !status.suspended && (
-                  <p role="status" className="mb-4 text-xs text-silver-600">
-                    {status.live
-                      ? "Your previous version stays live while this deployment is prepared."
-                      : "Your site will go live when this deployment succeeds."}
-                  </p>
-                )}
-                {attempt ? (
-                  <>
-                    <div className="mb-4 flex flex-wrap justify-between gap-2 text-[11px] text-silver-600">
-                      <span>
-                        Attempt{" "}
-                        <span className="font-mono">
-                          {attempt.id.slice(0, 8)}
-                        </span>
-                        {duration &&
-                          ` · ${duration} ${attempt.completedAt ? "total" : "since requested"}`}
-                      </span>
-                      <span>
-                        Last checked{" "}
-                        {new Date(query.dataUpdatedAt).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <ol className="space-y-4">
-                      {steps.map((step) => (
-                        <li key={step.id} className="flex gap-3">
-                          <span
-                            className={cn(
-                              "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border",
-                              step.state === "done"
-                                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
-                                : step.state === "active"
-                                  ? "border-blue-400/30 text-blue-400"
-                                  : step.state === "failed"
-                                    ? "border-red-400/30 text-red-300"
-                                    : "border-silver-200 text-silver-600",
-                            )}
-                          >
-                            {step.state === "done" ? (
-                              <CheckIcon className="size-3" />
-                            ) : step.state === "active" ? (
-                              <LoaderCircleIcon className="size-3 animate-spin motion-reduce:animate-none" />
-                            ) : (
-                              <span className="size-1 rounded-full bg-current" />
-                            )}
-                          </span>
-                          <div>
-                            <p
-                              className={cn(
-                                "text-xs font-medium",
-                                step.state === "pending" && "text-silver-600",
-                              )}
-                            >
-                              {step.label}
-                              <span className="ml-2 text-[10px] font-normal text-silver-600">
-                                {step.state === "done"
-                                  ? "Complete"
-                                  : step.state === "active"
-                                    ? "In progress"
-                                    : step.state === "pending"
-                                      ? "Next"
-                                      : step.state === "review"
-                                        ? "Needs your decision"
-                                        : "Failed"}
-                              </span>
-                            </p>
-                            <p className="mt-1 text-[11px] leading-relaxed text-silver-600">
-                              {step.detail}
-                            </p>
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
-                  </>
-                ) : (
-                  busy && (
-                    <p className="text-xs text-silver-600">
-                      Waiting for the deployment worker to report the first
-                      stage.
-                    </p>
-                  )
-                )}
-                {deploy.isPending && !status.inProgress && (
-                  <p role="status" className="mt-3 text-xs text-blue-300">
-                    Sending your deploy request…
-                  </p>
-                )}
-                {busy && (
-                  <p className="mt-4 text-[11px] leading-relaxed text-silver-600">
-                    Status refreshes every few seconds. Build output becomes
-                    available here if the deployment fails.
-                  </p>
-                )}
-                {status.lastFailure?.buildLog && (
-                  <details className="mt-4">
-                    <summary className="cursor-pointer text-xs text-blue-500">
-                      View failed build output
-                    </summary>
-                    <p className="my-2 text-[11px] text-silver-600">
-                      Last lines saved from the failed build.
-                    </p>
-                    <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-space-void p-3 font-mono text-xs text-silver-600">
-                      {status.lastFailure.buildLog}
-                    </pre>
-                  </details>
-                )}
-              </section>
-            )}
-            {status.deployments.length > 0 && (
-              <section className="rounded-xl border border-silver-200 bg-space-surface p-4 sm:p-5">
-                <h2 className="text-sm font-medium">Deployment history</h2>
-                <p className="mt-1 text-xs text-silver-600">
-                  {status.deployments.length} recorded{" "}
-                  {status.deployments.length === 1 ? "attempt" : "attempts"}.
-                  Inspect versions and restore an available deployment.
-                </p>
-                <DeploymentHistory
-                  projectId={projectId}
-                  status={status}
-                  blocked={blocked || identityDirty}
-                />
-              </section>
-            )}
+            <DeploymentList
+              projectId={projectId}
+              status={status}
+              blocked={blocked || identityDirty}
+              requesting={deploy.isPending}
+              confirmDisabled={cannotDeploy}
+              onConfirmSchema={() => start(true)}
+            />
           </div>
         )}
         {available?.resources && (
@@ -812,7 +672,7 @@ export function DeployPane({ projectId }: { projectId: string }) {
             </div>
           </div>
         )}
-      </div>
+      </ToolPaneContent>
     </div>
   );
 }

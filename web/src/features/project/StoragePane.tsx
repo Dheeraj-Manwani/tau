@@ -15,6 +15,7 @@ import {
 import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
+import { ToolPaneContent } from "./ToolPaneContent";
 import { APP_BILLING } from "@/src/lib/routes";
 import { useDebounced } from "@/src/hooks/useDebounced";
 import {
@@ -356,8 +357,8 @@ export function StoragePane({ projectId }: { projectId: string }) {
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.key));
 
   return (
-    <div className="h-full overflow-y-auto bg-[var(--space-void)]">
-      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
+    <div className="h-full overflow-y-auto bg-[var(--space-void)] [scrollbar-gutter:stable]">
+      <ToolPaneContent>
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-xl font-medium text-[var(--silver-900)]">Storage</h2>
           <div className="flex shrink-0 items-center gap-1">
@@ -565,7 +566,7 @@ export function StoragePane({ projectId }: { projectId: string }) {
             )}
           </>
         )}
-      </div>
+      </ToolPaneContent>
       <RotateKeyDialog open={rotating} onOpenChange={setRotating} projectId={projectId} env={env} />
       <ClearPreviewDialog count={previewCount} open={clearing} onOpenChange={setClearing} projectId={projectId} />
     </div>

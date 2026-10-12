@@ -13,15 +13,10 @@ import { useSendMessage } from "./useSendMessage";
 import { useBalance } from "@/src/features/billing/api";
 import { useUpgradeModalStore } from "@/src/features/billing/useUpgradeModalStore";
 import {
-  deployedAgo,
   errorMessage,
-  formatBytes,
-  historyLabel,
   deployFailureError,
-  useRollbackDeploy,
   useTakeSiteOffline,
   type DeployFailure,
-  type DeployStatus,
 } from "./deploy";
 
 export const deployButtonClass =
@@ -139,142 +134,6 @@ export function DeployFailureNotice({
         </>
       )}
     </DeployNotice>
-  );
-}
-
-export function DeploymentHistory({
-  projectId,
-  status,
-  blocked,
-}: {
-  projectId: string;
-  status: DeployStatus;
-  blocked: boolean;
-}) {
-  const rollback = useRollbackDeploy(projectId);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [restoring, setRestoring] = useState<string | null>(null);
-  const target = status.deployments.find(
-    (d) => d.id === restoring && d.canRollback,
-  );
-  return (
-    <>
-      <ul className="divide-y divide-silver-200">
-        {status.deployments.map((deployment) => (
-          <li key={deployment.id} className="py-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "size-1.5 rounded-full",
-                  deployment.isLive
-                    ? "bg-emerald-400"
-                    : deployment.status === "FAILED"
-                      ? "bg-red-400"
-                      : "bg-silver-400",
-                )}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="font-mono text-xs text-silver-900">
-                  {deployment.id.slice(0, 8)}
-                </p>
-                <p className="mt-1 text-[11px] text-silver-600">
-                  {historyLabel(deployment)} ·{" "}
-                  {deployedAgo(deployment.createdAt)}
-                  {deployment.fileCount > 0 &&
-                    ` · ${deployment.fileCount} files · ${formatBytes(deployment.sizeBytes)}`}
-                </p>
-              </div>
-              <button
-                type="button"
-                aria-expanded={selected === deployment.id}
-                onClick={() =>
-                  setSelected(selected === deployment.id ? null : deployment.id)
-                }
-                className="rounded-md px-2 py-1 text-xs text-blue-500 hover:bg-space-overlay"
-              >
-                {deployment.status === "FAILED" ? "View error" : "Details"}
-              </button>
-              {deployment.canRollback && (
-                <button
-                  type="button"
-                  disabled={blocked || rollback.isPending}
-                  onClick={() => setRestoring(deployment.id)}
-                  className={deployButtonClass}
-                >
-                  {status.live ? "Roll back" : "Restore"}
-                </button>
-              )}
-            </div>
-            {selected === deployment.id && (
-              <div className="mt-3 space-y-2 rounded-lg bg-space-surface p-3 text-xs text-silver-600">
-                <p className="break-all font-mono text-silver-900">
-                  {deployment.id}
-                </p>
-                <p>
-                  Requested {new Date(deployment.createdAt).toLocaleString()}
-                </p>
-                {deployment.completedAt && (
-                  <p>
-                    Completed{" "}
-                    {new Date(deployment.completedAt).toLocaleString()}
-                  </p>
-                )}
-                {deployment.error && (
-                  <p className="text-amber-200">{deployment.error}</p>
-                )}
-                {!deployment.isLive &&
-                  !deployment.canRollback &&
-                  deployment.status === "SUPERSEDED" && (
-                    <p>
-                      This version's files are no longer available to restore.
-                      Deploy the current project instead.
-                    </p>
-                  )}
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-      {target && (
-        <div className="mt-3 rounded-lg border border-silver-200 bg-space-surface p-4">
-          <p className="text-sm font-medium">
-            Restore version {target.id.slice(0, 8)}?
-          </p>
-          <p className="mt-2 text-xs leading-relaxed text-silver-600">
-            The public app switches to this available version. Your editor files
-            and production database data are not restored.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={rollback.isPending}
-              onClick={() => setRestoring(null)}
-              className={deployButtonClass}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={blocked || rollback.isPending}
-              onClick={() =>
-                rollback.mutate(target.id, {
-                  onSuccess: () => setRestoring(null),
-                })
-              }
-              className={cn(deployButtonClass, deployPrimaryClass)}
-            >
-              {rollback.isPending ? "Restoring…" : "Restore this version"}
-            </button>
-          </div>
-          {rollback.isError && (
-            <p role="alert" className="mt-2 text-xs text-red-300">
-              {errorMessage(rollback.error, "Couldn't restore this version.")}
-            </p>
-          )}
-        </div>
-      )}
-    </>
   );
 }
 

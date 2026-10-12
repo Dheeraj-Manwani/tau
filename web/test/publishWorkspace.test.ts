@@ -8,6 +8,7 @@ import {
   deploymentSteps,
   deployPresentation,
   deploySectionAvailability,
+  newestDeployments,
 } from "../src/features/project/deployPresentation";
 import {
   projectToolParams,
@@ -171,6 +172,19 @@ describe("publishing status summary", () => {
 });
 
 describe("reported deployment progress", () => {
+  test("history is newest first without changing the server response", () => {
+    const older = { ...deployment, id: "older", createdAt: "2026-10-11T10:00:00Z" };
+    const newer = { ...deployment, id: "newer", createdAt: "2026-10-13T10:00:00Z", status: "BUILDING" as const };
+    const deployments = [older, newer, deployment];
+    expect(newestDeployments({ ...status, deployments }).map((row) => row.id)).toEqual(["newer", "live-123", "older"]);
+    expect(deployments.map((row) => row.id)).toEqual(["older", "newer", "live-123"]);
+  });
+  test("history includes a missing live version once and tolerates invalid dates", () => {
+    const older = { ...deployment, id: "older", createdAt: "2026-10-11T10:00:00Z" };
+    const invalid = { ...deployment, id: "invalid", createdAt: "invalid" };
+    expect(newestDeployments({ ...status, deployments: [invalid, older] }).map((row) => row.id)).toEqual(["live-123", "older", "invalid"]);
+    expect(newestDeployments({ ...status, deployments: [deployment] })).toHaveLength(1);
+  });
   test("static and fullstack order follows the actual publisher", () => {
     expect(
       deploymentSteps({ ...deployment, status: "UPLOADING" }).map((s) => s.id),
