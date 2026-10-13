@@ -500,6 +500,7 @@ export function useImportVisualAsset(projectId: string | undefined) {
       if (!data.imported) return;
       // A new file exists: the tree is stale.
       void qc.invalidateQueries({ queryKey: projectKeys.tree(projectId ?? "") });
+      void qc.invalidateQueries({ queryKey: projectGithubKeys.info(projectId ?? "") });
     },
   });
 }
@@ -517,8 +518,7 @@ export function useSaveProjectFile(projectId: string | undefined) {
         projectKeys.file(projectId ?? "", vars.path),
         () => ({ binary: false, content: vars.content, contentHash: data.contentHash }),
       );
-      // The GitHub panel derives "N changes since last push" from headSequence,
-      // which this save just bumped.
+      // File review and project GitHub metadata must refresh after an edit.
       void qc.invalidateQueries({
         queryKey: projectGithubKeys.info(projectId ?? ""),
       });

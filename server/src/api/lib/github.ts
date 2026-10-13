@@ -2,6 +2,7 @@ import ignore from "ignore";
 import { prisma } from "@/lib/prisma";
 import { getBlob, getBlobText } from "@/lib/s3";
 import { isBinaryPath, isSecretPath } from "./projectFiles";
+import { gh, GithubApiError, resolveToken, dropConnection, githubReadError } from "./githubClient";
 
 /**
  * Shared with the worker, which imports `pushProjectToGithub` for the agent's
@@ -19,15 +20,8 @@ import { isBinaryPath, isSecretPath } from "./projectFiles";
  * The commit content is the stored `ProjectFile` set (the same source of truth
  * `rehydrateSandbox` reads from), so pushing works whether or not a sandbox is
  * awake, and the token never leaves this process.
- *
- * This module is intentionally duplicated in `api/src/lib/github.ts` so the api
- * (one-click push button + GitHub panel) and the worker (agent tool) can each
- * drive GitHub without a cross-package import. Keep the two copies in sync.
  */
 
-const GITHUB_API = "https://api.github.com";
-const PROVIDER = "github";
-const USER_AGENT = "tau-app";
 const GIT_FILE_MODE = "100644"; // normal file blob
 
 export type PushMode = "new_pr" | "update_pr" | "direct";
@@ -64,6 +58,12 @@ export interface PrSummary {
   title: string;
   state: string; // "open" | "closed"
   merged?: boolean;
+  author?: string;
+  updatedAt?: string;
+  headBranch?: string;
+  baseBranch?: string;
+  draft?: boolean;
+  body?: string;
 }
 
 export interface GithubProjectInfo {
@@ -84,58 +84,6 @@ export interface GithubProjectInfo {
  */
 const blobShaCache = new Map<string, string>();
 
-class GithubApiError extends Error {
-  constructor(
-    readonly status: number,
-    readonly body: string,
-  ) {
-    super(`GitHub API ${status}: ${body}`);
-    this.name = "GithubApiError";
-  }
-}
-
-/** Thin authenticated fetch wrapper around the GitHub REST API. */
-async function gh<T>(
-  token: string,
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<T> {
-  const res = await fetch(`${GITHUB_API}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": USER_AGENT,
-      ...(body ? { "Content-Type": "application/json" } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-
-  if (!res.ok) {
-    throw new GithubApiError(res.status, await res.text().catch(() => ""));
-  }
-  // 204 No Content and empty bodies.
-  const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
-}
-
-/** The stored GitHub token for a user, or null if not connected. */
-async function resolveToken(userId: string): Promise<string | null> {
-  const account = await prisma.oAuthAccount.findFirst({
-    where: { userId, provider: PROVIDER },
-  });
-  return account?.accessToken ?? null;
-}
-
-/** Drop the stored link so the UI re-prompts a reconnect (token revoked). */
-async function dropConnection(userId: string): Promise<void> {
-  await prisma.oAuthAccount
-    .deleteMany({ where: { userId, provider: PROVIDER } })
-    .catch(() => {});
-}
-
 interface GithubUser {
   id: number;
   login: string;
@@ -143,17 +91,13 @@ interface GithubUser {
 
 /** Look up the account behind a token. Returns null on 401 (revoked/invalid). */
 async function fetchGithubUser(token: string): Promise<GithubUser | null> {
-  const res = await fetch(`${GITHUB_API}/user`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "User-Agent": USER_AGENT,
-    },
-  });
-  if (res.status === 401) return null;
-  if (!res.ok) return null;
-  const data = (await res.json()) as GithubUser;
-  return { id: data.id, login: data.login };
+  try {
+    const data = await gh<GithubUser>(token, "GET", "/user");
+    return { id: data.id, login: data.login };
+  } catch (err) {
+    if (err instanceof GithubApiError && err.status === 401) return null;
+    throw err;
+  }
 }
 
 /** Turn a project name into a valid, collision-resistant GitHub repo slug. */
@@ -274,6 +218,12 @@ interface GithubPrResponse {
   state: string;
   merged?: boolean;
   merged_at?: string | null;
+  user?: { login: string };
+  updated_at?: string;
+  head?: { ref: string };
+  base?: { ref: string };
+  draft?: boolean;
+  body?: string | null;
 }
 
 function toPrSummary(p: GithubPrResponse): PrSummary {
@@ -283,6 +233,12 @@ function toPrSummary(p: GithubPrResponse): PrSummary {
     title: p.title,
     state: p.state,
     merged: p.merged ?? Boolean(p.merged_at),
+    author: p.user?.login,
+    updatedAt: p.updated_at,
+    headBranch: p.head?.ref,
+    baseBranch: p.base?.ref,
+    draft: p.draft,
+    body: p.body ?? "",
   };
 }
 
@@ -773,7 +729,7 @@ export async function getGithubProjectInfo(
   };
   if (!token || !project) return empty;
 
-  const ghUser = await fetchGithubUser(token);
+  const ghUser = await fetchGithubUser(token).catch((err) => githubReadError(err, userId));
   if (!ghUser) {
     await dropConnection(userId);
     return empty;
@@ -821,8 +777,8 @@ export async function getGithubProjectInfo(
             `/repos/${owner}/${name}/pulls/${project.lastPrNumber}`,
           );
           lastPr = toPrSummary(pr);
-        } catch {
-          /* PR deleted upstream — leave lastPr null */
+        } catch (err) {
+          if (!(err instanceof GithubApiError && err.status === 404)) throw err;
         }
       }
     } catch (err) {
@@ -830,8 +786,7 @@ export async function getGithubProjectInfo(
         await dropConnection(userId);
         return empty;
       }
-      // 404 → repo deleted upstream; report as connected-but-unlinked.
-      repo = null;
+      return githubReadError(err, userId);
     }
   }
 

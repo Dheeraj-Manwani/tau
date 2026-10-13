@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { api } from "@/src/lib/api-client";
 import { githubKeys } from "@/src/features/auth/github";
 import { isProjectGithubQuery } from "@/src/features/auth/githubCache";
+import { useProjectStore } from "@/src/stores/useProjectStore";
 
 /**
  * Project-scoped GitHub state + actions for the GitHub panel. Distinct from
@@ -20,6 +21,12 @@ export interface PrSummary {
   title: string;
   state: string; // "open" | "closed"
   merged?: boolean;
+  author?: string;
+  updatedAt?: string;
+  headBranch?: string;
+  baseBranch?: string;
+  draft?: boolean;
+  body?: string;
 }
 
 export interface RepoSummary {
@@ -57,7 +64,71 @@ export const projectGithubKeys = {
   info: (projectId: string) => ["project", projectId, "github"] as const,
   repos: (projectId: string) =>
     ["project", projectId, "github", "repos"] as const,
+  changes: (projectId: string, repo: string, mode: PushMode, deletions: string[], sequence: number | null) =>
+    ["project", projectId, "github", "changes", repo, mode, [...deletions].sort(), sequence] as const,
+  diff: (projectId: string, preview: string, path: string) =>
+    ["project", projectId, "github", "diff", preview, path] as const,
 };
+
+export interface GithubFileChange {
+  path: string;
+  status: "added" | "modified" | "deleted";
+  kind: "text" | "binary" | "large";
+  beforeBytes: number;
+  afterBytes: number;
+}
+
+export interface GithubComparison {
+  preview: string;
+  repo: string;
+  branch: string;
+  mode: PushMode;
+  headSha: string;
+  localSequence: number;
+  files: GithubFileChange[];
+  counts: { added: number; modified: number; deleted: number; total: number };
+  repositoryOnly: { path: string; sizeBytes: number }[];
+  excludedCount: number;
+}
+
+export interface GithubFileDiff {
+  path: string;
+  kind: "text" | "binary" | "large";
+  patch: string | null;
+  additions: number | null;
+  deletions: number | null;
+}
+
+export function useGithubChanges(projectId: string, repo: string, mode: PushMode, deletions: string[], enabled: boolean) {
+  const sequence = useProjectStore((s) => s.projectId === projectId ? s.headSequence : null);
+  return useQuery({
+    queryKey: projectGithubKeys.changes(projectId, repo, mode, deletions, sequence),
+    queryFn: ({ signal }) => api.get<GithubComparison>(`/project/${projectId}/github/changes`, {
+      params: { mode, deletions: JSON.stringify([...deletions].sort()) }, signal,
+    }).then((r) => r.data),
+    enabled,
+    staleTime: 15_000,
+    retry: false,
+    // Keep repository-only checkboxes mounted while a deletion selection loads.
+    // A new repository, target or local version must never inherit an old diff.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[4] === repo && previousQuery.queryKey[5] === mode && previousQuery.queryKey[7] === sequence
+        ? previous : undefined,
+  });
+}
+
+export function useGithubDiff(projectId: string, preview: string, path: string, enabled: boolean) {
+  return useQuery({
+    queryKey: projectGithubKeys.diff(projectId, preview, path),
+    queryFn: ({ signal }) => api.get<GithubFileDiff>(`/project/${projectId}/github/diff`, {
+      params: { path, preview }, signal,
+    }).then((r) => r.data),
+    enabled,
+    staleTime: 0,
+    retry: false,
+    gcTime: 60_000,
+  });
+}
 
 export function useGithubProject(projectId: string | null) {
   return useQuery({

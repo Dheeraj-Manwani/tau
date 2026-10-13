@@ -304,6 +304,21 @@ export const githubPushSchema = z.object({
   mode: pushModeSchema.optional(),
 });
 
+export const githubComparisonQuerySchema = z.object({
+  mode: pushModeSchema.optional(),
+  deletions: z.string().max(15_000).transform((value, ctx) => {
+    try { return JSON.parse(value) as unknown; } catch {
+      ctx.addIssue({ code: "custom", message: "Invalid deletion selection" });
+      return z.NEVER;
+    }
+  }).pipe(z.array(z.string().min(1).max(1_000)).max(100)).optional(),
+});
+
+export const githubDiffQuerySchema = z.object({
+  path: z.string().min(1).max(1_000),
+  preview: z.string().min(1).max(30_000),
+});
+
 export const githubLinkSchema = z.object({
   // "owner/repo"
   repo: z

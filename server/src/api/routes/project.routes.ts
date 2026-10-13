@@ -146,6 +146,8 @@ router.delete("/:projectId/domains/:domainId", domainRoutes.remove);
 
 // GitHub panel
 router.get("/:projectId/github", github.getInfo);
+router.get("/:projectId/github/changes", github.changes);
+router.get("/:projectId/github/diff", github.diff);
 router.post("/:projectId/github/push", github.push);
 router.get("/:projectId/github/repos", github.repos);
 router.post("/:projectId/github/link", github.link);

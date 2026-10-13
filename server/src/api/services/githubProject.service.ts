@@ -1,5 +1,6 @@
 import * as projectRepo from "../repositories/project.repository";
 import { Errors } from "../lib/errors";
+import { compareGithubFiles, githubFileDiff } from "../lib/githubComparison";
 import {
   getGithubProjectInfo,
   pushProjectToGithub,
@@ -29,6 +30,16 @@ function unwrap<T>(result: T | { error: string }): T {
 export async function getInfo(projectId: string, userId: string) {
   await assertOwner(projectId, userId);
   return getGithubProjectInfo(projectId, userId);
+}
+
+export async function changes(projectId: string, userId: string, opts: { mode?: PushMode; deletions?: string[] }) {
+  await assertOwner(projectId, userId);
+  return compareGithubFiles(projectId, userId, opts);
+}
+
+export async function diff(projectId: string, userId: string, path: string, preview: string) {
+  await assertOwner(projectId, userId);
+  return githubFileDiff(projectId, userId, path, preview);
 }
 
 export async function push(

@@ -1,10 +1,11 @@
 import { useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Tabs } from "radix-ui";
 import {
   ArrowUpRightIcon, CircleDotIcon, ExternalLinkIcon, FileDiffIcon,
-  GitBranchIcon, GitPullRequestIcon, GlobeIcon, InfoIcon,
-  LoaderCircleIcon, LockIcon, PlusIcon, RefreshCwIcon, Settings2Icon, UploadIcon,
+  GitBranchIcon, GitPullRequestIcon, GlobeIcon,
+  LoaderCircleIcon, LockIcon, PlusIcon, RefreshCwIcon, Settings2Icon,
 } from "lucide-react";
 import { GithubMark } from "@/src/components/ui/github-mark";
 import {
@@ -13,9 +14,10 @@ import {
 import { startGithubConnect } from "@/src/features/auth/github";
 import { cn } from "@/src/lib/utils";
 import { ToolPaneContent } from "./ToolPaneContent";
-import { useGithubProject, type GithubProjectInfo, type PrSummary } from "./github";
-import { githubEditLabel, githubPullRequests, githubPrState } from "./githubPresentation";
+import { useGithubProject, projectGithubKeys, errorMessage, type GithubProjectInfo, type PrSummary } from "./github";
+import { githubPullRequests, githubPrState } from "./githubPresentation";
 import { GithubRepositoryPicker } from "./GithubRepositoryPicker";
+import { GithubChanges } from "./GithubChanges";
 import { GithubSettings } from "./GithubSettings";
 import { githubButtonClass, githubCardClass, githubPrimaryClass } from "./githubStyles";
 import { selectedGithubSection, useProjectToolNavigation, type GithubSection } from "./toolNavigation";
@@ -29,6 +31,8 @@ const sections = [
 
 export function GithubPane({ projectId }: { projectId: string }) {
   const query = useGithubProject(projectId);
+  const queryClient = useQueryClient();
+  const refresh = () => queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) });
   const info = query.data;
   const [params] = useSearchParams();
   const section = selectedGithubSection(params);
@@ -46,7 +50,7 @@ export function GithubPane({ projectId }: { projectId: string }) {
           <button
             type="button"
             disabled={query.isFetching}
-            onClick={() => void query.refetch()}
+            onClick={() => void refresh()}
             aria-label="Refresh GitHub"
             className={cn(githubButtonClass, "shrink-0")}
           >
@@ -55,14 +59,14 @@ export function GithubPane({ projectId }: { projectId: string }) {
           </button>
         </header>
         {!info ? (
-          query.isError ? <GithubLoadError onRetry={() => void query.refetch()} /> : (
+          query.isError ? <GithubLoadError error={query.error} onRetry={() => void refresh()} /> : (
             <div role="status" className={cn(githubCardClass, "flex items-center gap-3 p-6 text-sm text-silver-600")}>
               <LoaderCircleIcon className="size-4 animate-spin motion-reduce:animate-none" />Loading GitHub workspace…
             </div>
           )
         ) : (
           <>
-            {query.isError && <GithubLoadError onRetry={() => void query.refetch()} />}
+            {query.isError && <GithubLoadError error={query.error} onRetry={() => void refresh()} />}
             <RepositoryHeader info={info} />
             <Tabs.Root
               value={section}
@@ -85,7 +89,7 @@ export function GithubPane({ projectId }: { projectId: string }) {
                   {!info.connected ? <ConnectGithub blocked={query.isError} /> : id === "settings" ? (
                     <GithubSettings key={projectId} projectId={projectId} info={info} blocked={query.isError || query.isFetching} />
                   ) : !info.repo ? <LinkRepository projectId={projectId} blocked={query.isError || query.isFetching} /> : id === "changes" ? (
-                    <GithubChanges info={info} />
+                    <GithubChanges key={`${projectId}:${info.repo.fullName}:${info.pushMode}`} projectId={projectId} info={info} blocked={query.isError} />
                   ) : id === "pull-requests" ? <GithubPullRequests info={info} /> : <GithubIssues info={info} />}
                 </Tabs.Content>
               ))}
@@ -97,10 +101,10 @@ export function GithubPane({ projectId }: { projectId: string }) {
   );
 }
 
-function GithubLoadError({ onRetry }: { onRetry: () => void }) {
+function GithubLoadError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
   return (
     <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-xs">
-      <p>Couldn't refresh GitHub. Try again to check your connection and repository.</p>
+      <p>{errorMessage(error, "Couldn't refresh GitHub. Try again to check your connection and repository.")}</p>
       <button type="button" className={githubButtonClass} onClick={onRetry}>Try again</button>
     </div>
   );
@@ -158,26 +162,6 @@ function LinkRepository({ projectId, blocked }: { projectId: string; blocked: bo
   );
 }
 
-function GithubChanges({ info }: { info: GithubProjectInfo }) {
-  return (
-    <section className={githubCardClass} aria-label="Project changes">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-silver-200 p-5">
-        <div>
-          <h2 className="text-sm font-medium">Project changes</h2>
-          <p className="mt-1 text-xs text-silver-600">{githubEditLabel(info.unpushedChanges)}</p>
-        </div>
-        <button type="button" disabled className={cn(githubButtonClass, githubPrimaryClass)} aria-describedby="github-push-unavailable"><UploadIcon className="size-3.5" />Push changes</button>
-      </div>
-      <div className="flex flex-col items-center px-6 py-12 text-center">
-        <div className="mb-4 flex size-12 items-center justify-center rounded-xl border border-silver-200 bg-space-overlay text-silver-600"><FileDiffIcon className="size-5" /></div>
-        <h3 className="text-sm font-medium">File comparison isn't available yet</h3>
-        <p className="mt-2 max-w-sm text-xs leading-relaxed text-silver-600">This edit count tracks updates made in Tau. A file-by-file comparison with GitHub will appear here when available.</p>
-        <p id="github-push-unavailable" className="mt-5 inline-flex max-w-sm items-start gap-2 text-xs leading-relaxed text-silver-600"><InfoIcon className="mt-0.5 size-3.5 shrink-0" />Pushing changes from this workspace will be available with file review.</p>
-      </div>
-    </section>
-  );
-}
-
 function GithubPullRequests({ info }: { info: GithubProjectInfo }) {
   const prs = githubPullRequests(info);
   return (
@@ -206,7 +190,7 @@ function PullRequestRow({ pr }: { pr: PrSummary }) {
       <DialogTrigger asChild>
         <button type="button" className="flex min-h-20 w-full items-start gap-3 p-5 text-left transition-colors hover:bg-space-overlay focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">
           <GitPullRequestIcon aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-silver-600" />
-          <div className="min-w-0 flex-1"><p className="break-words text-xs font-medium">{pr.title}</p><p className="mt-1 text-[11px] text-silver-600">#{pr.number}</p></div>
+          <div className="min-w-0 flex-1"><p className="break-words text-xs font-medium">{pr.title}</p><p className="mt-1 text-[11px] text-silver-600">#{pr.number}{pr.author && ` · @${pr.author}`}</p></div>
           <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px]", state.className)}>{state.label}</span>
         </button>
       </DialogTrigger>
@@ -215,8 +199,11 @@ function PullRequestRow({ pr }: { pr: PrSummary }) {
           <DialogTitle className="break-words">{pr.title}</DialogTitle>
           <DialogDescription className="text-silver-600">Pull request #{pr.number} · {state.label}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 text-xs">
-          <div className="rounded-lg border border-silver-200 bg-space-void p-4"><p className="font-medium">Reviews and checks</p><p className="mt-2 leading-relaxed text-silver-600">Detailed reviews, checks, and the description aren't available in Tau yet. Open this pull request on GitHub to review them.</p></div>
+        <div className="max-h-[65vh] space-y-4 overflow-y-auto text-xs">
+          {(pr.headBranch || pr.baseBranch) && <p className="break-all rounded-lg border border-silver-200 bg-space-void p-3 font-mono text-[11px]">{pr.headBranch ?? "Unknown head"} &rarr; {pr.baseBranch ?? "Unknown base"}</p>}
+          {(pr.author || pr.updatedAt) && <p className="text-silver-600">{pr.author && `Opened by @${pr.author}`}{pr.updatedAt && ` Updated ${new Date(pr.updatedAt).toLocaleString()}`}</p>}
+          <div className="rounded-lg border border-silver-200 bg-space-void p-4"><h3 className="font-medium">Description</h3><p className="mt-2 whitespace-pre-wrap break-words leading-relaxed text-silver-600">{pr.body === undefined ? "Description unavailable. Open on GitHub to read it." : pr.body || "No description provided."}</p></div>
+          <div className="rounded-lg border border-silver-200 bg-space-void p-4"><p className="font-medium">Reviews and checks</p><p className="mt-2 leading-relaxed text-silver-600">Detailed reviews and checks aren't available in Tau yet. Open this pull request on GitHub to review them.</p></div>
           <a href={pr.url} target="_blank" rel="noopener noreferrer" className={cn(githubButtonClass, githubPrimaryClass)}>Open on GitHub<ArrowUpRightIcon className="size-3.5" /></a>
         </div>
       </DialogContent>

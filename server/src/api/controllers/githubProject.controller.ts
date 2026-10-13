@@ -5,9 +5,29 @@ import {
   githubPushSchema,
   githubLinkSchema,
   githubPatchSchema,
+  githubComparisonQuerySchema,
+  githubDiffQuerySchema,
 } from "../schemas/project.schema";
 import * as githubProjectService from "../services/githubProject.service";
 import { requireUserId } from "../middleware/auth.middleware";
+
+export const changes = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const query = parse(githubComparisonQuerySchema, req.query);
+    res.status(200).json(await githubProjectService.changes(projectId, userId, query));
+  } catch (err) { next(err); }
+};
+
+export const diff = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = requireUserId(req);
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    const { path, preview } = parse(githubDiffQuerySchema, req.query);
+    res.status(200).json(await githubProjectService.diff(projectId, userId, path, preview));
+  } catch (err) { next(err); }
+};
 
 /** GET /project/:projectId/github — panel state (repo, PRs, unpushed count). */
 export const getInfo = async (

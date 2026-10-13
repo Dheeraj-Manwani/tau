@@ -7,7 +7,7 @@ import { RightPanel } from "../../src/features/project/RightPanel";
 import { api } from "../../src/lib/api-client";
 import { queryClient } from "../../src/lib/query-client";
 import { useProjectStore } from "../../src/stores/useProjectStore";
-import { projectGithubKeys, type GithubProjectInfo } from "../../src/features/project/github";
+import { projectGithubKeys, type GithubProjectInfo, type GithubComparison, type GithubFileDiff } from "../../src/features/project/github";
 import {
   deployKeys,
   type DeploymentSummary,
@@ -22,13 +22,16 @@ const githubScenario = new URLSearchParams(location.search).get("githubState") ?
 const clean = new URLSearchParams(location.search).get("clean") === "1";
 let githubError = githubScenario === "error";
 let repoError = githubScenario === "repos-error";
+let comparisonError = githubScenario === "changes-error";
+let diffError = githubScenario === "diff-error" || githubScenario === "diff-stale";
+let diffReads = 0;
 let githubInfo: GithubProjectInfo = {
   connected: scenario === "github" && githubScenario !== "disconnected",
   username: "alex",
   repo: scenario === "github" && !["unlinked", "disconnected", "repos-error"].includes(githubScenario)
     ? { fullName: "acme/atlas", htmlUrl: "https://github.com/acme/atlas", visibility: "private", defaultBranch: "main" }
     : null,
-  lastPr: { number: 42, title: "Add workspace navigation", state: "open", url: "https://github.com/acme/atlas/pull/42" },
+  lastPr: { number: 42, title: "Add workspace navigation", state: "open", url: "https://github.com/acme/atlas/pull/42", author: "alex", headBranch: "tau/add-workspace-navigation", baseBranch: "main", updatedAt: "2026-10-13T10:00:00Z", draft: true, body: "Adds the GitHub workspace with file review and consistent navigation.\n\nVerified desktop and mobile layouts." },
   openPrs: [
     { number: 42, title: "Add workspace navigation", state: "open", url: "https://github.com/acme/atlas/pull/42" },
     { number: 39, title: "Improve mobile layout", state: "open", url: "https://github.com/acme/atlas/pull/39" },
@@ -183,7 +186,35 @@ api.defaults.adapter = async (config) => {
         ? config.data
         : JSON.stringify(config.data);
   }
-  if (url.endsWith("/github/repos")) {
+  if (url.endsWith("/github/changes")) {
+    if (githubScenario === "changes-loading") await new Promise<never>(() => {});
+    if (comparisonError) throw new Error("GitHub's rate limit was reached. Try again later.");
+    const deletions: string[] = JSON.parse(config.params?.deletions ?? "[]");
+    const files: GithubComparison["files"] = githubScenario === "empty" ? [] : [
+      { path: "src/App.tsx", status: "modified", kind: "text", beforeBytes: 130, afterBytes: 168 },
+      { path: "src/components/RepositoryHeader.tsx", status: "added", kind: "text", beforeBytes: 0, afterBytes: 120 },
+      { path: "public/logo.png", status: "modified", kind: "binary", beforeBytes: 15_000, afterBytes: 18_000 },
+      { path: "data/catalog.json", status: "modified", kind: "large", beforeBytes: 500_000, afterBytes: 600_000 },
+      ...deletions.map((path): GithubComparison["files"][number] => ({ path, status: "deleted", kind: "text", beforeBytes: 48, afterBytes: 0 })),
+    ];
+    data = {
+      preview: `fixture-preview-${config.params?.mode}-${deletions.join(",")}-${useProjectStore.getState().headSequence}`,
+      repo: githubInfo.repo?.fullName ?? "acme/atlas", branch: config.params?.mode === "update_pr" ? "tau/add-workspace-navigation" : "main",
+      mode: config.params?.mode ?? "new_pr", headSha: "a153a40832d80ac81491194d26145119d3d9b201", localSequence: useProjectStore.getState().headSequence ?? 3,
+      files, counts: { added: files.filter((f) => f.status === "added").length, modified: files.filter((f) => f.status === "modified").length, deleted: deletions.length, total: files.length },
+      repositoryOnly: [{ path: "docs/README.md", sizeBytes: 48 }, { path: "LICENSE", sizeBytes: 1_040 }], excludedCount: 2,
+    } satisfies GithubComparison;
+  } else if (url.endsWith("/github/diff")) {
+    diffReads++;
+    if (diffError) throw new Error(githubScenario === "diff-stale" ? "The GitHub branch changed. Refresh the comparison." : "Couldn't load this diff. Try again.");
+    const path = config.params?.path as string;
+    const kind = path === "public/logo.png" ? "binary" : path === "data/catalog.json" ? "large" : "text";
+    data = {
+      path, kind,
+      patch: kind !== "text" ? null : path === "docs/README.md" || path === "LICENSE" ? `--- a/${path}\n+++ /dev/null\n@@ -1 +0,0 @@\n-Repository documentation\n` : path === "src/App.tsx" ? "--- a/src/App.tsx\n+++ b/src/App.tsx\n@@ -1,5 +1,6 @@\n export function App() {\n   return (\n-    <h1>Welcome to Atlas</h1>\n+    <main>\n+      <RepositoryHeader title=\"Atlas workspace\" />\n+    </main>\n   );\n }\n" : `--- /dev/null\n+++ b/${path}\n@@ -0,0 +1,3 @@\n+export function RepositoryHeader({ title }: { title: string }) {\n+  return <h1>{title}</h1>;\n+}\n`,
+      additions: kind === "text" ? path === "docs/README.md" ? 0 : 3 : null, deletions: kind === "text" ? 1 : null,
+    } satisfies GithubFileDiff;
+  } else if (url.endsWith("/github/repos")) {
     if (repoError) throw new Error("Repository lookup unavailable");
     data = { repos: [
       { fullName: "acme/atlas", private: true, htmlUrl: "https://github.com/acme/atlas" },
@@ -324,10 +355,12 @@ export function Harness() {
         <button onClick={() => tick((n) => n + 1)}>Check mutations</button>
         <output aria-label="Mutation count">{mutations}</output>
         <output aria-label="Last mutation body">{lastBody}</output>
+        <output aria-label="Diff requests">{diffReads}</output>
         {scenario === "github" && <>
           <button onClick={() => navigate(-1)}>Back</button>
-          <button onClick={() => { githubError = false; repoError = false; void queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) }); }}>Recover GitHub</button>
+          <button onClick={() => { githubError = false; repoError = false; comparisonError = false; diffError = false; void queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) }); }}>Recover GitHub</button>
           <button onClick={() => { githubError = true; void queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) }); }}>Fail GitHub refresh</button>
+          <button onClick={() => { useProjectStore.setState((s) => ({ headSequence: (s.headSequence ?? 0) + 1 })); }}>Edit project files</button>
         </>}
         <button
           onClick={() => {

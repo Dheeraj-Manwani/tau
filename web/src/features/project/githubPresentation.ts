@@ -17,5 +17,6 @@ export function githubPullRequests(info: GithubProjectInfo): PrSummary[] {
 export function githubPrState(pr: PrSummary) {
   if (pr.merged) return { label: "Merged", className: "bg-purple-500/10 text-purple-400" };
   if (pr.state === "closed") return { label: "Closed", className: "bg-red-500/10 text-red-400" };
+  if (pr.draft) return { label: "Draft", className: "bg-silver-500/10 text-silver-600" };
   return { label: "Open", className: "bg-emerald-500/10 text-emerald-500" };
 }
