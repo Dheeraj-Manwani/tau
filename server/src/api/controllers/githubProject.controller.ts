@@ -3,7 +3,7 @@ import { parse } from "../lib/utils";
 import {
   projectIdParamSchema,
   githubPushSchema,
-  githubLinkSchema,
+  githubCreateRepoSchema,
   githubPatchSchema,
   githubComparisonQuerySchema,
   githubDiffQuerySchema,
@@ -11,7 +11,6 @@ import {
   githubRepositoryQuerySchema,
   githubNumberParamSchema,
   githubIssueCreateSchema,
-  githubReposQuerySchema,
 } from "../schemas/project.schema";
 import * as githubProjectService from "../services/githubProject.service";
 import { requireUserId } from "../middleware/auth.middleware";
@@ -61,31 +60,14 @@ export const push = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-/** GET /project/:projectId/github/repos — the user's repos for the link picker. */
-export const repos = async (req: Request, res: Response, next: NextFunction) => {
+/** POST /project/:projectId/github/repository � create a new private repository. */
+export const createRepository = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = requireUserId(req);
     const { projectId } = parse(projectIdParamSchema, req.params);
-    res
-      .status(200)
-      .json(await githubProjectService.repos(projectId, userId, parse(githubReposQuerySchema, req.query)));
-  } catch (err) {
-    next(err);
-  }
-};
-
-/** POST /project/:projectId/github/link — link an existing owner/repo. */
-export const link = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = requireUserId(req);
-    const { projectId } = parse(projectIdParamSchema, req.params);
-    const { repo } = parse(githubLinkSchema, req.body);
-    res
-      .status(200)
-      .json(await githubProjectService.link(projectId, userId, repo));
-  } catch (err) {
-    next(err);
-  }
+    const body = parse(githubCreateRepoSchema, req.body);
+    res.status(201).json(await githubProjectService.createRepository(projectId, userId, body));
+  } catch (err) { next(err); }
 };
 
 /** DELETE /project/:projectId/github/link — detach the repo from the project. */

@@ -64,22 +64,8 @@ export interface PushResult {
   warning?: string;
 }
 
-export interface UserRepo {
-  fullName: string;
-  private: boolean;
-  htmlUrl: string;
-  canPush?: boolean;
-  canAdmin?: boolean;
-  archived?: boolean;
-}
-
-export type RepoAffiliation = "all" | "owner" | "collaborator" | "organization_member";
-export interface UserRepoPage { repos: UserRepo[]; page: number; hasNext: boolean }
-
 export const projectGithubKeys = {
   info: (projectId: string) => ["project", projectId, "github"] as const,
-  repos: (projectId: string) =>
-    ["project", projectId, "github", "repos"] as const,
   changes: (projectId: string, repo: string, mode: PushMode, deletions: string[], sequence: number | null, prNumber?: number) =>
     ["project", projectId, "github", "changes", repo, mode, [...deletions].sort(), sequence, prNumber ?? null] as const,
   diff: (projectId: string, preview: string, path: string) =>
@@ -160,20 +146,6 @@ export function useGithubProject(projectId: string | null) {
   });
 }
 
-/** Fetched on demand (only when the "link existing repo" picker opens). */
-export function useUserRepos(projectId: string | null, enabled: boolean, page = 1, affiliation: RepoAffiliation = "all") {
-  return useQuery({
-    queryKey: [...projectGithubKeys.repos(projectId ?? ""), affiliation, page],
-    queryFn: () =>
-      api
-        .get<UserRepoPage>(`/project/${projectId}/github/repos`, { params: { page, affiliation } })
-        .then((r) => r.data),
-    enabled: !!projectId && enabled,
-    staleTime: 30_000,
-    retry: false,
-  });
-}
-
 function useInvalidateInfo(projectId: string | null) {
   const qc = useQueryClient();
   return () =>
@@ -204,18 +176,17 @@ export function usePushToGithub(projectId: string | null) {
   });
 }
 
-export function useLinkRepo(projectId: string | null) {
+export function useCreateGithubRepository(projectId: string | null) {
   const invalidate = useInvalidateInfo(projectId);
   return useMutation({
-    mutationFn: (repo: string) =>
-      api
-        .post<RepoSummary>(`/project/${projectId}/github/link`, { repo })
-        .then((r) => r.data),
+    mutationFn: (body: { name: string; description?: string }) =>
+      api.post<RepoSummary>(`/project/${projectId}/github/repository`, body).then((r) => r.data),
+    retry: false,
     onSuccess: (repo) => {
-      toast.success(`Linked ${repo.fullName}`);
+      toast.success(`Created ${repo.fullName}`);
       void invalidate();
     },
-    onError: (err: unknown) => toast.error(errorMessage(err, "Couldn't link repo")),
+    onError: (err: unknown) => toast.error(errorMessage(err, "Couldn't create repository")),
   });
 }
 

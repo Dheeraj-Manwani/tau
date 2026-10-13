@@ -7,7 +7,7 @@ import {
 import { cn } from "@/src/lib/utils";
 import { GithubMark } from "@/src/components/ui/github-mark";
 import { errorMessage, useDisconnectGithub, usePatchGithub, useUnlinkRepo, type GithubProjectInfo, type PushMode } from "./github";
-import { GithubRepositoryPicker } from "./GithubRepositoryPicker";
+import { GithubCreateRepository } from "./GithubCreateRepository";
 import { githubButtonClass, githubCardClass } from "./githubStyles";
 import { GithubVisibilitySettings } from "./GithubVisibilitySettings";
 
@@ -50,9 +50,9 @@ export function GithubSettings({ projectId, info, blocked }: {
       <section className={cn(githubCardClass, "divide-y divide-silver-200")} aria-label="Repository settings">
         <div className="p-5">
           <h2 className="text-sm font-medium">Repository</h2>
-          <p className="mt-1 break-all text-xs text-silver-600">{repo?.fullName ?? "No repository linked"}</p>
+          <p className="mt-1 break-all text-xs text-silver-600">{repo?.fullName ?? "No repository created"}</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <GithubRepositoryPicker projectId={projectId} currentRepo={repo?.fullName} disabled={blocked || pending} />
+            {!repo && <GithubCreateRepository projectId={projectId} disabled={blocked || pending} />}
             {repo && <a href={`${repo.htmlUrl}/settings`} target="_blank" rel="noopener noreferrer" className={githubButtonClass}>Settings on GitHub<ExternalLinkIcon className="size-3.5" /></a>}
           </div>
           {repo && <><p className="mt-3 text-xs text-silver-600">Your access: {repo.canAdmin ? "Admin" : repo.canPush ? "Write" : "Read"}{repo.archived && " · Archived"}</p><GithubVisibilitySettings key={repo.fullName} projectId={projectId} repo={repo} blocked={blocked || pending || patch.isPending} /></>}

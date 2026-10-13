@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { Errors } from "./errors";
+import { AppError, Errors } from "./errors";
 import { isPushMode, type PushMode } from "./githubFiles";
-import { gh, ghPage, GithubApiError, resolveToken, dropConnection, githubReadError, githubWriteError } from "./githubClient";
+import { gh, GithubApiError, resolveToken, dropConnection, githubReadError, githubWriteError } from "./githubClient";
 
 /**
  * Shared with the worker, which imports `pushProjectToGithub` for the agent's
@@ -183,7 +183,7 @@ export function toPrSummary(p: GithubPrResponse): PrSummary {
   };
 }
 
-/** Persist the cached repo facts on the project row after a lookup/link. */
+/** Persist the cached repo facts on the project row after a lookup. */
 async function cacheRepoFacts(
   projectId: string,
   repo: RepoInfo,
@@ -201,55 +201,53 @@ async function cacheRepoFacts(
     .catch(() => {});
 }
 
-/** Look up an existing linked repo, or create a fresh private one (auto-init'd). */
-async function ensureRepo(
-  token: string,
-  project: { id: string; name: string; githubRepo: string | null },
-  description: string,
-): Promise<RepoInfo> {
-  if (project.githubRepo) {
-    const [owner, repo] = project.githubRepo.split("/");
-    const existing = await gh<GithubRepoResponse>(
-      token,
-      "GET",
-      `/repos/${owner}/${repo}`,
-    );
-    return toRepoInfo(existing);
-  }
-
-  // auto_init gives us an initial commit + default branch to PR into.
-  const base = slugifyRepoName(project.name);
-  let lastErr: unknown;
-  for (const candidate of [
-    base,
-    `${base}-${shortId()}`,
-    `${base}-${shortId()}`,
-  ]) {
-    try {
-      const created = await gh<GithubRepoResponse>(
-        token,
-        "POST",
-        `/user/repos`,
-        {
-          name: candidate,
-          description: description.slice(0, 350),
-          private: true,
-          auto_init: true,
-        },
-      );
+/** Create and bind only a newly created repository. The row lock serializes
+ * simultaneous creation requests across server processes. Never adopt a repo
+ * after a name collision or an uncertain GitHub response. */
+export async function createGithubRepository(
+  projectId: string,
+  userId: string,
+  opts: { name: string; description?: string },
+): Promise<RepoSummary> {
+  await ownedGithubProject(projectId, userId);
+  const token = await resolveToken(userId);
+  if (!token) throw Errors.conflict("GitHub is not connected.");
+  let created: GithubRepoResponse | undefined;
+  try {
+    return await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Project" WHERE id = ${projectId} AND "userId" = ${userId} FOR UPDATE`;
+      const project = await tx.project.findUnique({ where: { id: projectId }, select: { userId: true, githubRepo: true } });
+      if (!project) throw Errors.notFound("Project not found");
+      if (project.userId !== userId) throw Errors.forbidden("You do not have access to this project");
+      if (project.githubRepo) throw Errors.conflict("This project already has a repository. Refresh GitHub to use it.");
+      created = await gh<GithubRepoResponse>(token, "POST", "/user/repos", {
+        name: opts.name,
+        description: opts.description ?? "",
+        private: true,
+        // An initial commit provides the default branch for later pull requests.
+        auto_init: true,
+      });
       const info = toRepoInfo(created);
-      await cacheRepoFacts(project.id, info, null);
-      return info;
-    } catch (err) {
-      // 422 = name already taken (or invalid); try the next candidate.
-      if (err instanceof GithubApiError && err.status === 422) {
-        lastErr = err;
-        continue;
-      }
-      throw err;
+      await tx.project.update({ where: { id: projectId }, data: {
+        githubRepo: info.fullName, githubDefaultBranch: info.defaultBranch, githubVisibility: info.visibility,
+        lastPushedBranch: null, lastPrUrl: null, lastPrNumber: null,
+        lastPushedSequence: null, lastPushedAt: null, lastPushedCommitSha: null,
+      } });
+      return repositorySummary(created);
+    }, { timeout: 30_000, maxWait: 5_000 });
+  } catch (err) {
+    if (created) throw new AppError(`Created ${created.full_name} on GitHub, but couldn't save it to this project. Check GitHub before creating another repository.`, 503);
+    if (err instanceof GithubApiError && err.status === 422) {
+      throw Errors.conflict("GitHub couldn't create this repository. The name may already be taken. Choose a different name.");
     }
+    if (err instanceof GithubApiError && err.status === 403 && !err.rateLimited) {
+      throw Errors.forbidden("GitHub refused repository creation. Check your account permissions or reconnect GitHub.");
+    }
+    if (!(err instanceof AppError) && !(err instanceof GithubApiError)) {
+      throw new AppError("Couldn't confirm repository creation. Check your GitHub repositories before trying again.", 503);
+    }
+    return githubReadError(err, userId);
   }
-  throw lastErr ?? new Error("Could not create a GitHub repository");
 }
 
 /** Worker/mobile compatibility: generate a fresh review and use the same overlay engine. */
@@ -265,8 +263,9 @@ export async function pushProjectToGithub(
     if (!project) throw Errors.notFound("Project not found");
     if (project.userId !== userId) throw Errors.forbidden("You do not have access to this project");
     if (!project.githubRepo) {
-      const repo = await ensureRepo(token, project, opts.title);
-      await getHeadShaWithRetry(token, repo.owner, repo.repo, repo.defaultBranch);
+      const repo = await createGithubRepository(projectId, userId, { name: `${slugifyRepoName(project.name)}-${shortId()}`, description: opts.title.slice(0, 350) });
+      const [owner, name] = repo.fullName.split("/");
+      await getHeadShaWithRetry(token, owner!, name!, repo.defaultBranch);
     }
     const { compareGithubFiles } = await import("./githubComparison");
     const { pushReviewedProject } = await import("./githubPush");
@@ -414,51 +413,6 @@ async function ownedGithubProject(projectId: string, userId: string) {
   return project;
 }
 
-/** Link an accessible repository without importing or modifying remote files. */
-export async function linkExistingRepo(
-  projectId: string,
-  userId: string,
-  repoFullName: string,
-): Promise<RepoSummary | PushError> {
-  const project = await ownedGithubProject(projectId, userId);
-  const token = await resolveToken(userId);
-  if (!token) throw Errors.conflict("GitHub is not connected.");
-
-  const parts = repoFullName.split("/");
-  if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repoFullName) || parts.some((part) => part === "." || part === "..")) {
-    throw Errors.badRequest("Expected a repository in 'owner/repo' form.");
-  }
-
-  try {
-    const r = await gh<GithubRepoResponse>(
-      token,
-      "GET",
-      `/repos/${parts[0]}/${parts[1]}`,
-    );
-    const info = toRepoInfo(r);
-    if (project.githubRepo?.toLowerCase() === info.fullName.toLowerCase()) return repositorySummary(r);
-    const saved = await prisma.project.updateMany({
-      where: { id: projectId, userId, githubRepo: project.githubRepo },
-      data: {
-        githubRepo: info.fullName,
-        githubDefaultBranch: info.defaultBranch,
-        githubVisibility: info.visibility,
-        // A different repo — reset last-push bookkeeping.
-        lastPushedBranch: null,
-        lastPrUrl: null,
-        lastPrNumber: null,
-        lastPushedSequence: null,
-        lastPushedAt: null,
-        lastPushedCommitSha: null,
-      },
-    });
-    if (!saved.count) throw Errors.conflict("The repository association changed. Refresh GitHub before linking.");
-    return repositorySummary(r);
-  } catch (err) {
-    return githubReadError(err, userId);
-  }
-}
-
 /** Detach a project from its repo (does not touch the repo on GitHub). */
 export async function unlinkRepo(
   projectId: string,
@@ -480,41 +434,6 @@ export async function unlinkRepo(
     },
   });
   if (!saved.count) throw Errors.conflict("The repository association changed. Refresh GitHub.");
-}
-
-export interface UserRepo {
-  fullName: string;
-  private: boolean;
-  htmlUrl: string;
-  canPush?: boolean;
-  canAdmin?: boolean;
-  archived?: boolean;
-}
-
-export type RepoAffiliation = "all" | "owner" | "collaborator" | "organization_member";
-export interface UserRepoPage { repos: UserRepo[]; page: number; hasNext: boolean }
-
-/** Accessible repositories, newest activity first, including collaborator/org access. */
-export async function listUserRepos(
-  userId: string,
-  opts: { page: number; affiliation: RepoAffiliation } = { page: 1, affiliation: "all" },
-): Promise<UserRepoPage> {
-  const token = await resolveToken(userId);
-  if (!token) throw Errors.conflict("GitHub is not connected.");
-  try {
-    const affiliation = opts.affiliation === "all" ? "owner,collaborator,organization_member" : opts.affiliation;
-    const page = await ghPage<GithubRepoResponse[]>(token, `/user/repos?per_page=30&sort=updated&direction=desc&affiliation=${affiliation}&page=${opts.page}`);
-    return { page: opts.page, hasNext: page.hasNext, repos: page.items.map((r) => ({
-      fullName: r.full_name,
-      private: r.private,
-      htmlUrl: r.html_url,
-      canPush: r.permissions?.push === true && !r.archived,
-      canAdmin: r.permissions?.admin === true,
-      archived: r.archived === true,
-    })) };
-  } catch (err) {
-    return githubReadError(err, userId);
-  }
 }
 
 /** Flip a linked repo between private and public. */

@@ -12,7 +12,7 @@ import { startGithubConnect } from "@/src/features/auth/github";
 import { cn } from "@/src/lib/utils";
 import { ToolPaneContent } from "./ToolPaneContent";
 import { useGithubProject, projectGithubKeys, errorMessage, type GithubProjectInfo } from "./github";
-import { GithubRepositoryPicker } from "./GithubRepositoryPicker";
+import { GithubCreateRepository } from "./GithubCreateRepository";
 import { GithubPullRequests, GithubIssues } from "./GithubCollaborationPane";
 import { GithubChanges } from "./GithubChanges";
 import { GithubSettings } from "./GithubSettings";
@@ -85,7 +85,7 @@ export function GithubPane({ projectId }: { projectId: string }) {
                 <Tabs.Content key={id} value={id} className="focus-visible:outline-2 focus-visible:outline-ring">
                   {!info.connected ? <ConnectGithub blocked={query.isError} /> : id === "settings" ? (
                     <GithubSettings key={projectId} projectId={projectId} info={info} blocked={query.isError || query.isFetching} />
-                  ) : !info.repo ? <LinkRepository projectId={projectId} blocked={query.isError || query.isFetching} /> : id === "changes" ? (
+                  ) : !info.repo ? <CreateRepository projectId={projectId} blocked={query.isError || query.isFetching} /> : id === "changes" ? (
                     <GithubChanges key={`${projectId}:${info.repo.fullName}:${info.pushMode}:${selectedGithubPr(params) ?? ""}`} projectId={projectId} info={info} blocked={query.isError} />
                   ) : id === "pull-requests" ? <GithubPullRequests key={`${projectId}:${info.repo.fullName}`} projectId={projectId} info={info} blocked={query.isError} /> : <GithubIssues key={`${projectId}:${info.repo.fullName}`} projectId={projectId} info={info} blocked={query.isError} />}
                 </Tabs.Content>
@@ -115,7 +115,7 @@ function RepositoryHeader({ info }: { info: GithubProjectInfo }) {
         <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-silver-200 bg-space-overlay"><GithubMark className="size-5" /></div>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h2 className="break-all text-sm font-medium">{repo?.fullName ?? (info.connected ? "No repository linked" : "Connect your GitHub account")}</h2>
+            <h2 className="break-all text-sm font-medium">{repo?.fullName ?? (info.connected ? "No repository created" : "Connect your GitHub account")}</h2>
             {repo && <span className="inline-flex items-center gap-1 rounded-full border border-silver-200 px-2 py-0.5 text-[10px] text-silver-600">
               {repo.visibility === "private" ? <LockIcon className="size-3" /> : <GlobeIcon className="size-3" />}
               {repo.visibility === "private" ? "Private" : repo.visibility === "internal" ? "Internal" : "Public"}
@@ -140,22 +140,21 @@ function ConnectGithub({ blocked }: { blocked: boolean }) {
     <div className={cn(githubCardClass, "space-y-4 p-6")}>
       <div>
         <h2 className="text-sm font-medium">Bring your project to GitHub</h2>
-        <p className="mt-2 max-w-md text-xs leading-relaxed text-silver-600">Connect your account to link a repository and follow your pull requests. Your project stays here in Tau.</p>
+        <p className="mt-2 max-w-md text-xs leading-relaxed text-silver-600">Connect your account to create a repository and follow your pull requests. Your project stays here in Tau.</p>
       </div>
       <button type="button" disabled={blocked} onClick={startGithubConnect} className={cn(githubButtonClass, githubPrimaryClass)}><GithubMark className="size-4" />Connect GitHub</button>
     </div>
   );
 }
 
-function LinkRepository({ projectId, blocked }: { projectId: string; blocked: boolean }) {
+function CreateRepository({ projectId, blocked }: { projectId: string; blocked: boolean }) {
   return (
     <div className={cn(githubCardClass, "space-y-4 p-6")}>
       <div>
-        <h2 className="text-sm font-medium">Choose a home for your code</h2>
-        <p className="mt-2 max-w-md text-xs leading-relaxed text-silver-600">Link an existing repository to see its pull requests and manage the connection.</p>
+        <h2 className="text-sm font-medium">Create a home for your code</h2>
+        <p className="mt-2 max-w-md text-xs leading-relaxed text-silver-600">Create a new private repository for this project. Then review your changes, push code, and open pull requests.</p>
       </div>
-      <GithubRepositoryPicker projectId={projectId} disabled={blocked} />
-      <p className="text-xs text-silver-600">Creating a repository from this workspace will be available soon.</p>
+      <GithubCreateRepository projectId={projectId} disabled={blocked} />
     </div>
   );
 }

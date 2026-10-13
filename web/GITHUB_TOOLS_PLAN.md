@@ -439,3 +439,7 @@ server. No dependency was added, no live GitHub writes were made, and no commits
 were created by the agent. Repository creation continues through the existing agent
 push tool; a standalone creation form and additional PR/issue mutations are outside
 this six-phase scope.
+
+## Repository creation policy update
+
+Existing-repository discovery, linking, and replacement are removed. Projects create a new private repository through the GitHub workspace before reviewing changes and using push, pull request, and issue actions. Creation initializes the default branch, rejects name collisions without adopting existing repositories, and serializes concurrent requests. Unlinking keeps the remote repository intact; the next association must be another newly created repository. Previously saved associations are preserved.

@@ -323,15 +323,12 @@ export const githubDiffQuerySchema = z.object({
   preview: z.string().min(1).max(30_000),
 });
 
-export const githubLinkSchema = z.object({
-  // "owner/repo"
-  repo: z
-    .string()
-    .trim()
-    .max(200)
-    .regex(/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/, "Expected a repository in 'owner/repo' form")
-    .refine((value) => value.split("/").every((part) => part !== "." && part !== ".."), "Invalid repository name"),
-});
+export const githubCreateRepoSchema = z.object({
+  name: z.string().trim().min(1).max(100)
+    .regex(/^[a-zA-Z0-9_.-]+$/, "Use letters, numbers, periods, hyphens, or underscores")
+    .refine((name) => name !== "." && name !== ".." && name.toLowerCase() !== ".git", "Invalid repository name"),
+  description: z.string().trim().max(350).default(""),
+}).strict();
 
 export const githubPatchSchema = z
   .object({
@@ -342,11 +339,6 @@ export const githubPatchSchema = z
   .refine((v) => v.private !== undefined || v.pushMode !== undefined, {
     message: "Nothing to update",
   }).refine((v) => v.private === undefined || v.pushMode === undefined, { message: "Change visibility and push preference separately" });
-
-export const githubReposQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).max(1000).default(1),
-  affiliation: z.enum(["all", "owner", "collaborator", "organization_member"]).default("all"),
-});
 
 export type MessageRole = z.infer<typeof messageRole>;
 export type MessageType = z.infer<typeof messageType>;

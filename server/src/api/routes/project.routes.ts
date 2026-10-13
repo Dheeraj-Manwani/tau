@@ -154,8 +154,7 @@ router.get("/:projectId/github/pulls/:number", github.pull);
 router.get("/:projectId/github/issues", github.issues);
 router.get("/:projectId/github/issues/:number", github.issue);
 router.post("/:projectId/github/issues", github.createIssue);
-router.get("/:projectId/github/repos", github.repos);
-router.post("/:projectId/github/link", github.link);
+router.post("/:projectId/github/repository", github.createRepository);
 router.delete("/:projectId/github/link", github.unlink);
 router.patch("/:projectId/github", github.patch);
 

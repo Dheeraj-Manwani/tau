@@ -22,7 +22,7 @@ const scenario = new URLSearchParams(location.search).get("scenario") ?? "live";
 const githubScenario = new URLSearchParams(location.search).get("githubState") ?? "linked";
 const clean = new URLSearchParams(location.search).get("clean") === "1";
 let githubError = githubScenario === "error";
-let repoError = githubScenario === "repos-error";
+let creationError = githubScenario === "creation-error";
 let comparisonError = githubScenario === "changes-error";
 let diffError = githubScenario === "diff-error" || githubScenario === "diff-stale";
 let diffReads = 0;
@@ -39,7 +39,7 @@ let fixtureIssues = [
 let githubInfo: GithubProjectInfo = {
   connected: scenario === "github" && githubScenario !== "disconnected",
   username: "alex",
-  repo: scenario === "github" && !["unlinked", "disconnected", "repos-error"].includes(githubScenario)
+  repo: scenario === "github" && !["unlinked", "disconnected", "creation-error", "creation-pending"].includes(githubScenario)
     ? { fullName: "acme/atlas", htmlUrl: "https://github.com/acme/atlas", visibility: "private", defaultBranch: "main", canPush: !["read-only", "archived"].includes(githubScenario), canAdmin: !["read-only", "write-only"].includes(githubScenario), canChangeVisibility: !["read-only", "write-only", "archived", "fork"].includes(githubScenario), archived: githubScenario === "archived", visibilityReason: githubScenario === "archived" ? "This repository is archived." : githubScenario === "fork" ? "Fork visibility follows its repository network." : "Repository admin access is required to change visibility." }
     : null,
   lastPr: { number: 42, title: "Add workspace navigation", state: "open", url: "https://github.com/acme/atlas/pull/42", author: "alex", headBranch: "tau/add-workspace-navigation", baseBranch: "main", updatedAt: "2026-10-13T10:00:00Z", draft: true, canUpdate: githubScenario !== "read-only", body: "Adds the GitHub workspace with file review and consistent navigation.\n\nVerified desktop and mobile layouts." },
@@ -278,20 +278,15 @@ api.defaults.adapter = async (config) => {
       patch: kind !== "text" ? null : path === "docs/README.md" || path === "LICENSE" ? `--- a/${path}\n+++ /dev/null\n@@ -1 +0,0 @@\n-Repository documentation\n` : path === "src/App.tsx" ? "--- a/src/App.tsx\n+++ b/src/App.tsx\n@@ -1,5 +1,6 @@\n export function App() {\n   return (\n-    <h1>Welcome to Atlas</h1>\n+    <main>\n+      <RepositoryHeader title=\"Atlas workspace\" />\n+    </main>\n   );\n }\n" : `--- /dev/null\n+++ b/${path}\n@@ -0,0 +1,3 @@\n+export function RepositoryHeader({ title }: { title: string }) {\n+  return <h1>{title}</h1>;\n+}\n`,
       additions: kind === "text" ? path === "docs/README.md" ? 0 : 3 : null, deletions: kind === "text" ? 1 : null,
     } satisfies GithubFileDiff;
-  } else if (url.endsWith("/github/repos")) {
-    if (repoError) throw new Error("Repository lookup unavailable");
-    const page = Number(config.params?.page ?? 1);
-    const affiliation = config.params?.affiliation ?? "all";
-    const available = [
-      { fullName: "acme/atlas", private: true, htmlUrl: "https://github.com/acme/atlas", canPush: true, canAdmin: true },
-      { fullName: "acme/atlas-next", private: false, htmlUrl: "https://github.com/acme/atlas-next", canPush: true },
-      { fullName: "alex/design-system", private: true, htmlUrl: "https://github.com/alex/design-system", canPush: true, canAdmin: true },
-    ];
-    data = { page, hasNext: page === 1 && affiliation === "all", repos: page === 2 ? [{ fullName: "studio/shared-workspace", private: true, htmlUrl: "https://github.com/studio/shared-workspace", canPush: false }] : affiliation === "owner" ? [available[2]] : affiliation === "organization_member" || affiliation === "collaborator" ? available.slice(0, 2) : available };
-  } else if (url.endsWith("/github/link")) {
+  } else if (url.endsWith("/github/repository") && method === "post") {
+    if (githubScenario === "creation-pending") await new Promise<never>(() => {});
+    if (creationError) throw new Error("GitHub couldn't create this repository. The name may already be taken. Choose a different name.");
     const body = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
-    githubInfo = { ...githubInfo, repo: method === "delete" ? null : { fullName: body.repo, htmlUrl: `https://github.com/${body.repo}`, visibility: "private", defaultBranch: "main", canPush: body.repo !== "studio/shared-workspace", canAdmin: false, canChangeVisibility: false }, lastPr: null, unpushedChanges: 0, lastPush: null };
+    githubInfo = { ...githubInfo, repo: { fullName: `alex/${body.name}`, htmlUrl: `https://github.com/alex/${body.name}`, visibility: "private", defaultBranch: "main", canPush: true, canAdmin: true, canChangeVisibility: true }, lastPr: null, openPrs: [], lastPush: null };
     data = githubInfo.repo;
+  } else if (url.endsWith("/github/link") && method === "delete") {
+    githubInfo = { ...githubInfo, repo: null, lastPr: null, openPrs: [], lastPush: null };
+    data = null;
   } else if (url === "/auth/github" && method === "delete") {
     githubInfo = { ...githubInfo, connected: false, repo: null, username: null };
     data = null;
@@ -438,7 +433,7 @@ export function Harness() {
         <output aria-label="Chat message count">{messageCount}</output>
         {scenario === "github" && <>
           <button onClick={() => navigate(-1)}>Back</button>
-          <button onClick={() => { githubError = false; repoError = false; comparisonError = false; diffError = false; collaborationError = false; void queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) }); }}>Recover GitHub</button>
+          <button onClick={() => { githubError = false; creationError = false; comparisonError = false; diffError = false; collaborationError = false; void queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) }); }}>Recover GitHub</button>
           <button onClick={() => { githubError = true; void queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) }); }}>Fail GitHub refresh</button>
           <button onClick={() => { useProjectStore.setState((s) => ({ headSequence: (s.headSequence ?? 0) + 1 })); }}>Edit project files</button>
         </>}

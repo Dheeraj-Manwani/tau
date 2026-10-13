@@ -6,13 +6,11 @@ import { compareGithubFiles, githubFileDiff } from "../lib/githubComparison";
 import {
   getGithubProjectInfo,
   pushProjectToGithub,
-  linkExistingRepo,
+  createGithubRepository,
   unlinkRepo,
-  listUserRepos,
   setRepoVisibility,
   setPushMode,
   type PushMode,
-  type RepoAffiliation,
 } from "../lib/github";
 
 async function assertOwner(projectId: string, userId: string): Promise<void> {
@@ -61,19 +59,14 @@ export async function push(
   return unwrap(result);
 }
 
-export async function link(projectId: string, userId: string, repo: string) {
+export async function createRepository(projectId: string, userId: string, opts: { name: string; description?: string }) {
   await assertOwner(projectId, userId);
-  return unwrap(await linkExistingRepo(projectId, userId, repo));
+  return createGithubRepository(projectId, userId, opts);
 }
 
 export async function unlink(projectId: string, userId: string) {
   await assertOwner(projectId, userId);
   await unlinkRepo(projectId, userId);
-}
-
-export async function repos(projectId: string, userId: string, opts: { page: number; affiliation: RepoAffiliation }) {
-  await assertOwner(projectId, userId);
-  return listUserRepos(userId, opts);
 }
 
 export async function patch(

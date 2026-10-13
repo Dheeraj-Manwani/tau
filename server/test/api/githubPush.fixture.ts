@@ -7,7 +7,7 @@ const PID = "00000000-0000-4000-8000-000000000001";
 const OTHER = "00000000-0000-4000-8000-000000000002";
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const gitSha = (bytes: Uint8Array) => createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
-let project = { id: PID, userId: "owner", githubRepo: "acme/atlas", githubPushMode: "new_pr", headSequence: 30, lastPrNumber: 42, lastPushedBranch: "tau/update", githubDefaultBranch: "main", githubVisibility: "private", lastPushedSequence: 1, lastPushedAt: null as Date | null, lastPushedCommitSha: null as string | null };
+let project = { id: PID, userId: "owner", githubRepo: "acme/atlas" as string | null, githubPushMode: "new_pr", headSequence: 30, lastPrNumber: 42, lastPushedBranch: "tau/update", githubDefaultBranch: "main", githubVisibility: "private", lastPushedSequence: 1, lastPushedAt: null as Date | null, lastPushedCommitSha: null as string | null };
 let localFiles: { path: string; contentHash: string; sizeBytes: number }[] = [];
 let remoteFiles: { path: string; type: string; mode: string; sha: string; size: number }[] = [];
 let localBlobs = new Map<string, Uint8Array>();
@@ -51,7 +51,13 @@ mock.module("@/lib/prisma", () => ({ prisma: {
     findFirst: async () => connected ? { accessToken: "fixture-github-token" } : null,
     deleteMany: async () => { revoked++; connected = false; return { count: 1 }; },
   },
-  $transaction: async (operations: Promise<unknown>[]) => Promise.all(operations),
+  $transaction: async (operations: Promise<unknown>[] | ((tx: any) => Promise<unknown>)) => Array.isArray(operations) ? Promise.all(operations) : operations({
+    $queryRaw: async () => [],
+    project: {
+      findUnique: async () => ({ ...project }),
+      update: async ({ data }: any) => { project = { ...project, ...data }; return project; },
+    },
+  }),
 } }));
 mock.module("@/lib/s3", () => ({
   getBlob: async (_u: string, _p: string, hash: string) => {
@@ -73,11 +79,13 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const path = url.slice("https://api.github.com".length);
   const method = init?.method ?? "GET";
   requests.push({ path, method });
+  const targetRepo = project.githubRepo ?? "acme/atlas";
   const body = init?.body ? JSON.parse(String(init.body)) : undefined;
   if (upstreamStatus && (!failurePath || path.includes(failurePath))) return Response.json({ message: "Unavailable" }, { status: upstreamStatus });
   if (method !== "GET") {
     writes.push({ path, body });
     duringWrite?.(path);
+    if (path === "/user/repos") return Response.json({ full_name: `alex/${body.name}`, name: body.name, owner: { login: "alex" }, html_url: `https://github.com/alex/${body.name}`, default_branch: "main", private: true, permissions: { push: true, admin: true } }, { status: 201 });
     if (path.endsWith("/git/blobs")) {
       const bytes = Buffer.from(body.content, "base64");
       const sha = gitSha(bytes); remoteBlobs.set(sha, bytes); return Response.json({ sha });
@@ -108,7 +116,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       if (prFailure) return Response.json({ message: "PR unavailable" }, { status: 503 });
       const number = method === "PATCH" ? Number(path.split("/").at(-1)) : 43;
       const branch = body.head ?? (number === 39 ? "feature/mobile" : "tau/update");
-      createdPr = { number, title: body.title, body: body.body, draft: body.draft, html_url: `https://github.com/acme/atlas/pull/${number}`, state: "open", head: { ref: branch, repo: { full_name: "acme/atlas" } }, base: { ref: body.base ?? "main" } };
+      createdPr = { number, title: body.title, body: body.body, draft: body.draft, html_url: `https://github.com/${targetRepo}/pull/${number}`, state: "open", head: { ref: branch, repo: { full_name: targetRepo } }, base: { ref: body.base ?? "main" } };
       return Response.json(createdPr);
     }
     throw new Error(`Unexpected write ${method} ${path}`);
@@ -127,10 +135,10 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (path.includes("/pulls/")) {
     const number = Number(path.split("/").at(-1));
-    return Response.json({ number, title: "Update atlas", state: prState, html_url: `https://github.com/acme/atlas/pull/${number}`, head: { ref: number === 39 ? "feature/mobile" : "tau/update", repo: prRepo ? { full_name: prRepo } : null }, base: { ref: "main", repo: { full_name: "acme/atlas" } }, draft: true, body: "Details" });
+    return Response.json({ number, title: "Update atlas", state: prState, html_url: `https://github.com/${targetRepo}/pull/${number}`, head: { ref: number === 39 ? "feature/mobile" : "tau/update", repo: prRepo ? { full_name: prRepo } : null }, base: { ref: "main", repo: { full_name: targetRepo } }, draft: true, body: "Details" });
   }
   if (path.includes("/pulls?")) return Response.json(createdPr ? [createdPr] : []);
-  return Response.json({ permissions: { push: permissions }, archived, node_id: "R_fixture", default_branch: "main", full_name: "acme/atlas", name: "atlas", owner: { login: "acme" }, html_url: "https://github.com/acme/atlas", private: true });
+  return Response.json({ permissions: { push: permissions }, archived, node_id: "R_fixture", default_branch: "main", full_name: targetRepo, name: targetRepo.split("/")[1], owner: { login: targetRepo.split("/")[0] }, html_url: `https://github.com/${targetRepo}`, private: true });
 }) as typeof fetch;
 
 const controller = await import("@/api/controllers/githubProject.controller");
@@ -142,6 +150,7 @@ const app = express();
 app.use(express.json());
 app.use(requireAuth);
 app.post("/project/:projectId/github/push", controller.push);
+app.post("/project/:projectId/github/repository", controller.createRepository);
 app.get("/project/:projectId/github/changes", controller.changes);
 app.get("/project/:projectId/github/diff", controller.diff);
 app.get("/project/:projectId/github", controller.getInfo);
@@ -195,6 +204,20 @@ async function push(review: import("@/api/lib/githubComparison").GithubCompariso
   return fetch(`http://127.0.0.1:${address.port}/project/${PID}/github/push`, { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ preview: review.preview, mode: review.mode, prNumber: review.prNumber, title: "Reviewed change", description: "Context for reviewers", ...overrides }) });
 }
 function publishedTree(branch: string) { return trees.get(commits.get(refs.get(branch)!)!.tree.sha)!; }
+
+test("a newly created repository is the only destination of the next reviewed push and PR", async () => {
+  project.githubRepo = null;
+  const create = await fetch(`http://127.0.0.1:${address.port}/project/${PID}/github/repository`, {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiToken}` }, body: JSON.stringify({ name: "fresh-project" }),
+  });
+  expect(create.status).toBe(201); expect(project.githubRepo as string | null).toBe("alex/fresh-project");
+  const review = await comparison(); expect(review.repo).toBe("alex/fresh-project");
+  const response = await push(review); const result = await response.json();
+  expect(response.status).toBe(200); expect(result.repoUrl).toBe("https://github.com/alex/fresh-project");
+  expect(result.prUrl).toBe("https://github.com/alex/fresh-project/pull/43");
+  expect(requests.filter((r) => r.path.startsWith("/repos/")).every((r) => r.path === "/repos/alex/fresh-project" || r.path.startsWith("/repos/alex/fresh-project/"))).toBe(true);
+  expect(writes.filter((w) => w.path === "/user/repos")).toHaveLength(1);
+});
 
 test("direct push overlays the base tree, preserves remote-only files, symlinks, submodules and executable modes", async () => {
   local("raw.unknown", new Uint8Array([0, 255, 128, 13, 10])); local("bom.txt", "\ufeffhello\n");
