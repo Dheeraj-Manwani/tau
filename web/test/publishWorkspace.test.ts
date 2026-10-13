@@ -14,6 +14,7 @@ import {
   projectToolParams,
   selectedProjectTool,
   selectedDeploySection,
+  selectedGithubSection,
 } from "../src/features/project/toolNavigation";
 
 const deployment: DeploymentSummary = {
@@ -237,6 +238,32 @@ describe("reported deployment progress", () => {
 });
 
 describe("publishing navigation", () => {
+  test("GitHub deep links select their section and unknown sections fall back", () => {
+    expect(selectedProjectTool(new URLSearchParams("tab=tools&tool=github"))).toBe("github");
+    expect(selectedGithubSection(new URLSearchParams("githubSection=pull-requests"))).toBe("pull-requests");
+    expect(selectedGithubSection(new URLSearchParams("githubSection=unknown"))).toBe("changes");
+  });
+  test("GitHub navigation removes other tool state and preserves unrelated params", () => {
+    const original = new URLSearchParams("tab=preview&publish=1&publishSection=history&deploySection=resources&storageEnv=LIVE&job=abc");
+    const next = projectToolParams(original, "github", "issues");
+    expect(next.get("tab")).toBe("tools");
+    expect(next.get("tool")).toBe("github");
+    expect(next.get("githubSection")).toBe("issues");
+    expect(next.get("job")).toBe("abc");
+    for (const key of ["publish", "publishSection", "deploySection", "storageEnv"]) expect(next.has(key)).toBe(false);
+    expect(original.get("tab")).toBe("preview");
+  });
+  test("leaving GitHub clears its section without breaking deployment or storage navigation", () => {
+    const original = new URLSearchParams("tool=github&githubSection=settings&storageEnv=LIVE");
+    const deploy = projectToolParams(original, "deploy", "deployments");
+    expect(deploy.has("githubSection")).toBe(false);
+    expect(deploy.get("deploySection")).toBe("deployments");
+    const storage = projectToolParams(original, "storage");
+    expect(storage.has("githubSection")).toBe(false);
+    expect(storage.get("storageEnv")).toBe("LIVE");
+    expect(projectToolParams(original, "github", "resources").has("githubSection")).toBe(false);
+    expect(projectToolParams(original, "deploy", "issues").has("deploySection")).toBe(false);
+  });
   test("shortcuts preserve unrelated project params and remove legacy flags", () => {
     const original = new URLSearchParams("publish=1&job=abc&storageEnv=LIVE");
     const routed = projectToolParams(original, "deploy", "deployments");

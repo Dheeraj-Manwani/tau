@@ -1,9 +1,11 @@
 import { useSearchParams } from "react-router-dom";
 
-export type ProjectTool = "secrets" | "storage" | "deploy" | "domains";
+export type ProjectTool = "secrets" | "storage" | "github" | "deploy" | "domains";
+export type GithubSection = "changes" | "pull-requests" | "issues" | "settings";
 export type DeploySection =
   "overview" | "identity" | "deployments" | "resources";
-const tools: ProjectTool[] = ["secrets", "storage", "deploy", "domains"];
+const tools: ProjectTool[] = ["secrets", "storage", "github", "deploy", "domains"];
+const githubSections: GithubSection[] = ["changes", "pull-requests", "issues", "settings"];
 const sections: DeploySection[] = [
   "overview",
   "identity",
@@ -18,7 +20,12 @@ export function selectedProjectTool(params: URLSearchParams): ProjectTool {
   return tools.includes(value) ? value : "secrets";
 }
 
-/** Old links still resolve into the new four-tab workspace. */
+export function selectedGithubSection(params: URLSearchParams): GithubSection {
+  const value = params.get("githubSection") as GithubSection;
+  return githubSections.includes(value) ? value : "changes";
+}
+
+/** Old links still resolve into the Tools workspace. */
 export function selectedDeploySection(params: URLSearchParams): DeploySection {
   const value = params.get("deploySection") ?? params.get("publishSection");
   if (value === "activity" || value === "history") return "deployments";
@@ -32,25 +39,27 @@ export function selectedDeploySection(params: URLSearchParams): DeploySection {
 export function projectToolParams(
   params: URLSearchParams,
   tool: ProjectTool,
-  section?: DeploySection,
+  section?: DeploySection | GithubSection,
 ) {
   const next = new URLSearchParams(params);
   next.delete("publish");
   next.delete("publishSection");
   next.delete("deploySection");
+  next.delete("githubSection");
   next.set("tab", "tools");
   next.set("tool", tool);
-  if (tool === "deploy" && section) next.set("deploySection", section);
+  if (tool === "deploy" && section && sections.includes(section as DeploySection)) next.set("deploySection", section);
+  if (tool === "github" && section && githubSections.includes(section as GithubSection)) next.set("githubSection", section);
   if (tool !== "storage") next.delete("storageEnv");
   return next;
 }
 
-/** Navigation only; deployment mutations live in Tools → Deploy. */
+/** Navigation only; each tool pane owns its actions. */
 export function useProjectToolNavigation() {
   const [params, setParams] = useSearchParams();
   return (
     tool: ProjectTool,
-    section?: DeploySection,
+    section?: DeploySection | GithubSection,
     productionStorage = false,
   ) => {
     const next = projectToolParams(params, tool, section);

@@ -26,6 +26,7 @@ import {
 } from "@/src/components/ui/tooltip";
 import { UserMenu } from "@/src/components/UserMenu";
 import { GithubPanel } from "@/src/features/project/GithubPanel";
+import { useGithubReturnToast } from "@/src/features/auth/github";
 import { DeployPanel } from "@/src/features/project/DeployPanel";
 import {
   useProjectStore,
@@ -356,6 +357,7 @@ function PreviewNavigation() {
 }
 
 export function RightPanel() {
+  useGithubReturnToast();
   const activeTab = useProjectStore((s) => s.activeTab);
   const projectId = useProjectStore((s) => s.projectId);
   const previewDevice = useProjectStore((s) => s.previewDevice);

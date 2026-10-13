@@ -7,6 +7,8 @@ import { DomainsPane } from "@/src/features/project/DomainsPane";
 import { KeysPane } from "@/src/features/project/KeysPane";
 import { StoragePane } from "@/src/features/project/StoragePane";
 import { DeployPane } from "./DeployPane";
+import { GithubPane } from "./GithubPane";
+import { GithubMark } from "@/src/components/ui/github-mark";
 import { useDeployStatus } from "./deploy";
 import { deployPresentation, deployToneClass } from "./deployPresentation";
 import { selectedProjectTool, useProjectToolNavigation, type ProjectTool } from "./toolNavigation";
@@ -14,7 +16,7 @@ import { selectedProjectTool, useProjectToolNavigation, type ProjectTool } from 
 interface ToolEntry {
   id: ProjectTool;
   label: string;
-  icon: typeof LockIcon;
+  icon: ComponentType<{ className?: string }>;
   group: string;
   pane: ComponentType<{ projectId: string }>;
 }
@@ -23,6 +25,7 @@ interface ToolEntry {
 const TOOLS: ToolEntry[] = [
   { id: "secrets", label: "Secrets", icon: LockIcon, group: "Setup", pane: KeysPane },
   { id: "storage", label: "Storage", icon: HardDriveIcon, group: "Setup", pane: StoragePane },
+  { id: "github", label: "GitHub", icon: GithubMark, group: "Delivery", pane: GithubPane },
   { id: "deploy", label: "Deploy", icon: RocketIcon, group: "Delivery", pane: DeployPane },
   { id: "domains", label: "Domains", icon: GlobeIcon, group: "Delivery", pane: DomainsPane },
 ];

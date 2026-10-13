@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 
 import { api } from "@/src/lib/api-client";
 import { githubKeys } from "@/src/features/auth/github";
+import { isProjectGithubQuery } from "@/src/features/auth/githubCache";
 
 /**
  * Project-scoped GitHub state + actions for the GitHub panel. Distinct from
@@ -149,31 +150,24 @@ export function usePatchGithub(projectId: string | null) {
   });
 }
 
-/** Disconnect the whole GitHub account; also drops this project's github cache. */
-export function useDisconnectGithub(projectId: string | null) {
+/** Disconnecting an account affects all projects, including inactive caches. */
+export function useDisconnectGithub() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.delete("/auth/github"),
     onSuccess: () => {
       toast.success("GitHub disconnected");
       qc.invalidateQueries({ queryKey: githubKeys.status });
-      qc.invalidateQueries({ queryKey: projectGithubKeys.info(projectId ?? "") });
+      qc.invalidateQueries({ predicate: isProjectGithubQuery });
     },
+    onError: (err: unknown) => toast.error(errorMessage(err, "Couldn't disconnect GitHub")),
   });
 }
 
-function errorMessage(err: unknown, fallback: string): string {
+export function errorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === "object" && "message" in err) {
     const m = (err as { message?: unknown }).message;
     if (typeof m === "string" && m) return m;
   }
   return fallback;
-}
-
-/** Rough "changes since last push" → a friendly label for the sync row. */
-export function syncLabel(info: GithubProjectInfo): string {
-  if (!info.repo) return "";
-  if (info.unpushedChanges <= 0) return "Up to date";
-  const n = info.unpushedChanges;
-  return `${n} change${n === 1 ? "" : "s"} since last push`;
 }

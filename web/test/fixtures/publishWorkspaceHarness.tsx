@@ -1,12 +1,13 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "../../src/components/ui/tooltip";
 import { RightPanel } from "../../src/features/project/RightPanel";
 import { api } from "../../src/lib/api-client";
 import { queryClient } from "../../src/lib/query-client";
 import { useProjectStore } from "../../src/stores/useProjectStore";
+import { projectGithubKeys, type GithubProjectInfo } from "../../src/features/project/github";
 import {
   deployKeys,
   type DeploymentSummary,
@@ -17,6 +18,25 @@ import "../../src/index.css";
 // Browser-only fixture: the actual project shell and controls, with no real network requests.
 const projectId = "publish-ui-fixture";
 const scenario = new URLSearchParams(location.search).get("scenario") ?? "live";
+const githubScenario = new URLSearchParams(location.search).get("githubState") ?? "linked";
+const clean = new URLSearchParams(location.search).get("clean") === "1";
+let githubError = githubScenario === "error";
+let repoError = githubScenario === "repos-error";
+let githubInfo: GithubProjectInfo = {
+  connected: scenario === "github" && githubScenario !== "disconnected",
+  username: "alex",
+  repo: scenario === "github" && !["unlinked", "disconnected", "repos-error"].includes(githubScenario)
+    ? { fullName: "acme/atlas", htmlUrl: "https://github.com/acme/atlas", visibility: "private", defaultBranch: "main" }
+    : null,
+  lastPr: { number: 42, title: "Add workspace navigation", state: "open", url: "https://github.com/acme/atlas/pull/42" },
+  openPrs: [
+    { number: 42, title: "Add workspace navigation", state: "open", url: "https://github.com/acme/atlas/pull/42" },
+    { number: 39, title: "Improve mobile layout", state: "open", url: "https://github.com/acme/atlas/pull/39" },
+  ],
+  unpushedChanges: 3,
+  pushMode: "new_pr",
+};
+if (githubScenario === "empty") githubInfo = { ...githubInfo, lastPr: null, openPrs: [], unpushedChanges: 0 };
 const now = new Date().toISOString();
 const live: DeploymentSummary = {
   id: "live1234-5678",
@@ -163,7 +183,28 @@ api.defaults.adapter = async (config) => {
         ? config.data
         : JSON.stringify(config.data);
   }
-  if (url.endsWith("/deploy") && method === "get") data = status;
+  if (url.endsWith("/github/repos")) {
+    if (repoError) throw new Error("Repository lookup unavailable");
+    data = { repos: [
+      { fullName: "acme/atlas", private: true, htmlUrl: "https://github.com/acme/atlas" },
+      { fullName: "acme/atlas-next", private: false, htmlUrl: "https://github.com/acme/atlas-next" },
+    ] };
+  } else if (url.endsWith("/github/link")) {
+    const body = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
+    githubInfo = { ...githubInfo, repo: method === "delete" ? null : { fullName: body.repo, htmlUrl: `https://github.com/${body.repo}`, visibility: "private", defaultBranch: "main" }, lastPr: null, unpushedChanges: 0 };
+    data = githubInfo.repo;
+  } else if (url === "/auth/github" && method === "delete") {
+    githubInfo = { ...githubInfo, connected: false, repo: null, username: null };
+    data = null;
+  } else if (url.endsWith("/github")) {
+    if (githubScenario === "loading") await new Promise<never>(() => {});
+    if (githubError) throw new Error("GitHub unavailable");
+    if (method === "patch") {
+      const body = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
+      githubInfo = { ...githubInfo, pushMode: body.pushMode };
+    }
+    data = githubInfo;
+  } else if (url.endsWith("/deploy") && method === "get") data = status;
   else if (url.endsWith("/deploy") && method === "post") {
     status = {
       ...status,
@@ -257,8 +298,6 @@ api.defaults.adapter = async (config) => {
   else if (url.endsWith("/domains"))
     data = { cnameTarget: "sites.bytauai.pro", domains: [] };
   else if (url.endsWith("/secrets")) data = { secrets: [] };
-  else if (url.endsWith("/github"))
-    data = { connected: false, repo: null, unpushedChanges: 0 };
   else if (url.endsWith("/refresh-secrets")) data = { ok: true };
   else if (url.endsWith("/auth/me")) data = null;
   else data = {};
@@ -276,14 +315,20 @@ commit();
 
 export function Harness() {
   const route = useLocation();
+  const navigate = useNavigate();
   const [, tick] = useState(0);
   return (
     <div className="flex h-screen flex-col">
-      <div className="flex flex-wrap gap-3 border-b border-silver-200 bg-space-surface p-2 text-xs text-silver-600">
+      <div className={clean ? "hidden" : "flex flex-wrap gap-3 border-b border-silver-200 bg-space-surface p-2 text-xs text-silver-600"}>
         <output aria-label="Fixture route">{route.search}</output>
         <button onClick={() => tick((n) => n + 1)}>Check mutations</button>
         <output aria-label="Mutation count">{mutations}</output>
         <output aria-label="Last mutation body">{lastBody}</output>
+        {scenario === "github" && <>
+          <button onClick={() => navigate(-1)}>Back</button>
+          <button onClick={() => { githubError = false; repoError = false; void queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) }); }}>Recover GitHub</button>
+          <button onClick={() => { githubError = true; void queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) }); }}>Fail GitHub refresh</button>
+        </>}
         <button
           onClick={() => {
             if (status.inProgress) {
@@ -341,7 +386,7 @@ root.render(
       <TooltipProvider>
         <MemoryRouter
           initialEntries={[
-            `/project/${projectId}${scenario === "legacy" ? "?publish=1" : ""}`,
+            `/project/${projectId}${scenario === "legacy" ? "?publish=1" : scenario === "github" ? `?tab=tools&tool=github&githubSection=${new URLSearchParams(location.search).get("githubSection") ?? "changes"}${new URLSearchParams(location.search).get("oauth") === "connected" ? "&github=connected" : ""}` : ""}`,
           ]}
         >
           <Harness />

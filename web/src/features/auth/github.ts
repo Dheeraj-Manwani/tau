@@ -1,9 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 import { api } from "@/src/lib/api-client";
 import { env } from "@/src/lib/env";
+import { isProjectGithubQuery } from "./githubCache";
 
 /**
  * "Connect GitHub" is a per-user account link, separate from login. The status
@@ -43,28 +45,31 @@ export function startGithubConnect(): void {
  */
 export function useGithubReturnToast(): void {
   const qc = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const processed = useRef<string | null>(null);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
     const result = params.get("github");
-    if (!result) return;
+    if (!result) {
+      processed.current = null;
+      return;
+    }
+    if (processed.current === result) return;
+    processed.current = result;
 
     if (result === "connected") {
       toast.success("GitHub connected");
       qc.invalidateQueries({ queryKey: githubKeys.status });
+      qc.invalidateQueries({ predicate: isProjectGithubQuery });
     } else if (result === "denied") {
       toast("GitHub connection cancelled");
     } else if (result === "error") {
       toast.error("Couldn't connect GitHub. Please try again.");
     }
 
-    params.delete("github");
-    const query = params.toString();
-    window.history.replaceState(
-      {},
-      "",
-      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
-    );
-  }, [qc]);
+    const next = new URLSearchParams(params);
+    next.delete("github");
+    setParams(next, { replace: true });
+  }, [params, qc, setParams]);
 }
 
 export function useDisconnectGithub() {
@@ -76,6 +81,7 @@ export function useDisconnectGithub() {
         connected: false,
         username: null,
       });
+      qc.invalidateQueries({ predicate: isProjectGithubQuery });
     },
   });
 }
