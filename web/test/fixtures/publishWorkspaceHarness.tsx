@@ -8,6 +8,7 @@ import { api } from "../../src/lib/api-client";
 import { queryClient } from "../../src/lib/query-client";
 import { useProjectStore } from "../../src/stores/useProjectStore";
 import { projectGithubKeys, type GithubProjectInfo, type GithubComparison, type GithubFileDiff } from "../../src/features/project/github";
+import { type GithubIssue, type GithubPrDetail } from "../../src/features/project/githubCollaboration";
 import {
   deployKeys,
   type DeploymentSummary,
@@ -26,11 +27,20 @@ let comparisonError = githubScenario === "changes-error";
 let diffError = githubScenario === "diff-error" || githubScenario === "diff-stale";
 let diffReads = 0;
 let pushedPr: number | null = null;
+let prDetailReads = 0;
+let issueDetailReads = 0;
+let collaborationError = githubScenario === "collaboration-error";
+const fixtureIssue = (number: number, title: string, body: string, state = "open"): GithubIssue => ({ number, title, body, state, url: `https://github.com/acme/atlas/issues/${number}`, author: "alex", updatedAt: "2026-10-13T12:00:00Z", createdAt: "2026-10-12T10:00:00Z", comments: 3, labels: ["bug", "workspace"], assignees: ["dheer"] });
+let fixtureIssues = [
+  fixtureIssue(18, "Mobile toolbar overlaps file review", githubScenario === "long-issue" ? "Steps to reproduce. ".repeat(600) : "On a 390px screen, the toolbar covers the final lines of the file diff.\n\nSteps to reproduce:\n1. Open GitHub in Tools.\n2. Expand a file diff.\n3. Scroll to the final lines.\n\nExpected: all lines remain visible and keyboard focus stays inside the panel."),
+  fixtureIssue(16, "Show a clearer stale comparison message", "Explain how to refresh when the GitHub branch changes."),
+  fixtureIssue(14, "Keep section tabs visible on mobile", "Allow all section labels to fit.", "closed"),
+];
 let githubInfo: GithubProjectInfo = {
   connected: scenario === "github" && githubScenario !== "disconnected",
   username: "alex",
   repo: scenario === "github" && !["unlinked", "disconnected", "repos-error"].includes(githubScenario)
-    ? { fullName: "acme/atlas", htmlUrl: "https://github.com/acme/atlas", visibility: "private", defaultBranch: "main", canPush: githubScenario !== "read-only" }
+    ? { fullName: "acme/atlas", htmlUrl: "https://github.com/acme/atlas", visibility: "private", defaultBranch: "main", canPush: !["read-only", "archived"].includes(githubScenario), canAdmin: !["read-only", "write-only"].includes(githubScenario), canChangeVisibility: !["read-only", "write-only", "archived", "fork"].includes(githubScenario), archived: githubScenario === "archived", visibilityReason: githubScenario === "archived" ? "This repository is archived." : githubScenario === "fork" ? "Fork visibility follows its repository network." : "Repository admin access is required to change visibility." }
     : null,
   lastPr: { number: 42, title: "Add workspace navigation", state: "open", url: "https://github.com/acme/atlas/pull/42", author: "alex", headBranch: "tau/add-workspace-navigation", baseBranch: "main", updatedAt: "2026-10-13T10:00:00Z", draft: true, canUpdate: githubScenario !== "read-only", body: "Adds the GitHub workspace with file review and consistent navigation.\n\nVerified desktop and mobile layouts." },
   openPrs: [
@@ -39,6 +49,7 @@ let githubInfo: GithubProjectInfo = {
   ],
   unpushedChanges: 3,
   pushMode: "new_pr",
+  lastPush: githubScenario === "no-push-metadata" ? null : { at: "2026-10-13T03:00:00Z", commitSha: "c153a40832d80ac81491194d26145119d3d9b201", commitUrl: "https://github.com/acme/atlas/commit/c153a40832d80ac81491194d26145119d3d9b201", branch: "tau/add-workspace-navigation" },
 };
 if (githubScenario === "empty") githubInfo = { ...githubInfo, lastPr: null, openPrs: [], unpushedChanges: 0 };
 const now = new Date().toISOString();
@@ -187,7 +198,44 @@ api.defaults.adapter = async (config) => {
         ? config.data
         : JSON.stringify(config.data);
   }
-  if (url.endsWith("/github/changes")) {
+  if (/\/github\/pulls\/\d+$/.test(url)) {
+    prDetailReads++;
+    if (githubScenario === "pr-detail-error") throw new Error("GitHub could not load this pull request. Try again.");
+    const number = Number(url.split("/").at(-1));
+    const pr = githubInfo.lastPr?.number === number ? githubInfo.lastPr : githubInfo.openPrs.find((item) => item.number === number) ?? { number, title: "Refine keyboard navigation", state: "open", url: `https://github.com/acme/atlas/pull/${number}`, headBranch: "tau/refine-keyboard-navigation", baseBranch: "main", body: "Improves keyboard navigation across workspace sections.", canUpdate: true };
+    const unavailable = githubScenario === "checks-unavailable";
+    data = { repo: githubInfo.repo!.fullName, pr, headSha: "a153a40832d80ac81491194d26145119d3d9b201", additions: 184, deletions: 32, files: 6, commits: 3, mergeable: true,
+      reviews: { available: true, hasMore: false, items: [{ id: 1, author: "maya", state: "APPROVED", body: "The layout looks good. Please keep the stale comparison message clear.", url: `https://github.com/acme/atlas/pull/${number}#pullrequestreview-1`, submittedAt: "2026-10-13T10:00:00Z", commitSha: "b153a40832d80ac81491194d26145119d3d9b201" }] },
+      checks: { available: !unavailable, hasMore: false, ...(unavailable ? { reason: "Unavailable with your current GitHub access." } : {}), items: unavailable ? [] : [{ id: "1", name: "Production build", state: "success", source: "check", url: "https://github.com/acme/atlas/actions/runs/1" }, { id: "2", name: "Unit tests", state: "in_progress", source: "check", url: "https://github.com/acme/atlas/actions/runs/2" }] },
+      statuses: { available: true, hasMore: false, items: [{ id: "3", name: "Deploy preview", state: "success", source: "status", url: "https://github.com/acme/atlas/deployments" }] },
+    } satisfies GithubPrDetail;
+  } else if (url.endsWith("/github/pulls")) {
+    if (collaborationError) throw new Error("GitHub's rate limit was reached. Try again later.");
+    const page = Number(config.params?.page ?? 1);
+    const state = config.params?.state ?? "open";
+    const prs = page === 1 ? [githubInfo.lastPr!, ...githubInfo.openPrs.filter((pr) => pr.number !== githubInfo.lastPr?.number)] : [{ number: 34, title: "Refine keyboard navigation", state: "open", url: "https://github.com/acme/atlas/pull/34", canUpdate: true }];
+    data = { repo: githubInfo.repo!.fullName, items: githubScenario === "empty" ? [] : prs.filter((pr) => state === "all" || pr.state === state), page, hasNext: page === 1 && state !== "closed" && githubScenario !== "empty" };
+  } else if (/\/github\/issues\/\d+$/.test(url)) {
+    issueDetailReads++;
+    if (githubScenario === "issue-detail-error") throw new Error("GitHub could not load the issue description. Try again.");
+    data = { repo: githubInfo.repo!.fullName, issue: fixtureIssues.find((issue) => issue.number === Number(url.split("/").at(-1)))! };
+  } else if (url.endsWith("/github/issues")) {
+    if (method === "post") {
+      if (githubScenario === "issue-create-pending") await new Promise<never>(() => {});
+      if (githubScenario === "issue-create-error") throw new Error("Issue creation could not be confirmed. Check GitHub before creating another.");
+      const body = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
+      const issue = fixtureIssue(19, body.title, body.description); fixtureIssues = [issue, ...fixtureIssues];
+      data = { issueUrl: issue.url, number: 19, summary: "Opened issue #19" };
+    } else {
+      if (collaborationError) throw new Error("GitHub's rate limit was reached. Try again later.");
+      const page = Number(config.params?.page ?? 1); const state = config.params?.state ?? "open";
+      data = { repo: githubInfo.repo!.fullName, items: githubScenario === "empty" || page === 1 && githubScenario === "pr-only-page" ? [] : (page === 1 ? fixtureIssues : [fixtureIssue(10, "Improve issue keyboard focus", "Restore focus after closing issue details.")]).filter((issue) => state === "all" || issue.state === state), page, hasNext: page === 1 && state !== "closed" && githubScenario !== "empty", canCreate: !["archived", "issues-disabled"].includes(githubScenario), ...(["archived", "issues-disabled"].includes(githubScenario) ? { disabledReason: githubScenario === "archived" ? "This repository is archived." : "Issues are disabled for this repository." } : {}) };
+    }
+  } else if (url.endsWith("/message")) {
+    if (githubScenario === "fix-pending") await new Promise<never>(() => {});
+    if (githubScenario === "fix-error") throw new Error("Couldn't send your message");
+    data = { jobId: "fixture-issue-fix-job" };
+  } else if (url.endsWith("/github/changes")) {
     if (githubScenario === "changes-loading") await new Promise<never>(() => {});
     if (comparisonError) throw new Error("GitHub's rate limit was reached. Try again later.");
     const deletions: string[] = JSON.parse(config.params?.deletions ?? "[]");
@@ -200,7 +248,7 @@ api.defaults.adapter = async (config) => {
     ];
     data = {
       preview: `fixture-preview-${config.params?.mode}-${config.params?.prNumber ?? ""}-${deletions.join(",")}-${useProjectStore.getState().headSequence}`,
-      repo: githubInfo.repo?.fullName ?? "acme/atlas", branch: config.params?.mode === "update_pr" ? Number(config.params?.prNumber) === 39 ? "tau/improve-mobile-layout" : "tau/add-workspace-navigation" : "main",
+      repo: githubInfo.repo?.fullName ?? "acme/atlas", branch: config.params?.mode === "update_pr" ? Number(config.params?.prNumber) === 34 ? "tau/refine-keyboard-navigation" : Number(config.params?.prNumber) === 39 ? "tau/improve-mobile-layout" : "tau/add-workspace-navigation" : "main",
       prNumber: config.params?.mode === "update_pr" ? Number(config.params?.prNumber ?? 42) : undefined, canPush: githubScenario !== "read-only",
       mode: config.params?.mode ?? "new_pr", headSha: "a153a40832d80ac81491194d26145119d3d9b201", localSequence: useProjectStore.getState().headSequence ?? 3,
       files, counts: { added: files.filter((f) => f.status === "added").length, modified: files.filter((f) => f.status === "modified").length, deleted: deletions.length, total: files.length },
@@ -232,13 +280,17 @@ api.defaults.adapter = async (config) => {
     } satisfies GithubFileDiff;
   } else if (url.endsWith("/github/repos")) {
     if (repoError) throw new Error("Repository lookup unavailable");
-    data = { repos: [
-      { fullName: "acme/atlas", private: true, htmlUrl: "https://github.com/acme/atlas" },
-      { fullName: "acme/atlas-next", private: false, htmlUrl: "https://github.com/acme/atlas-next" },
-    ] };
+    const page = Number(config.params?.page ?? 1);
+    const affiliation = config.params?.affiliation ?? "all";
+    const available = [
+      { fullName: "acme/atlas", private: true, htmlUrl: "https://github.com/acme/atlas", canPush: true, canAdmin: true },
+      { fullName: "acme/atlas-next", private: false, htmlUrl: "https://github.com/acme/atlas-next", canPush: true },
+      { fullName: "alex/design-system", private: true, htmlUrl: "https://github.com/alex/design-system", canPush: true, canAdmin: true },
+    ];
+    data = { page, hasNext: page === 1 && affiliation === "all", repos: page === 2 ? [{ fullName: "studio/shared-workspace", private: true, htmlUrl: "https://github.com/studio/shared-workspace", canPush: false }] : affiliation === "owner" ? [available[2]] : affiliation === "organization_member" || affiliation === "collaborator" ? available.slice(0, 2) : available };
   } else if (url.endsWith("/github/link")) {
     const body = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
-    githubInfo = { ...githubInfo, repo: method === "delete" ? null : { fullName: body.repo, htmlUrl: `https://github.com/${body.repo}`, visibility: "private", defaultBranch: "main", canPush: githubScenario !== "read-only" }, lastPr: null, unpushedChanges: 0 };
+    githubInfo = { ...githubInfo, repo: method === "delete" ? null : { fullName: body.repo, htmlUrl: `https://github.com/${body.repo}`, visibility: "private", defaultBranch: "main", canPush: body.repo !== "studio/shared-workspace", canAdmin: false, canChangeVisibility: false }, lastPr: null, unpushedChanges: 0, lastPush: null };
     data = githubInfo.repo;
   } else if (url === "/auth/github" && method === "delete") {
     githubInfo = { ...githubInfo, connected: false, repo: null, username: null };
@@ -248,7 +300,11 @@ api.defaults.adapter = async (config) => {
     if (githubError) throw new Error("GitHub unavailable");
     if (method === "patch") {
       const body = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
-      githubInfo = { ...githubInfo, pushMode: body.pushMode };
+      if (body.private !== undefined) {
+        if (githubScenario === "visibility-pending") await new Promise<never>(() => {});
+        if (githubScenario === "visibility-error") throw new Error("GitHub refused the visibility change. Organization policy may block it.");
+        githubInfo = { ...githubInfo, repo: { ...githubInfo.repo!, visibility: body.private ? "private" : "public" } };
+      } else githubInfo = { ...githubInfo, pushMode: body.pushMode };
     }
     data = githubInfo;
   } else if (url.endsWith("/deploy") && method === "get") data = status;
@@ -357,13 +413,16 @@ api.defaults.adapter = async (config) => {
   };
 };
 useProjectStore.getState().initProject(projectId);
-useProjectStore.setState({ activeTab: "preview", status: "idle" });
+useProjectStore.setState({ activeTab: "preview", status: githubScenario === "fix-busy" ? "streaming" : "idle", isChatOpen: false });
 commit();
 
 export function Harness() {
   const route = useLocation();
   const navigate = useNavigate();
   const [, tick] = useState(0);
+  const chatOpen = useProjectStore((s) => s.isChatOpen);
+  const projectStatus = useProjectStore((s) => s.status);
+  const messageCount = useProjectStore((s) => s.chatMessages.length);
   return (
     <div className="flex h-screen flex-col">
       <div className={clean ? "hidden" : "flex flex-wrap gap-3 border-b border-silver-200 bg-space-surface p-2 text-xs text-silver-600"}>
@@ -372,9 +431,14 @@ export function Harness() {
         <output aria-label="Mutation count">{mutations}</output>
         <output aria-label="Last mutation body">{lastBody}</output>
         <output aria-label="Diff requests">{diffReads}</output>
+        <output aria-label="PR detail requests">{prDetailReads}</output>
+        <output aria-label="Issue detail requests">{issueDetailReads}</output>
+        <output aria-label="Chat open">{String(chatOpen)}</output>
+        <output aria-label="Project status">{projectStatus}</output>
+        <output aria-label="Chat message count">{messageCount}</output>
         {scenario === "github" && <>
           <button onClick={() => navigate(-1)}>Back</button>
-          <button onClick={() => { githubError = false; repoError = false; comparisonError = false; diffError = false; void queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) }); }}>Recover GitHub</button>
+          <button onClick={() => { githubError = false; repoError = false; comparisonError = false; diffError = false; collaborationError = false; void queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) }); }}>Recover GitHub</button>
           <button onClick={() => { githubError = true; void queryClient.invalidateQueries({ queryKey: projectGithubKeys.info(projectId) }); }}>Fail GitHub refresh</button>
           <button onClick={() => { useProjectStore.setState((s) => ({ headSequence: (s.headSequence ?? 0) + 1 })); }}>Edit project files</button>
         </>}

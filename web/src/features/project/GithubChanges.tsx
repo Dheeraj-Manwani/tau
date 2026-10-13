@@ -8,6 +8,7 @@ import { githubBytes, githubPatchLines } from "./githubDiffPresentation";
 import { useSearchParams } from "react-router-dom";
 import { selectedGithubPr } from "./toolNavigation";
 import { githubPullRequests } from "./githubPresentation";
+import { useGithubPullDetail } from "./githubCollaboration";
 import { GithubPushDialog } from "./GithubPushDialog";
 
 const statusStyles = {
@@ -18,17 +19,21 @@ const statusStyles = {
 
 export function GithubChanges({ projectId, info, blocked }: { projectId: string; info: GithubProjectInfo; blocked: boolean }) {
   const [params] = useSearchParams();
-  const prs = githubPullRequests(info).filter((pr) => pr.canUpdate);
+  const knownPrs = githubPullRequests(info).filter((pr) => pr.canUpdate);
   const selected = selectedGithubPr(params);
   const [mode, setMode] = useState<PushMode>(selected ? "update_pr" : info.pushMode);
-  const [prNumber, setPrNumber] = useState<number | undefined>(selected ?? prs[0]?.number);
+  const [prNumber, setPrNumber] = useState<number | undefined>(selected ?? knownPrs[0]?.number);
   const [review, setReview] = useState<GithubComparison | null>(null);
   const pushButton = useRef<HTMLButtonElement>(null);
   const section = useRef<HTMLElement>(null);
   const [deletions, setDeletions] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const query = useGithubChanges(projectId, info.repo!.fullName, mode, deletions, !blocked && (mode !== "update_pr" || !!prNumber), mode === "update_pr" ? prNumber : undefined);
+  const prQuery = useGithubPullDetail(projectId, info.repo!.fullName, prNumber, !blocked && mode === "update_pr");
+  const prs = prQuery.data?.pr.canUpdate && !knownPrs.some((pr) => pr.number === prQuery.data.pr.number) ? [prQuery.data.pr, ...knownPrs] : knownPrs;
   const comparison = query.data;
+  const prChanged = mode === "update_pr" && !!prQuery.data && !!comparison && (prQuery.data.headSha !== comparison.headSha || prQuery.data.pr.headBranch !== comparison.branch);
+  const prUnavailable = mode === "update_pr" && (prQuery.isFetching || prQuery.isError || !prQuery.data?.pr.canUpdate || prChanged);
   const files = comparison?.files.filter((file) => file.path.toLowerCase().includes(search.toLowerCase())) ?? [];
 
   return (
@@ -39,7 +44,7 @@ export function GithubChanges({ projectId, info, blocked }: { projectId: string;
           <h2 className="text-sm font-medium">Project changes</h2>
           <p className="mt-1 text-xs text-silver-600">Compare your Tau files with GitHub before pushing.</p>
         </div>
-        <button ref={pushButton} type="button" disabled={blocked || query.isFetching || query.isError || query.isPlaceholderData || !comparison?.counts.total || !comparison.canPush} onClick={() => comparison && setReview(comparison)} className={cn(githubButtonClass, githubPrimaryClass)} aria-describedby="github-push-note"><UploadIcon className="size-3.5" />Push changes</button>
+        <button ref={pushButton} type="button" disabled={blocked || prUnavailable || query.isFetching || query.isError || query.isPlaceholderData || !comparison?.counts.total || !comparison.canPush} onClick={() => comparison && setReview(comparison)} className={cn(githubButtonClass, githubPrimaryClass)} aria-describedby="github-push-note"><UploadIcon className="size-3.5" />Push changes</button>
       </div>
       <div className="space-y-3 border-b border-silver-200 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -60,7 +65,9 @@ export function GithubChanges({ projectId, info, blocked }: { projectId: string;
           <button type="button" disabled={blocked || query.isFetching} onClick={() => void query.refetch()} className={githubButtonClass} aria-label="Refresh comparison"><RefreshCwIcon className={cn("size-3.5", query.isFetching && "animate-spin motion-reduce:animate-none")} /><span>Refresh</span></button>
         </div>
         {comparison && !query.isError && <p className="break-all text-[11px] text-silver-600">Comparing with <span className="font-mono text-silver-900">{comparison.branch}</span> at <span className="font-mono">{comparison.headSha.slice(0, 7)}</span>{query.isFetching && " · Refreshing…"}</p>}
-        <p id="github-push-note" className="text-[11px] leading-relaxed text-silver-600">{comparison?.canPush === false ? "Your account has read-only access. Ask a repository owner for write access to push." : "Review the files, then compose your push. Repository-only files are preserved unless you select their deletion."}</p>
+        {mode === "update_pr" && prQuery.isError && <p role="alert" className="text-xs text-red-400">{errorMessage(prQuery.error, "Refresh GitHub to load the selected pull request.")} <button className="underline" onClick={() => void prQuery.refetch()}>Retry PR details</button></p>}
+        {prChanged && <p role="alert" className="text-xs text-amber-500">The selected PR changed. <button className="underline" onClick={() => { void query.refetch(); void prQuery.refetch(); }}>Refresh both previews</button> before pushing.</p>}
+        <p id="github-push-note" className="text-[11px] leading-relaxed text-silver-600">{info.repo?.archived ? "This repository is archived. Unarchive it on GitHub before pushing." : comparison?.canPush === false ? "Your account has read-only access. Ask a repository owner for write access to push." : "Review the files, then compose your push. Repository-only files are preserved unless you select their deletion."}</p>
       </div>
       {blocked ? <div role="alert" className="p-5 text-xs text-silver-600">Refresh GitHub above to check your connection before comparing files.</div> : mode === "update_pr" && !prNumber ? <p className="p-5 text-xs text-silver-600">Choose an open pull request to compare its changes.</p> : query.isError ? (
         <div role="alert" className="space-y-3 p-5 text-xs">
@@ -94,7 +101,7 @@ export function GithubChanges({ projectId, info, blocked }: { projectId: string;
         </>
       )}
     </section>
-    {review && <GithubPushDialog projectId={projectId} review={review} pr={prs.find((pr) => pr.number === review.prNumber)} unavailable={blocked || query.isFetching || query.isError || !comparison?.canPush || comparison.preview !== review.preview} onClose={() => setReview(null)} onClosedFocus={() => { if (pushButton.current && !pushButton.current.disabled) pushButton.current.focus(); else section.current?.focus(); }} onRefresh={() => void query.refetch()} />}
+    {review && <GithubPushDialog projectId={projectId} review={review} pr={prQuery.data?.pr} unavailable={blocked || prUnavailable || query.isFetching || query.isError || !comparison?.canPush || comparison.preview !== review.preview} onClose={() => setReview(null)} onClosedFocus={() => { if (pushButton.current && !pushButton.current.disabled) pushButton.current.focus(); else section.current?.focus(); }} onRefresh={() => void query.refetch()} />}
     </>
   );
 }

@@ -7,7 +7,7 @@ const PID = "00000000-0000-4000-8000-000000000001";
 const OTHER = "00000000-0000-4000-8000-000000000002";
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const gitSha = (bytes: Uint8Array) => createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
-let project = { id: PID, userId: "owner", githubRepo: "acme/atlas", githubPushMode: "new_pr", headSequence: 30, lastPrNumber: 42, lastPushedBranch: "tau/update", githubDefaultBranch: "main", githubVisibility: "private", lastPushedSequence: 1 };
+let project = { id: PID, userId: "owner", githubRepo: "acme/atlas", githubPushMode: "new_pr", headSequence: 30, lastPrNumber: 42, lastPushedBranch: "tau/update", githubDefaultBranch: "main", githubVisibility: "private", lastPushedSequence: 1, lastPushedAt: null as Date | null, lastPushedCommitSha: null as string | null };
 let localFiles: { path: string; contentHash: string; sizeBytes: number }[] = [];
 let remoteFiles: { path: string; type: string; mode: string; sha: string; size: number }[] = [];
 let localBlobs = new Map<string, Uint8Array>();
@@ -22,6 +22,7 @@ let failurePath = "";
 let prState = "open";
 let prRepo: string | null = "acme/atlas";
 let permissions = true;
+let archived = false;
 let refs = new Map<string, string>();
 let trees = new Map<string, typeof remoteFiles>();
 let commits = new Map<string, { message: string; parents: { sha: string }[]; tree: { sha: string } }>();
@@ -129,7 +130,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return Response.json({ number, title: "Update atlas", state: prState, html_url: `https://github.com/acme/atlas/pull/${number}`, head: { ref: number === 39 ? "feature/mobile" : "tau/update", repo: prRepo ? { full_name: prRepo } : null }, base: { ref: "main", repo: { full_name: "acme/atlas" } }, draft: true, body: "Details" });
   }
   if (path.includes("/pulls?")) return Response.json(createdPr ? [createdPr] : []);
-  return Response.json({ permissions: { push: permissions }, node_id: "R_fixture", default_branch: "main", full_name: "acme/atlas", name: "atlas", owner: { login: "acme" }, html_url: "https://github.com/acme/atlas", private: true });
+  return Response.json({ permissions: { push: permissions }, archived, node_id: "R_fixture", default_branch: "main", full_name: "acme/atlas", name: "atlas", owner: { login: "acme" }, html_url: "https://github.com/acme/atlas", private: true });
 }) as typeof fetch;
 
 const controller = await import("@/api/controllers/githubProject.controller");
@@ -176,8 +177,8 @@ async function comparison(params: Record<string, string> = {}) {
 beforeEach(() => {
   localFiles = []; remoteFiles = []; localBlobs = new Map(); remoteBlobs = new Map(); requests = []; writes = [];
   connected = true; revoked = 0; truncated = false; upstreamStatus = 0; failurePath = ""; prState = "open"; prRepo = "acme/atlas";
-  duringRead = null; duringWrite = null; permissions = true; rejectRef = false; transportAfterRef = false; prFailure = false; createdPr = null; savedSequence = -1;
-  project = { ...project, userId: "owner", githubRepo: "acme/atlas", headSequence: 30, githubPushMode: "new_pr", lastPrNumber: 42, lastPushedBranch: "tau/update", lastPushedSequence: 1 };
+  duringRead = null; duringWrite = null; permissions = true; archived = false; rejectRef = false; transportAfterRef = false; prFailure = false; createdPr = null; savedSequence = -1;
+  project = { ...project, userId: "owner", githubRepo: "acme/atlas", headSequence: 30, githubPushMode: "new_pr", lastPrNumber: 42, lastPushedBranch: "tau/update", lastPushedSequence: 1, lastPushedAt: null, lastPushedCommitSha: null };
   refs = new Map([["main", "a".repeat(40)], ["tau/update", "a".repeat(40)], ["feature/mobile", "a".repeat(40)]]);
   commits = new Map(); trees = new Map();
   local("src/App.tsx", "new\n"); remote("src/App.tsx", "old\n", "100755");
@@ -268,6 +269,13 @@ test("read-only permissions are visible in comparison and enforced at publicatio
   expect((await push(allowed)).status).toBe(403); expect(writes).toEqual([]);
 });
 
+test("archived repositories cannot publish or record a successful push", async () => {
+  archived = true; const review = await comparison(); expect(review.canPush).toBe(false);
+  expect((await push(review)).status).toBe(403); expect(writes).toEqual([]); expect(project.lastPushedAt).toBeNull(); expect(project.lastPushedCommitSha).toBeNull();
+  archived = false; const allowed = await comparison(); archived = true;
+  expect((await push(allowed)).status).toBe(403); expect(writes).toEqual([]); expect(project.lastPushedAt).toBeNull();
+});
+
 test("a local edit during blob upload aborts before creating a commit or changing refs", async () => {
   const review = await comparison({ mode: "direct" });
   duringWrite = (path) => { if (path.endsWith("/git/blobs")) { project.headSequence++; duringWrite = null; } };
@@ -310,7 +318,9 @@ test("PR failure reports committed partial success and replay never adds a commi
 
 test("successful new-PR replay returns the existing PR without writes", async () => {
   const review = await comparison(); const result = await (await push(review)).json(); const count = writes.length;
+  const at = project.lastPushedAt!.toISOString(); expect(project.lastPushedCommitSha).toBe(refs.get(result.branch)!);
   const again = await (await push(review, { title: "Edited during a retry" })).json(); expect(again.prUrl).toBe(result.prUrl); expect(again.commitUrl).toBe(result.commitUrl); expect(writes.length).toBe(count);
+  expect(project.lastPushedAt!.toISOString()).toBe(at);
 });
 
 test("direct replay is stale and never creates a duplicate commit", async () => {

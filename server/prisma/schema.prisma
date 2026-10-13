@@ -180,6 +180,8 @@ model Project {
   lastPrUrl           String?
   lastPrNumber        Int?
   lastPushedSequence  Int?
+  lastPushedAt        DateTime?
+  lastPushedCommitSha String?
   githubPushMode      String  @default("new_pr") // new_pr | update_pr | direct
 
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)

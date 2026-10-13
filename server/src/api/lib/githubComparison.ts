@@ -105,7 +105,7 @@ async function readLocal(projectId: string) {
 
 export async function githubTarget(token: string, project: LocalProject, mode: PushMode, prNumber?: number) {
   const repoPath = `/repos/${project.githubRepo}`;
-  const repo = await gh<{ default_branch: string; node_id: string; html_url: string; permissions?: { push?: boolean } }>(token, "GET", repoPath);
+  const repo = await gh<{ default_branch: string; node_id: string; html_url: string; archived?: boolean; permissions?: { push?: boolean } }>(token, "GET", repoPath);
   if (!repo.default_branch) throw Errors.conflict("Initialize a default branch on GitHub before comparing files.");
   if (mode === "update_pr") {
     const number = prNumber ?? project.lastPrNumber;
@@ -217,7 +217,7 @@ export async function compareGithubFiles(projectId: string, userId: string, opts
     await checkGithubSnapshot(snapshot, token);
     return {
       preview: jwt.sign(snapshot, env.ACCESS_TOKEN_SECRET, { algorithm: "HS256", expiresIn: "15m" }),
-      repo, branch, mode, headSha: sha, prNumber: target.prNumber, canPush: target.repo.permissions?.push === true, localSequence: snapshot.localSequence, files: changes,
+      repo, branch, mode, headSha: sha, prNumber: target.prNumber, canPush: target.repo.permissions?.push === true && !target.repo.archived, localSequence: snapshot.localSequence, files: changes,
       counts: { added: changes.filter((f) => f.status === "added").length, modified: changes.filter((f) => f.status === "modified").length, deleted: deletions.length, total: changes.length },
       repositoryOnly, excludedCount: local.files.length - pushable.length,
     };

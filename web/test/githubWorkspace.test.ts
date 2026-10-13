@@ -67,3 +67,27 @@ test("selected PR review links preserve project context and clear the target whe
   for (const target of [projectToolParams(review, "deploy", "deployments"), projectToolParams(review, "github", "issues"), projectToolParams(review, "github", "changes")]) expect(target.has("githubPr")).toBe(false);
   for (const value of ["-1", "0", "1.5", "39junk", "", "9007199254740993"]) expect(selectedGithubPr(new URLSearchParams({ githubPr: value }))).toBeUndefined();
 });
+
+
+test("issue fix prompts include fetched content, bound repository, and explicit truncation within message limits", async () => {
+  const { githubIssuePrompt } = await import("../src/features/project/githubCollaboration");
+  const issue = { number: 18, title: "Fix mobile overlap", url: "https://github.com/acme/atlas/issues/18", body: "Steps to reproduce\nExpected result", state: "open", author: "alex", createdAt: "", updatedAt: "", comments: 0, labels: [], assignees: [] };
+  const prompt = githubIssuePrompt("acme/atlas", issue);
+  expect(prompt).toContain(issue.body); expect(prompt).toContain(issue.url); expect(prompt).toContain("acme/atlas");
+  expect(prompt).toContain("Keep the changes in Tau for review");
+  const long = githubIssuePrompt("acme/atlas", { ...issue, body: "x".repeat(20_000) });
+  expect(long).toContain("first 8,000 characters"); expect(long.length).toBeLessThan(10_000); expect(long).not.toContain("x".repeat(8001));
+});
+
+test("check/review states preserve pending, unknown, skipped, dismissed and failure meanings", async () => {
+  const { githubResultState, githubSafeLink } = await import("../src/features/project/githubCollaboration");
+  expect(githubResultState("APPROVED").label).toBe("Approved");
+  expect(githubResultState("CHANGES_REQUESTED").label).toBe("Changes requested");
+  expect(githubResultState("in_progress").label).toBe("In progress");
+  expect(githubResultState("unknown").label).toBe("Unknown");
+  expect(githubResultState("skipped").label).toBe("Skipped");
+  expect(githubResultState("DISMISSED").label).toBe("Dismissed");
+  expect(githubSafeLink("javascript:alert(1)")).toBeUndefined();
+  expect(githubSafeLink("data:text/html,test")).toBeUndefined();
+  expect(githubSafeLink("https://github.com/acme/atlas/actions/runs/1")).toContain("https://github.com/");
+});

@@ -3,6 +3,7 @@ import * as githubService from "../services/github.service";
 import { Errors } from "../lib/errors";
 import { env } from "@/lib/env";
 import { mobileDeepLink, withParam } from "../lib/mobileLink";
+import { safeGithubReturnTo } from "../lib/githubReturnTo";
 
 /**
  * Where a web GitHub round-trip lands when we have no usable `return_to`.
@@ -16,8 +17,7 @@ const WEB_FALLBACK_RETURN = `${env.APP_URL.replace(/\/+$/, "")}/`;
  * turned into an open redirect. Falls back to the builder when absent/foreign.
  */
 function safeReturnTo(raw: unknown): string {
-  if (typeof raw === "string" && raw.startsWith(env.APP_URL)) return raw;
-  return WEB_FALLBACK_RETURN;
+  return safeGithubReturnTo(raw, env.APP_URL);
 }
 
 /**

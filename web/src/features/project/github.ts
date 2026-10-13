@@ -33,9 +33,13 @@ export interface PrSummary {
 export interface RepoSummary {
   fullName: string;
   htmlUrl: string;
-  visibility: "private" | "public";
+  visibility: "private" | "public" | "internal";
   defaultBranch: string;
   canPush?: boolean;
+  canAdmin?: boolean;
+  canChangeVisibility?: boolean;
+  archived?: boolean;
+  visibilityReason?: string;
 }
 
 export interface GithubProjectInfo {
@@ -46,6 +50,7 @@ export interface GithubProjectInfo {
   openPrs: PrSummary[];
   unpushedChanges: number;
   pushMode: PushMode;
+  lastPush?: { at: string; commitSha: string; commitUrl: string; branch: string } | null;
 }
 
 export interface PushResult {
@@ -63,7 +68,13 @@ export interface UserRepo {
   fullName: string;
   private: boolean;
   htmlUrl: string;
+  canPush?: boolean;
+  canAdmin?: boolean;
+  archived?: boolean;
 }
+
+export type RepoAffiliation = "all" | "owner" | "collaborator" | "organization_member";
+export interface UserRepoPage { repos: UserRepo[]; page: number; hasNext: boolean }
 
 export const projectGithubKeys = {
   info: (projectId: string) => ["project", projectId, "github"] as const,
@@ -150,15 +161,16 @@ export function useGithubProject(projectId: string | null) {
 }
 
 /** Fetched on demand (only when the "link existing repo" picker opens). */
-export function useUserRepos(projectId: string | null, enabled: boolean) {
+export function useUserRepos(projectId: string | null, enabled: boolean, page = 1, affiliation: RepoAffiliation = "all") {
   return useQuery({
-    queryKey: projectGithubKeys.repos(projectId ?? ""),
+    queryKey: [...projectGithubKeys.repos(projectId ?? ""), affiliation, page],
     queryFn: () =>
       api
-        .get<{ repos: UserRepo[] }>(`/project/${projectId}/github/repos`)
-        .then((r) => r.data.repos),
+        .get<UserRepoPage>(`/project/${projectId}/github/repos`, { params: { page, affiliation } })
+        .then((r) => r.data),
     enabled: !!projectId && enabled,
     staleTime: 30_000,
+    retry: false,
   });
 }
 
@@ -222,7 +234,7 @@ export function useUnlinkRepo(projectId: string | null) {
 export function usePatchGithub(projectId: string | null) {
   const invalidate = useInvalidateInfo(projectId);
   return useMutation({
-    mutationFn: (changes: { private?: boolean; pushMode?: PushMode }) =>
+    mutationFn: (changes: { private?: boolean; pushMode?: PushMode; repo?: string }) =>
       api.patch(`/project/${projectId}/github`, changes),
     onSuccess: () => void invalidate(),
     onError: (err: unknown) => toast.error(errorMessage(err, "Update failed")),

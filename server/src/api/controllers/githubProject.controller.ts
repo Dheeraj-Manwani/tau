@@ -7,6 +7,11 @@ import {
   githubPatchSchema,
   githubComparisonQuerySchema,
   githubDiffQuerySchema,
+  githubListQuerySchema,
+  githubRepositoryQuerySchema,
+  githubNumberParamSchema,
+  githubIssueCreateSchema,
+  githubReposQuerySchema,
 } from "../schemas/project.schema";
 import * as githubProjectService from "../services/githubProject.service";
 import { requireUserId } from "../middleware/auth.middleware";
@@ -63,7 +68,7 @@ export const repos = async (req: Request, res: Response, next: NextFunction) => 
     const { projectId } = parse(projectIdParamSchema, req.params);
     res
       .status(200)
-      .json({ repos: await githubProjectService.repos(projectId, userId) });
+      .json(await githubProjectService.repos(projectId, userId, parse(githubReposQuerySchema, req.query)));
   } catch (err) {
     next(err);
   }
@@ -111,4 +116,38 @@ export const patch = async (req: Request, res: Response, next: NextFunction) => 
   } catch (err) {
     next(err);
   }
+};
+
+
+export const pulls = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    res.json(await githubProjectService.pulls(projectId, requireUserId(req), parse(githubListQuerySchema, req.query)));
+  } catch (err) { next(err); }
+};
+export const pull = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { projectId, number } = parse(githubNumberParamSchema, req.params);
+    const { repo } = parse(githubRepositoryQuerySchema, req.query);
+    res.json(await githubProjectService.pull(projectId, requireUserId(req), repo, number));
+  } catch (err) { next(err); }
+};
+export const issues = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    res.json(await githubProjectService.issues(projectId, requireUserId(req), parse(githubListQuerySchema, req.query)));
+  } catch (err) { next(err); }
+};
+export const issue = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { projectId, number } = parse(githubNumberParamSchema, req.params);
+    const { repo } = parse(githubRepositoryQuerySchema, req.query);
+    res.json(await githubProjectService.issue(projectId, requireUserId(req), repo, number));
+  } catch (err) { next(err); }
+};
+export const createIssue = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { projectId } = parse(projectIdParamSchema, req.params);
+    res.status(201).json(await githubProjectService.createIssue(projectId, requireUserId(req), parse(githubIssueCreateSchema, req.body)));
+  } catch (err) { next(err); }
 };

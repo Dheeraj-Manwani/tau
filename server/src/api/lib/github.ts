@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Errors } from "./errors";
 import { isPushMode, type PushMode } from "./githubFiles";
-import { gh, GithubApiError, resolveToken, dropConnection, githubReadError, githubWriteError } from "./githubClient";
+import { gh, ghPage, GithubApiError, resolveToken, dropConnection, githubReadError, githubWriteError } from "./githubClient";
 
 /**
  * Shared with the worker, which imports `pushProjectToGithub` for the agent's
@@ -43,9 +43,13 @@ export interface PushError {
 export interface RepoSummary {
   fullName: string;
   htmlUrl: string;
-  visibility: "private" | "public";
+  visibility: "private" | "public" | "internal";
   defaultBranch: string;
   canPush?: boolean;
+  canAdmin?: boolean;
+  canChangeVisibility?: boolean;
+  archived?: boolean;
+  visibilityReason?: string;
 }
 
 export interface PrSummary {
@@ -72,6 +76,7 @@ export interface GithubProjectInfo {
   /** Rough "changes since last push" — headSequence minus last-pushed sequence. */
   unpushedChanges: number;
   pushMode: PushMode;
+  lastPush?: { at: string; commitSha: string; commitUrl: string; branch: string } | null;
 }
 
 interface GithubUser {
@@ -110,7 +115,7 @@ interface RepoInfo {
   repo: string;
   htmlUrl: string;
   defaultBranch: string;
-  visibility: "private" | "public";
+  visibility: "private" | "public" | "internal";
 }
 
 interface GithubRepoResponse {
@@ -120,7 +125,20 @@ interface GithubRepoResponse {
   default_branch: string;
   private: boolean;
   owner: { login: string };
-  permissions?: { push?: boolean };
+  permissions?: { push?: boolean; admin?: boolean };
+  archived?: boolean;
+  fork?: boolean;
+  visibility?: string;
+}
+
+export function repositorySummary(r: GithubRepoResponse): RepoSummary {
+  const info = toRepoInfo(r);
+  const canAdmin = r.permissions?.admin === true;
+  const canChangeVisibility = canAdmin && !r.archived && !r.fork && r.visibility !== "internal";
+  return { fullName: info.fullName, htmlUrl: info.htmlUrl, visibility: info.visibility, defaultBranch: info.defaultBranch,
+    canPush: r.permissions?.push === true && !r.archived, canAdmin, canChangeVisibility, archived: r.archived === true,
+    ...(!canChangeVisibility ? { visibilityReason: r.archived ? "This repository is archived." : r.fork ? "Fork visibility follows its repository network." : r.visibility === "internal" ? "Manage internal repository visibility on GitHub." : "Repository admin access is required to change visibility." } : {}),
+  };
 }
 
 function toRepoInfo(r: GithubRepoResponse): RepoInfo {
@@ -130,7 +148,7 @@ function toRepoInfo(r: GithubRepoResponse): RepoInfo {
     repo: r.name,
     htmlUrl: r.html_url,
     defaultBranch: r.default_branch || "main",
-    visibility: r.private ? "private" : "public",
+    visibility: r.visibility === "internal" ? "internal" : r.private ? "private" : "public",
   };
 }
 
@@ -149,7 +167,7 @@ interface GithubPrResponse {
   body?: string | null;
 }
 
-function toPrSummary(p: GithubPrResponse): PrSummary {
+export function toPrSummary(p: GithubPrResponse): PrSummary {
   return {
     url: p.html_url,
     number: p.number,
@@ -169,10 +187,11 @@ function toPrSummary(p: GithubPrResponse): PrSummary {
 async function cacheRepoFacts(
   projectId: string,
   repo: RepoInfo,
+  expectedRepo: string | null,
 ): Promise<void> {
   await prisma.project
-    .update({
-      where: { id: projectId },
+    .updateMany({
+      where: { id: projectId, githubRepo: expectedRepo },
       data: {
         githubRepo: repo.fullName,
         githubDefaultBranch: repo.defaultBranch,
@@ -219,7 +238,7 @@ async function ensureRepo(
         },
       );
       const info = toRepoInfo(created);
-      await cacheRepoFacts(project.id, info);
+      await cacheRepoFacts(project.id, info, null);
       return info;
     } catch (err) {
       // 422 = name already taken (or invalid); try the next candidate.
@@ -290,6 +309,9 @@ export async function getGithubProjectInfo(
       headSequence: true,
       lastPushedSequence: true,
       lastPrNumber: true,
+      lastPushedAt: true,
+      lastPushedCommitSha: true,
+      lastPushedBranch: true,
     },
   });
 
@@ -306,6 +328,7 @@ export async function getGithubProjectInfo(
     openPrs: [],
     unpushedChanges: 0,
     pushMode,
+    lastPush: null,
   };
   if (!token || !project) return empty;
 
@@ -328,19 +351,13 @@ export async function getGithubProjectInfo(
         `/repos/${owner}/${name}`,
       );
       const info = toRepoInfo(r);
-      repo = {
-        fullName: info.fullName,
-        htmlUrl: info.htmlUrl,
-        visibility: info.visibility,
-        defaultBranch: info.defaultBranch,
-        canPush: r.permissions?.push === true,
-      };
+      repo = repositorySummary(r);
       // Refresh cached facts if they drifted.
       if (
         info.defaultBranch !== project.githubDefaultBranch ||
         info.visibility !== project.githubVisibility
       ) {
-        await cacheRepoFacts(projectId, info);
+        await cacheRepoFacts(projectId, info, project.githubRepo);
       }
 
       const prs = await gh<GithubPrResponse[]>(
@@ -348,7 +365,7 @@ export async function getGithubProjectInfo(
         "GET",
         `/repos/${owner}/${name}/pulls?state=open&per_page=10`,
       );
-      const summarize = (pr: GithubPrResponse): PrSummary => ({ ...toPrSummary(pr), canUpdate: r.permissions?.push === true && pr.state === "open" && !pr.merged_at && pr.head?.ref !== info.defaultBranch && pr.head?.repo?.full_name.toLowerCase() === info.fullName.toLowerCase() && pr.base?.repo?.full_name.toLowerCase() === info.fullName.toLowerCase() });
+      const summarize = (pr: GithubPrResponse): PrSummary => ({ ...toPrSummary(pr), canUpdate: repo!.canPush === true && pr.state === "open" && !pr.merged_at && pr.head?.ref !== info.defaultBranch && pr.head?.ref !== pr.base?.ref && pr.head?.repo?.full_name.toLowerCase() === info.fullName.toLowerCase() && pr.base?.repo?.full_name.toLowerCase() === info.fullName.toLowerCase() });
       openPrs = prs.map(summarize);
 
       if (project.lastPrNumber) {
@@ -372,6 +389,8 @@ export async function getGithubProjectInfo(
     }
   }
 
+  const association = await prisma.project.findUnique({ where: { id: projectId }, select: { githubRepo: true } });
+  if (association?.githubRepo !== (repo?.fullName ?? project.githubRepo)) throw Errors.conflict("The linked repository changed. Refresh GitHub.");
   const unpushedChanges = repo
     ? Math.max(0, project.headSequence - (project.lastPushedSequence ?? 0))
     : 0;
@@ -384,21 +403,30 @@ export async function getGithubProjectInfo(
     openPrs,
     unpushedChanges,
     pushMode,
+    lastPush: repo && project.lastPushedAt && project.lastPushedCommitSha && project.lastPushedBranch ? { at: project.lastPushedAt.toISOString(), commitSha: project.lastPushedCommitSha, commitUrl: `${repo.htmlUrl}/commit/${project.lastPushedCommitSha}`, branch: project.lastPushedBranch } : null,
   };
 }
 
-/** Link a project to an existing repo the user already owns ("owner/repo"). */
+async function ownedGithubProject(projectId: string, userId: string) {
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { userId: true, githubRepo: true } });
+  if (!project) throw Errors.notFound("Project not found");
+  if (project.userId !== userId) throw Errors.forbidden("You do not have access to this project");
+  return project;
+}
+
+/** Link an accessible repository without importing or modifying remote files. */
 export async function linkExistingRepo(
   projectId: string,
   userId: string,
   repoFullName: string,
 ): Promise<RepoSummary | PushError> {
+  const project = await ownedGithubProject(projectId, userId);
   const token = await resolveToken(userId);
-  if (!token) return { error: "GitHub is not connected." };
+  if (!token) throw Errors.conflict("GitHub is not connected.");
 
   const parts = repoFullName.split("/");
-  if (parts.length !== 2 || !parts[0] || !parts[1]) {
-    return { error: "Expected a repository in 'owner/repo' form." };
+  if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repoFullName) || parts.some((part) => part === "." || part === "..")) {
+    throw Errors.badRequest("Expected a repository in 'owner/repo' form.");
   }
 
   try {
@@ -408,8 +436,9 @@ export async function linkExistingRepo(
       `/repos/${parts[0]}/${parts[1]}`,
     );
     const info = toRepoInfo(r);
-    await prisma.project.update({
-      where: { id: projectId },
+    if (project.githubRepo?.toLowerCase() === info.fullName.toLowerCase()) return repositorySummary(r);
+    const saved = await prisma.project.updateMany({
+      where: { id: projectId, userId, githubRepo: project.githubRepo },
       data: {
         githubRepo: info.fullName,
         githubDefaultBranch: info.defaultBranch,
@@ -419,24 +448,14 @@ export async function linkExistingRepo(
         lastPrUrl: null,
         lastPrNumber: null,
         lastPushedSequence: null,
+        lastPushedAt: null,
+        lastPushedCommitSha: null,
       },
     });
-    return {
-      fullName: info.fullName,
-      htmlUrl: info.htmlUrl,
-      visibility: info.visibility,
-      defaultBranch: info.defaultBranch,
-    };
+    if (!saved.count) throw Errors.conflict("The repository association changed. Refresh GitHub before linking.");
+    return repositorySummary(r);
   } catch (err) {
-    if (err instanceof GithubApiError && err.status === 404) {
-      return { error: "Repository not found, or your token can't access it." };
-    }
-    if (err instanceof GithubApiError && err.status === 401) {
-      await dropConnection(userId);
-      return { error: "The GitHub connection is no longer valid." };
-    }
-    const message = err instanceof Error ? err.message : String(err);
-    return { error: message };
+    return githubReadError(err, userId);
   }
 }
 
@@ -445,10 +464,9 @@ export async function unlinkRepo(
   projectId: string,
   userId: string,
 ): Promise<void> {
-  // userId kept for signature symmetry / future per-user checks.
-  void userId;
-  await prisma.project.update({
-    where: { id: projectId },
+  const project = await ownedGithubProject(projectId, userId);
+  const saved = await prisma.project.updateMany({
+    where: { id: projectId, userId, githubRepo: project.githubRepo },
     data: {
       githubRepo: null,
       githubDefaultBranch: null,
@@ -457,40 +475,45 @@ export async function unlinkRepo(
       lastPrUrl: null,
       lastPrNumber: null,
       lastPushedSequence: null,
+      lastPushedAt: null,
+      lastPushedCommitSha: null,
     },
   });
+  if (!saved.count) throw Errors.conflict("The repository association changed. Refresh GitHub.");
 }
 
 export interface UserRepo {
   fullName: string;
   private: boolean;
   htmlUrl: string;
+  canPush?: boolean;
+  canAdmin?: boolean;
+  archived?: boolean;
 }
 
-/** The repos the user owns, most-recently-updated first (for the link picker). */
+export type RepoAffiliation = "all" | "owner" | "collaborator" | "organization_member";
+export interface UserRepoPage { repos: UserRepo[]; page: number; hasNext: boolean }
+
+/** Accessible repositories, newest activity first, including collaborator/org access. */
 export async function listUserRepos(
   userId: string,
-): Promise<UserRepo[] | PushError> {
+  opts: { page: number; affiliation: RepoAffiliation } = { page: 1, affiliation: "all" },
+): Promise<UserRepoPage> {
   const token = await resolveToken(userId);
-  if (!token) return { error: "GitHub is not connected." };
+  if (!token) throw Errors.conflict("GitHub is not connected.");
   try {
-    const repos = await gh<GithubRepoResponse[]>(
-      token,
-      "GET",
-      `/user/repos?per_page=100&sort=updated&affiliation=owner`,
-    );
-    return repos.map((r) => ({
+    const affiliation = opts.affiliation === "all" ? "owner,collaborator,organization_member" : opts.affiliation;
+    const page = await ghPage<GithubRepoResponse[]>(token, `/user/repos?per_page=30&sort=updated&direction=desc&affiliation=${affiliation}&page=${opts.page}`);
+    return { page: opts.page, hasNext: page.hasNext, repos: page.items.map((r) => ({
       fullName: r.full_name,
       private: r.private,
       htmlUrl: r.html_url,
-    }));
+      canPush: r.permissions?.push === true && !r.archived,
+      canAdmin: r.permissions?.admin === true,
+      archived: r.archived === true,
+    })) };
   } catch (err) {
-    if (err instanceof GithubApiError && err.status === 401) {
-      await dropConnection(userId);
-      return { error: "The GitHub connection is no longer valid." };
-    }
-    const message = err instanceof Error ? err.message : String(err);
-    return { error: message };
+    return githubReadError(err, userId);
   }
 }
 
@@ -499,18 +522,22 @@ export async function setRepoVisibility(
   projectId: string,
   userId: string,
   makePrivate: boolean,
+  expectedRepo?: string,
 ): Promise<RepoSummary | PushError> {
+  const project = await ownedGithubProject(projectId, userId);
+  if (!project.githubRepo) throw Errors.conflict("No repository is linked.");
+  if (expectedRepo && expectedRepo.toLowerCase() !== project.githubRepo.toLowerCase()) throw Errors.conflict("The linked repository changed. Refresh GitHub.");
   const token = await resolveToken(userId);
-  if (!token) return { error: "GitHub is not connected." };
-
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { githubRepo: true },
-  });
-  if (!project?.githubRepo) return { error: "No repository is linked." };
+  if (!token) throw Errors.conflict("GitHub is not connected.");
 
   const [owner, name] = project.githubRepo.split("/");
   try {
+    const current = await gh<GithubRepoResponse>(token, "GET", `/repos/${owner}/${name}`);
+    const capability = repositorySummary(current);
+    if (!capability.canChangeVisibility) throw Errors.forbidden(capability.visibilityReason!);
+    const latest = await ownedGithubProject(projectId, userId);
+    if (latest.githubRepo !== project.githubRepo) throw Errors.conflict("The linked repository changed. Refresh GitHub.");
+    if (current.private === makePrivate) return capability;
     const r = await gh<GithubRepoResponse>(
       token,
       "PATCH",
@@ -518,25 +545,18 @@ export async function setRepoVisibility(
       { private: makePrivate },
     );
     const info = toRepoInfo(r);
-    await prisma.project.update({
-      where: { id: projectId },
+    const saved = await prisma.project.updateMany({
+      where: { id: projectId, userId, githubRepo: project.githubRepo },
       data: { githubVisibility: info.visibility },
     });
-    return {
-      fullName: info.fullName,
-      htmlUrl: info.htmlUrl,
-      visibility: info.visibility,
-      defaultBranch: info.defaultBranch,
-    };
+    if (!saved.count) throw Errors.conflict("Visibility changed on GitHub, but the project association changed. Refresh GitHub to see its current repository.");
+    return repositorySummary(r);
   } catch (err) {
     if (err instanceof GithubApiError && err.status === 422) {
-      return {
-        error:
-          "GitHub refused the visibility change (an org policy may block it).",
-      };
+      throw Errors.conflict("GitHub refused the visibility change. Repository or organization policy may block it.");
     }
-    const message = err instanceof Error ? err.message : String(err);
-    return { error: message };
+    if (err instanceof GithubApiError && err.status === 403 && !err.rateLimited) throw Errors.forbidden("GitHub refused the visibility change. Check admin access and organization policy.");
+    return githubReadError(err, userId);
   }
 }
 
@@ -546,9 +566,9 @@ export async function setPushMode(
   userId: string,
   mode: PushMode,
 ): Promise<void> {
-  void userId;
+  await ownedGithubProject(projectId, userId);
   await prisma.project.update({
-    where: { id: projectId },
+    where: { id: projectId, userId },
     data: { githubPushMode: mode },
   });
 }
@@ -565,47 +585,11 @@ export async function createGithubIssue(
   userId: string,
   opts: { title: string; body: string },
 ): Promise<IssueResult | PushError> {
-  const token = await resolveToken(userId);
-  if (!token) {
-    return {
-      error:
-        "GitHub is not connected. Ask the user to click the GitHub button on the project page to connect their account first.",
-    };
-  }
-
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { githubRepo: true },
-  });
-  if (!project?.githubRepo) {
-    return {
-      error:
-        "This project isn't linked to a GitHub repository yet. Push to GitHub first, then file issues.",
-    };
-  }
-
-  const title = opts.title.trim();
-  if (!title) return { error: "An issue needs a title." };
-
-  const [owner, name] = project.githubRepo.split("/");
   try {
-    const issue = await gh<{ html_url: string; number: number }>(
-      token,
-      "POST",
-      `/repos/${owner}/${name}/issues`,
-      { title, body: opts.body.trim() || undefined },
-    );
-    return {
-      issueUrl: issue.html_url,
-      number: issue.number,
-      summary: `Opened issue [#${issue.number} — ${title}](${issue.html_url})`,
-    };
-  } catch (err) {
-    if (err instanceof GithubApiError && err.status === 401) {
-      await dropConnection(userId);
-      return { error: "The GitHub connection is no longer valid." };
-    }
-    const message = err instanceof Error ? err.message : String(err);
-    return { error: `Couldn't create the issue: ${message}` };
-  }
+    const project = await prisma.project.findUnique({ where: { id: projectId }, select: { githubRepo: true, userId: true } });
+    if (!project?.githubRepo) throw Errors.conflict("Link a GitHub repository before creating an issue.");
+    if (project.userId !== userId) throw Errors.forbidden("You do not have access to this project");
+    const { createProjectGithubIssue } = await import("./githubCollaboration");
+    return await createProjectGithubIssue(projectId, userId, { repo: project.githubRepo, title: opts.title, description: opts.body });
+  } catch (error) { return { error: error instanceof Error ? error.message : "GitHub issue creation failed." }; }
 }

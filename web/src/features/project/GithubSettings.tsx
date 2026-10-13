@@ -9,6 +9,7 @@ import { GithubMark } from "@/src/components/ui/github-mark";
 import { errorMessage, useDisconnectGithub, usePatchGithub, useUnlinkRepo, type GithubProjectInfo, type PushMode } from "./github";
 import { GithubRepositoryPicker } from "./GithubRepositoryPicker";
 import { githubButtonClass, githubCardClass } from "./githubStyles";
+import { GithubVisibilitySettings } from "./GithubVisibilitySettings";
 
 export function GithubSettings({ projectId, info, blocked }: {
   projectId: string;
@@ -19,6 +20,7 @@ export function GithubSettings({ projectId, info, blocked }: {
   const unlink = useUnlinkRepo(projectId);
   const disconnect = useDisconnectGithub();
   const [confirm, setConfirm] = useState<"unlink" | "disconnect" | null>(null);
+  const [confirmRepo, setConfirmRepo] = useState<string | null>(null);
   const pending = unlink.isPending || disconnect.isPending;
   const error = confirm === "unlink" ? unlink.error : disconnect.error;
   const repo = info.repo;
@@ -53,14 +55,14 @@ export function GithubSettings({ projectId, info, blocked }: {
             <GithubRepositoryPicker projectId={projectId} currentRepo={repo?.fullName} disabled={blocked || pending} />
             {repo && <a href={`${repo.htmlUrl}/settings`} target="_blank" rel="noopener noreferrer" className={githubButtonClass}>Settings on GitHub<ExternalLinkIcon className="size-3.5" /></a>}
           </div>
-          {repo && <p className="mt-3 text-xs text-silver-600">Visibility: {repo.visibility === "private" ? "Private" : "Public"}. Manage visibility on GitHub.</p>}
+          {repo && <><p className="mt-3 text-xs text-silver-600">Your access: {repo.canAdmin ? "Admin" : repo.canPush ? "Write" : "Read"}{repo.archived && " · Archived"}</p><GithubVisibilitySettings key={repo.fullName} projectId={projectId} repo={repo} blocked={blocked || pending || patch.isPending} /></>}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 p-5">
           <div className="min-w-0">
             <h2 className="text-sm font-medium">Connected account</h2>
             <p className="mt-1 break-all text-xs text-silver-600">{info.username ? `@${info.username}` : "GitHub account connected"}</p>
           </div>
-          <Dialog open={confirm === "disconnect"} onOpenChange={(value) => { if (!pending) { setConfirm(value ? "disconnect" : null); disconnect.reset(); } }}>
+          <Dialog open={confirm === "disconnect" && confirmRepo === (repo?.fullName ?? null)} onOpenChange={(value) => { if (!pending) { setConfirm(value ? "disconnect" : null); setConfirmRepo(repo?.fullName ?? null); disconnect.reset(); } }}>
             <DialogTrigger asChild><button type="button" disabled={blocked || pending} className={githubButtonClass}><GithubMark className="size-3.5" />Disconnect account</button></DialogTrigger>
             <DialogContent className="border-silver-200 bg-space-surface text-silver-900 motion-reduce:animate-none" showCloseButton={!pending}>
               <DialogHeader>
@@ -78,13 +80,14 @@ export function GithubSettings({ projectId, info, blocked }: {
           </Dialog>
         </div>
       </section>
+      {repo && <section className={cn(githubCardClass, "p-5")} aria-label="Last confirmed push"><h2 className="text-sm font-medium">Last confirmed push</h2>{info.lastPush ? <div className="mt-3 space-y-2 text-xs text-silver-600"><p><time dateTime={info.lastPush.at}>{new Date(info.lastPush.at).toLocaleString()}</time></p><p className="break-all">Branch <span className="font-mono text-silver-900">{info.lastPush.branch}</span></p><a href={info.lastPush.commitUrl} target="_blank" rel="noopener noreferrer" className={githubButtonClass}>View commit {info.lastPush.commitSha.slice(0, 7)}<ExternalLinkIcon className="size-3.5" /></a></div> : <p className="mt-2 text-xs leading-relaxed text-silver-600">No confirmed push has been recorded by Tau. Earlier pushes may not have tracking metadata.</p>}</section>}
       {repo && (
         <section className={cn(githubCardClass, "flex flex-wrap items-center justify-between gap-3 p-5")} aria-label="Unlink repository">
           <div className="min-w-0">
             <h2 className="text-sm font-medium">Unlink repository</h2>
             <p className="mt-1 text-xs text-silver-600">Remove this project's repository association.</p>
           </div>
-          <Dialog open={confirm === "unlink"} onOpenChange={(value) => { if (!pending) { setConfirm(value ? "unlink" : null); unlink.reset(); } }}>
+          <Dialog open={confirm === "unlink" && confirmRepo === repo.fullName} onOpenChange={(value) => { if (!pending) { setConfirm(value ? "unlink" : null); setConfirmRepo(repo.fullName); unlink.reset(); } }}>
             <DialogTrigger asChild><button type="button" disabled={blocked || pending} className={cn(githubButtonClass, "text-red-400")}><Unlink2Icon className="size-3.5" />Unlink repository</button></DialogTrigger>
             <DialogContent className="border-silver-200 bg-space-surface text-silver-900 motion-reduce:animate-none" showCloseButton={!pending}>
               <DialogHeader>

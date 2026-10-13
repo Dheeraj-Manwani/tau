@@ -31,6 +31,8 @@ import type {
 } from "@/src/features/project/types";
 
 export interface SendMessageOptions {
+  /** Called only after the server accepts the message and starts its job. */
+  onAccepted?: () => void;
   /** Defaults to the shared effort choice: see `useEffortChoice`. */
   effort?: Effort;
   attachmentIds?: string[];
@@ -94,7 +96,7 @@ export function useSendMessage(projectId: string | undefined) {
         ...(options.buildError ? { buildError: options.buildError } : {}),
         ...(options.runtimeError ? { runtimeError: options.runtimeError } : {}),
       })
-      .then(({ jobId }) => startJob(jobId, content))
+      .then(({ jobId }) => { startJob(jobId, content); options.onAccepted?.(); })
       .catch((err: unknown) => {
         removeChatMessage(messageId);
         options.onFailed?.();

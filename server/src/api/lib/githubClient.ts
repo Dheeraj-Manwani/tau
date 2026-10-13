@@ -8,7 +8,7 @@ export class GithubApiError extends Error {
   }
 }
 
-export async function gh<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
+export async function ghResponse<T>(token: string, method: string, path: string, body?: unknown): Promise<{ data: T; headers: Headers }> {
   const res = await fetch(`https://api.github.com${path}`, {
     method,
     headers: {
@@ -28,7 +28,16 @@ export async function gh<T>(token: string, method: string, path: string, body?: 
         res.headers.has("retry-after") || /rate limit/i.test(text))));
   }
   const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  return { data: (text ? JSON.parse(text) : undefined) as T, headers: res.headers };
+}
+
+export async function gh<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
+  return (await ghResponse<T>(token, method, path, body)).data;
+}
+
+export async function ghPage<T>(token: string, path: string): Promise<{ items: T; hasNext: boolean }> {
+  const response = await ghResponse<T>(token, "GET", path);
+  return { items: response.data, hasNext: /rel="next"/.test(response.headers.get("link") ?? "") };
 }
 
 export async function resolveToken(userId: string): Promise<string | null> {
@@ -53,7 +62,7 @@ export async function githubReadError(err: unknown, userId: string): Promise<nev
     if (err.status === 404) throw Errors.notFound("The repository or branch is unavailable, or your account no longer has access.");
     if (err.status === 409) throw Errors.conflict("This repository has no commits yet. Initialize a branch on GitHub to compare files.");
   }
-  throw new AppError("GitHub is unavailable. Try again to refresh the comparison.", 503);
+  throw new AppError("GitHub is unavailable. Try refreshing this workspace.", 503);
 }
 
 /** Preserve actionable write failures without exposing raw upstream payloads. */

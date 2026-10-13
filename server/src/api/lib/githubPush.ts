@@ -55,6 +55,7 @@ export async function pushReviewedProject(projectId: string, userId: string, opt
     }
     if (!published) {
       const local = await checkGithubSnapshot(snapshot, token);
+      if (local.target.repo.archived) throw Errors.forbidden("This repository is archived. Unarchive it on GitHub before pushing.");
       if (local.target.repo.permissions?.push !== true) throw Errors.forbidden("Your GitHub account has read-only access to this repository.");
       if (!local.target.repo.node_id) throw new AppError("Repository identity is unavailable. Refresh GitHub before pushing.", 503);
       repoUrl = local.target.repo.html_url;
@@ -87,6 +88,7 @@ export async function pushReviewedProject(projectId: string, userId: string, opt
       const commit = await gh<{ sha: string }>(token, "POST", `/repos/${snapshot.repo}/git/commits`, { message: `${title}${body && snapshot.mode === "direct" ? `\n\n${body}` : ""}\n\n${marker}`, tree: result.sha, parents: [snapshot.headSha] });
       commitSha = commit.sha;
       const final = await checkGithubSnapshot(snapshot, token);
+      if (final.target.repo.archived) throw Errors.forbidden("This repository was archived. Refresh GitHub before pushing.");
       if (final.target.repo.permissions?.push !== true) throw Errors.forbidden("Repository write access changed. Refresh GitHub.");
       const refUpdates = snapshot.mode === "new_pr"
         ? [{ name: `refs/heads/${snapshot.branch}`, beforeOid: snapshot.headSha, afterOid: snapshot.headSha, force: false }, { name: `refs/heads/${branch}`, beforeOid: "0".repeat(40), afterOid: commitSha, force: false }]
@@ -113,6 +115,7 @@ export async function pushReviewedProject(projectId: string, userId: string, opt
     }
   } catch (err) { return githubWriteError(err, userId); }
 
+  const confirmedAt = new Date();
   const result: PushResult = { repoUrl, branch, mode: snapshot.mode, commitUrl: `${repoUrl}/commit/${commitSha}`, summary: `Committed reviewed changes to [${snapshot.repo}](${repoUrl}) on ${branch}.` };
   try {
     if (snapshot.mode !== "direct") {
@@ -145,7 +148,8 @@ export async function pushReviewedProject(projectId: string, userId: string, opt
     result.warning = `The commit was pushed to ${branch}. ${reason} Open the commit on GitHub to finish the pull request; do not repeat the push.`;
   }
   try {
-    const saved = await prisma.project.updateMany({ where: { id: projectId, userId, githubRepo: snapshot.repo, OR: [{ lastPushedSequence: null }, { lastPushedSequence: { lte: snapshot.localSequence } }] }, data: { lastPushedBranch: branch, lastPushedSequence: snapshot.localSequence, ...(result.prNumber ? { lastPrNumber: result.prNumber, lastPrUrl: result.prUrl } : {}) } });
+    const tracked = await prisma.project.findUnique({ where: { id: projectId }, select: { lastPushedAt: true, lastPushedCommitSha: true } });
+    const saved = await prisma.project.updateMany({ where: { id: projectId, userId, githubRepo: snapshot.repo, OR: [{ lastPushedSequence: null }, { lastPushedSequence: { lte: snapshot.localSequence } }] }, data: { lastPushedBranch: branch, lastPushedSequence: snapshot.localSequence, lastPushedCommitSha: commitSha, lastPushedAt: tracked && tracked.lastPushedCommitSha === commitSha && tracked.lastPushedAt ? tracked.lastPushedAt : confirmedAt, ...(result.prNumber ? { lastPrNumber: result.prNumber, lastPrUrl: result.prUrl } : {}) } });
     if (!saved.count) result.warning = `${result.warning ? `${result.warning} ` : ""}Project tracking changed after publication. Refresh GitHub to see its current state.`;
   } catch { result.warning = `${result.warning ? `${result.warning} ` : ""}The commit succeeded, but Tau could not save its push tracking. Refresh GitHub.`; }
   return result;

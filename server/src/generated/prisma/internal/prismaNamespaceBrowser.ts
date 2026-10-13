@@ -176,6 +176,8 @@ export const ProjectScalarFieldEnum = {
   lastPrUrl: 'lastPrUrl',
   lastPrNumber: 'lastPrNumber',
   lastPushedSequence: 'lastPushedSequence',
+  lastPushedAt: 'lastPushedAt',
+  lastPushedCommitSha: 'lastPushedCommitSha',
   githubPushMode: 'githubPushMode',
   headSequence: 'headSequence'
 } as const

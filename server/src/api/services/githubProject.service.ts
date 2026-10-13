@@ -1,3 +1,4 @@
+import { listGithubPulls, getGithubPull, listGithubIssues, getGithubIssue, createProjectGithubIssue, type GithubListState } from "../lib/githubCollaboration";
 import { pushReviewedProject } from "../lib/githubPush";
 import * as projectRepo from "../repositories/project.repository";
 import { Errors } from "../lib/errors";
@@ -11,6 +12,7 @@ import {
   setRepoVisibility,
   setPushMode,
   type PushMode,
+  type RepoAffiliation,
 } from "../lib/github";
 
 async function assertOwner(projectId: string, userId: string): Promise<void> {
@@ -69,22 +71,44 @@ export async function unlink(projectId: string, userId: string) {
   await unlinkRepo(projectId, userId);
 }
 
-export async function repos(projectId: string, userId: string) {
+export async function repos(projectId: string, userId: string, opts: { page: number; affiliation: RepoAffiliation }) {
   await assertOwner(projectId, userId);
-  return unwrap(await listUserRepos(userId));
+  return listUserRepos(userId, opts);
 }
 
 export async function patch(
   projectId: string,
   userId: string,
-  changes: { private?: boolean; pushMode?: PushMode },
+  changes: { private?: boolean; pushMode?: PushMode; repo?: string },
 ) {
   await assertOwner(projectId, userId);
   if (changes.pushMode) {
     await setPushMode(projectId, userId, changes.pushMode);
   }
   if (changes.private !== undefined) {
-    return unwrap(await setRepoVisibility(projectId, userId, changes.private));
+    return unwrap(await setRepoVisibility(projectId, userId, changes.private, changes.repo));
   }
   return { ok: true };
+}
+
+
+export async function pulls(projectId: string, userId: string, opts: { repo: string; state: GithubListState; page: number }) {
+  await assertOwner(projectId, userId);
+  return listGithubPulls(projectId, userId, opts);
+}
+export async function pull(projectId: string, userId: string, repo: string, number: number) {
+  await assertOwner(projectId, userId);
+  return getGithubPull(projectId, userId, repo, number);
+}
+export async function issues(projectId: string, userId: string, opts: { repo: string; state: GithubListState; page: number }) {
+  await assertOwner(projectId, userId);
+  return listGithubIssues(projectId, userId, opts);
+}
+export async function issue(projectId: string, userId: string, repo: string, number: number) {
+  await assertOwner(projectId, userId);
+  return getGithubIssue(projectId, userId, repo, number);
+}
+export async function createIssue(projectId: string, userId: string, opts: { repo: string; title: string; description: string }) {
+  await assertOwner(projectId, userId);
+  return createProjectGithubIssue(projectId, userId, opts);
 }

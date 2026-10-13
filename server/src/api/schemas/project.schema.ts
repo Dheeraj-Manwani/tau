@@ -328,17 +328,25 @@ export const githubLinkSchema = z.object({
   repo: z
     .string()
     .trim()
-    .regex(/^[^/\s]+\/[^/\s]+$/, "Expected a repository in 'owner/repo' form"),
+    .max(200)
+    .regex(/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/, "Expected a repository in 'owner/repo' form")
+    .refine((value) => value.split("/").every((part) => part !== "." && part !== ".."), "Invalid repository name"),
 });
 
 export const githubPatchSchema = z
   .object({
     private: z.boolean().optional(),
     pushMode: pushModeSchema.optional(),
+    repo: z.string().max(200).optional(),
   })
   .refine((v) => v.private !== undefined || v.pushMode !== undefined, {
     message: "Nothing to update",
-  });
+  }).refine((v) => v.private === undefined || v.pushMode === undefined, { message: "Change visibility and push preference separately" });
+
+export const githubReposQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(1000).default(1),
+  affiliation: z.enum(["all", "owner", "collaborator", "organization_member"]).default("all"),
+});
 
 export type MessageRole = z.infer<typeof messageRole>;
 export type MessageType = z.infer<typeof messageType>;
@@ -348,3 +356,17 @@ export type ProjectIdParam = z.infer<typeof projectIdParamSchema>;
 export type ListProjectsQuery = z.infer<typeof listProjectsQuerySchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 export type ListMessagesQuery = z.infer<typeof listMessagesQuerySchema>;
+
+
+export const githubRepositoryQuerySchema = z.object({
+  repo: z.string().max(200).regex(/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/, "Expected an owner/repository"),
+});
+export const githubListQuerySchema = githubRepositoryQuerySchema.extend({
+  state: z.enum(["open", "closed", "all"]).default("open"),
+  page: z.coerce.number().int().min(1).max(1000).default(1),
+});
+export const githubNumberParamSchema = projectIdParamSchema.extend({ number: z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER) });
+export const githubIssueCreateSchema = githubRepositoryQuerySchema.extend({
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(5000).default(""),
+});

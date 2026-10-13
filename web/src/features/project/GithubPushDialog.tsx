@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowUpRightIcon, GitBranchIcon, GitPullRequestIcon, LoaderCircleIcon, UploadIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/src/components/ui/dialog";
 import { cn } from "@/src/lib/utils";
@@ -24,6 +24,8 @@ export function GithubPushDialog({ projectId, review, pr, unavailable, onClose, 
   const [draft, setDraft] = useState(false);
   const [result, setResult] = useState<PushResult | null>(null);
   const push = usePushToGithub(projectId);
+  const titleInput = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (push.isError) titleInput.current?.focus(); }, [push.isError]);
   const sequence = useProjectStore((s) => s.projectId === projectId ? s.headSequence : null);
   const stale = unavailable || (sequence !== null && sequence !== review.localSequence);
   const invalid = !title.trim() || title.trim().length > 200 || description.trim().length > 5000;
@@ -56,7 +58,7 @@ export function GithubPushDialog({ projectId, review, pr, unavailable, onClose, 
           <p className="text-[11px] leading-relaxed text-silver-600">{direct ? `This commits directly to ${review.branch}. GitHub branch rules still apply.` : update ? `The reviewed files will be pushed to PR #${review.prNumber}'s existing branch. Its title and description will also be updated.` : `A new Tau branch and pull request will be created against ${review.branch}.`}</p>
           {!!review.counts.deleted && <details><summary className="cursor-pointer text-[11px] text-red-400">{review.counts.deleted} selected {review.counts.deleted === 1 ? "deletion" : "deletions"} included</summary><ul className="mt-2 max-h-24 space-y-1 overflow-y-auto font-mono text-[11px]">{review.files.filter((file) => file.status === "deleted").map((file) => <li key={file.path} className="break-all">{file.path}</li>)}</ul></details>}
         </div>
-        <label className="block text-xs font-medium">{direct ? "Commit title" : "Pull request title"}<input autoFocus required maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} disabled={push.isPending} placeholder={direct ? "Describe your changes" : "What does this change do?"} className={inputClass} /></label>
+        <label className="block text-xs font-medium">{direct ? "Commit title" : "Pull request title"}<input ref={titleInput} autoFocus required maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} disabled={push.isPending} placeholder={direct ? "Describe your changes" : "What does this change do?"} className={inputClass} /></label>
         <label className="block text-xs font-medium">Description <span className="font-normal text-silver-600">(optional)</span><textarea rows={4} maxLength={5000} value={description} onChange={(e) => setDescription(e.target.value)} disabled={push.isPending} placeholder="Add context for your changes…" className={cn(inputClass, "resize-y")} /></label>
         {review.mode === "new_pr" && <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={draft} onChange={(e) => setDraft(e.target.checked)} disabled={push.isPending} className="accent-blue-500" /><GitPullRequestIcon className="size-3.5 text-silver-600" />Create as draft</label>}
         {update && pr?.draft && <p className="text-[11px] text-silver-600">This pull request stays a draft.</p>}

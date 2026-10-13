@@ -68,6 +68,8 @@ export type ProjectMinAggregateOutputType = {
   lastPrUrl: string | null
   lastPrNumber: number | null
   lastPushedSequence: number | null
+  lastPushedAt: Date | null
+  lastPushedCommitSha: string | null
   githubPushMode: string | null
   headSequence: number | null
 }
@@ -102,6 +104,8 @@ export type ProjectMaxAggregateOutputType = {
   lastPrUrl: string | null
   lastPrNumber: number | null
   lastPushedSequence: number | null
+  lastPushedAt: Date | null
+  lastPushedCommitSha: string | null
   githubPushMode: string | null
   headSequence: number | null
 }
@@ -138,6 +142,8 @@ export type ProjectCountAggregateOutputType = {
   lastPrUrl: number
   lastPrNumber: number
   lastPushedSequence: number
+  lastPushedAt: number
+  lastPushedCommitSha: number
   githubPushMode: number
   headSequence: number
   _all: number
@@ -186,6 +192,8 @@ export type ProjectMinAggregateInputType = {
   lastPrUrl?: true
   lastPrNumber?: true
   lastPushedSequence?: true
+  lastPushedAt?: true
+  lastPushedCommitSha?: true
   githubPushMode?: true
   headSequence?: true
 }
@@ -220,6 +228,8 @@ export type ProjectMaxAggregateInputType = {
   lastPrUrl?: true
   lastPrNumber?: true
   lastPushedSequence?: true
+  lastPushedAt?: true
+  lastPushedCommitSha?: true
   githubPushMode?: true
   headSequence?: true
 }
@@ -256,6 +266,8 @@ export type ProjectCountAggregateInputType = {
   lastPrUrl?: true
   lastPrNumber?: true
   lastPushedSequence?: true
+  lastPushedAt?: true
+  lastPushedCommitSha?: true
   githubPushMode?: true
   headSequence?: true
   _all?: true
@@ -379,6 +391,8 @@ export type ProjectGroupByOutputType = {
   lastPrUrl: string | null
   lastPrNumber: number | null
   lastPushedSequence: number | null
+  lastPushedAt: Date | null
+  lastPushedCommitSha: string | null
   githubPushMode: string
   headSequence: number
   _count: ProjectCountAggregateOutputType | null
@@ -438,6 +452,8 @@ export type ProjectWhereInput = {
   lastPrUrl?: Prisma.StringNullableFilter<"Project"> | string | null
   lastPrNumber?: Prisma.IntNullableFilter<"Project"> | number | null
   lastPushedSequence?: Prisma.IntNullableFilter<"Project"> | number | null
+  lastPushedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
+  lastPushedCommitSha?: Prisma.StringNullableFilter<"Project"> | string | null
   githubPushMode?: Prisma.StringFilter<"Project"> | string
   headSequence?: Prisma.IntFilter<"Project"> | number
   storageKeys?: Prisma.StorageKeyListRelationFilter
@@ -487,6 +503,8 @@ export type ProjectOrderByWithRelationInput = {
   lastPrUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   lastPrNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   lastPushedSequence?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastPushedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastPushedCommitSha?: Prisma.SortOrderInput | Prisma.SortOrder
   githubPushMode?: Prisma.SortOrder
   headSequence?: Prisma.SortOrder
   storageKeys?: Prisma.StorageKeyOrderByRelationAggregateInput
@@ -539,6 +557,8 @@ export type ProjectWhereUniqueInput = Prisma.AtLeast<{
   lastPrUrl?: Prisma.StringNullableFilter<"Project"> | string | null
   lastPrNumber?: Prisma.IntNullableFilter<"Project"> | number | null
   lastPushedSequence?: Prisma.IntNullableFilter<"Project"> | number | null
+  lastPushedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
+  lastPushedCommitSha?: Prisma.StringNullableFilter<"Project"> | string | null
   githubPushMode?: Prisma.StringFilter<"Project"> | string
   headSequence?: Prisma.IntFilter<"Project"> | number
   storageKeys?: Prisma.StorageKeyListRelationFilter
@@ -588,6 +608,8 @@ export type ProjectOrderByWithAggregationInput = {
   lastPrUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   lastPrNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   lastPushedSequence?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastPushedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastPushedCommitSha?: Prisma.SortOrderInput | Prisma.SortOrder
   githubPushMode?: Prisma.SortOrder
   headSequence?: Prisma.SortOrder
   _count?: Prisma.ProjectCountOrderByAggregateInput
@@ -632,6 +654,8 @@ export type ProjectScalarWhereWithAggregatesInput = {
   lastPrUrl?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   lastPrNumber?: Prisma.IntNullableWithAggregatesFilter<"Project"> | number | null
   lastPushedSequence?: Prisma.IntNullableWithAggregatesFilter<"Project"> | number | null
+  lastPushedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Project"> | Date | string | null
+  lastPushedCommitSha?: Prisma.StringNullableWithAggregatesFilter<"Project"> | string | null
   githubPushMode?: Prisma.StringWithAggregatesFilter<"Project"> | string
   headSequence?: Prisma.IntWithAggregatesFilter<"Project"> | number
 }
@@ -667,6 +691,8 @@ export type ProjectCreateInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -716,6 +742,8 @@ export type ProjectUncheckedCreateInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -763,6 +791,8 @@ export type ProjectUpdateInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -812,6 +842,8 @@ export type ProjectUncheckedUpdateInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -860,6 +892,8 @@ export type ProjectCreateManyInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
 }
@@ -895,6 +929,8 @@ export type ProjectUpdateManyMutationInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
 }
@@ -931,6 +967,8 @@ export type ProjectUncheckedUpdateManyInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
 }
@@ -985,6 +1023,8 @@ export type ProjectCountOrderByAggregateInput = {
   lastPrUrl?: Prisma.SortOrder
   lastPrNumber?: Prisma.SortOrder
   lastPushedSequence?: Prisma.SortOrder
+  lastPushedAt?: Prisma.SortOrder
+  lastPushedCommitSha?: Prisma.SortOrder
   githubPushMode?: Prisma.SortOrder
   headSequence?: Prisma.SortOrder
 }
@@ -1025,6 +1065,8 @@ export type ProjectMaxOrderByAggregateInput = {
   lastPrUrl?: Prisma.SortOrder
   lastPrNumber?: Prisma.SortOrder
   lastPushedSequence?: Prisma.SortOrder
+  lastPushedAt?: Prisma.SortOrder
+  lastPushedCommitSha?: Prisma.SortOrder
   githubPushMode?: Prisma.SortOrder
   headSequence?: Prisma.SortOrder
 }
@@ -1059,6 +1101,8 @@ export type ProjectMinOrderByAggregateInput = {
   lastPrUrl?: Prisma.SortOrder
   lastPrNumber?: Prisma.SortOrder
   lastPushedSequence?: Prisma.SortOrder
+  lastPushedAt?: Prisma.SortOrder
+  lastPushedCommitSha?: Prisma.SortOrder
   githubPushMode?: Prisma.SortOrder
   headSequence?: Prisma.SortOrder
 }
@@ -1355,6 +1399,8 @@ export type ProjectCreateWithoutUserInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -1402,6 +1448,8 @@ export type ProjectUncheckedCreateWithoutUserInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -1479,6 +1527,8 @@ export type ProjectScalarWhereInput = {
   lastPrUrl?: Prisma.StringNullableFilter<"Project"> | string | null
   lastPrNumber?: Prisma.IntNullableFilter<"Project"> | number | null
   lastPushedSequence?: Prisma.IntNullableFilter<"Project"> | number | null
+  lastPushedAt?: Prisma.DateTimeNullableFilter<"Project"> | Date | string | null
+  lastPushedCommitSha?: Prisma.StringNullableFilter<"Project"> | string | null
   githubPushMode?: Prisma.StringFilter<"Project"> | string
   headSequence?: Prisma.IntFilter<"Project"> | number
 }
@@ -1514,6 +1564,8 @@ export type ProjectCreateWithoutSecretsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -1562,6 +1614,8 @@ export type ProjectUncheckedCreateWithoutSecretsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -1624,6 +1678,8 @@ export type ProjectUpdateWithoutSecretsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -1672,6 +1728,8 @@ export type ProjectUncheckedUpdateWithoutSecretsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -1718,6 +1776,8 @@ export type ProjectCreateWithoutMessagesInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -1766,6 +1826,8 @@ export type ProjectUncheckedCreateWithoutMessagesInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -1828,6 +1890,8 @@ export type ProjectUpdateWithoutMessagesInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -1876,6 +1940,8 @@ export type ProjectUncheckedUpdateWithoutMessagesInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -1922,6 +1988,8 @@ export type ProjectCreateWithoutJobsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -1970,6 +2038,8 @@ export type ProjectUncheckedCreateWithoutJobsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -2032,6 +2102,8 @@ export type ProjectUpdateWithoutJobsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -2080,6 +2152,8 @@ export type ProjectUncheckedUpdateWithoutJobsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -2126,6 +2200,8 @@ export type ProjectCreateWithoutFilesInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -2174,6 +2250,8 @@ export type ProjectUncheckedCreateWithoutFilesInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -2236,6 +2314,8 @@ export type ProjectUpdateWithoutFilesInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -2284,6 +2364,8 @@ export type ProjectUncheckedUpdateWithoutFilesInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -2330,6 +2412,8 @@ export type ProjectCreateWithoutContextCheckpointsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -2378,6 +2462,8 @@ export type ProjectUncheckedCreateWithoutContextCheckpointsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -2440,6 +2526,8 @@ export type ProjectUpdateWithoutContextCheckpointsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -2488,6 +2576,8 @@ export type ProjectUncheckedUpdateWithoutContextCheckpointsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -2534,6 +2624,8 @@ export type ProjectCreateWithoutTokenUsageInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -2582,6 +2674,8 @@ export type ProjectUncheckedCreateWithoutTokenUsageInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -2644,6 +2738,8 @@ export type ProjectUpdateWithoutTokenUsageInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -2692,6 +2788,8 @@ export type ProjectUncheckedUpdateWithoutTokenUsageInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -2738,6 +2836,8 @@ export type ProjectCreateWithoutDeploymentsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -2786,6 +2886,8 @@ export type ProjectUncheckedCreateWithoutDeploymentsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -2848,6 +2950,8 @@ export type ProjectUpdateWithoutDeploymentsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -2896,6 +3000,8 @@ export type ProjectUncheckedUpdateWithoutDeploymentsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -2942,6 +3048,8 @@ export type ProjectCreateWithoutResourcesInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -2990,6 +3098,8 @@ export type ProjectUncheckedCreateWithoutResourcesInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -3052,6 +3162,8 @@ export type ProjectUpdateWithoutResourcesInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -3100,6 +3212,8 @@ export type ProjectUncheckedUpdateWithoutResourcesInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -3146,6 +3260,8 @@ export type ProjectCreateWithoutDomainsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -3194,6 +3310,8 @@ export type ProjectUncheckedCreateWithoutDomainsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -3256,6 +3374,8 @@ export type ProjectUpdateWithoutDomainsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -3304,6 +3424,8 @@ export type ProjectUncheckedUpdateWithoutDomainsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -3350,6 +3472,8 @@ export type ProjectCreateWithoutLogoGenerationsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -3398,6 +3522,8 @@ export type ProjectUncheckedCreateWithoutLogoGenerationsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -3460,6 +3586,8 @@ export type ProjectUpdateWithoutLogoGenerationsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -3508,6 +3636,8 @@ export type ProjectUncheckedUpdateWithoutLogoGenerationsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -3554,6 +3684,8 @@ export type ProjectCreateWithoutStorageKeysInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageObjects?: Prisma.StorageObjectCreateNestedManyWithoutProjectInput
@@ -3602,6 +3734,8 @@ export type ProjectUncheckedCreateWithoutStorageKeysInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageObjects?: Prisma.StorageObjectUncheckedCreateNestedManyWithoutProjectInput
@@ -3664,6 +3798,8 @@ export type ProjectUpdateWithoutStorageKeysInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageObjects?: Prisma.StorageObjectUpdateManyWithoutProjectNestedInput
@@ -3712,6 +3848,8 @@ export type ProjectUncheckedUpdateWithoutStorageKeysInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageObjects?: Prisma.StorageObjectUncheckedUpdateManyWithoutProjectNestedInput
@@ -3758,6 +3896,8 @@ export type ProjectCreateWithoutStorageObjectsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyCreateNestedManyWithoutProjectInput
@@ -3806,6 +3946,8 @@ export type ProjectUncheckedCreateWithoutStorageObjectsInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
   storageKeys?: Prisma.StorageKeyUncheckedCreateNestedManyWithoutProjectInput
@@ -3868,6 +4010,8 @@ export type ProjectUpdateWithoutStorageObjectsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -3916,6 +4060,8 @@ export type ProjectUncheckedUpdateWithoutStorageObjectsInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -3962,6 +4108,8 @@ export type ProjectCreateManyUserInput = {
   lastPrUrl?: string | null
   lastPrNumber?: number | null
   lastPushedSequence?: number | null
+  lastPushedAt?: Date | string | null
+  lastPushedCommitSha?: string | null
   githubPushMode?: string
   headSequence?: number
 }
@@ -3997,6 +4145,8 @@ export type ProjectUpdateWithoutUserInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUpdateManyWithoutProjectNestedInput
@@ -4044,6 +4194,8 @@ export type ProjectUncheckedUpdateWithoutUserInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
   storageKeys?: Prisma.StorageKeyUncheckedUpdateManyWithoutProjectNestedInput
@@ -4091,6 +4243,8 @@ export type ProjectUncheckedUpdateManyWithoutUserInput = {
   lastPrUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastPrNumber?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   lastPushedSequence?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  lastPushedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastPushedCommitSha?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   githubPushMode?: Prisma.StringFieldUpdateOperationsInput | string
   headSequence?: Prisma.IntFieldUpdateOperationsInput | number
 }
@@ -4257,6 +4411,8 @@ export type ProjectSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   lastPrUrl?: boolean
   lastPrNumber?: boolean
   lastPushedSequence?: boolean
+  lastPushedAt?: boolean
+  lastPushedCommitSha?: boolean
   githubPushMode?: boolean
   headSequence?: boolean
   storageKeys?: boolean | Prisma.Project$storageKeysArgs<ExtArgs>
@@ -4307,6 +4463,8 @@ export type ProjectSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   lastPrUrl?: boolean
   lastPrNumber?: boolean
   lastPushedSequence?: boolean
+  lastPushedAt?: boolean
+  lastPushedCommitSha?: boolean
   githubPushMode?: boolean
   headSequence?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -4344,6 +4502,8 @@ export type ProjectSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   lastPrUrl?: boolean
   lastPrNumber?: boolean
   lastPushedSequence?: boolean
+  lastPushedAt?: boolean
+  lastPushedCommitSha?: boolean
   githubPushMode?: boolean
   headSequence?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -4381,11 +4541,13 @@ export type ProjectSelectScalar = {
   lastPrUrl?: boolean
   lastPrNumber?: boolean
   lastPushedSequence?: boolean
+  lastPushedAt?: boolean
+  lastPushedCommitSha?: boolean
   githubPushMode?: boolean
   headSequence?: boolean
 }
 
-export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "tags" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "storageEnabled" | "storageSuspendedAt" | "designConfig" | "instructions" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "siteSuspendedAt" | "siteSuspendedReason" | "publishFeePaidAt" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
+export type ProjectOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "tags" | "userId" | "createdAt" | "updatedAt" | "workspaceStartedAt" | "sandboxId" | "sandboxStatus" | "sandboxExpiresAt" | "templateKey" | "aiEnabled" | "storageEnabled" | "storageSuspendedAt" | "designConfig" | "instructions" | "previewImageKey" | "previewImageUpdatedAt" | "slug" | "liveDeploymentId" | "siteSuspendedAt" | "siteSuspendedReason" | "publishFeePaidAt" | "githubRepo" | "githubDefaultBranch" | "githubVisibility" | "lastPushedBranch" | "lastPrUrl" | "lastPrNumber" | "lastPushedSequence" | "lastPushedAt" | "lastPushedCommitSha" | "githubPushMode" | "headSequence", ExtArgs["result"]["project"]>
 export type ProjectInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   storageKeys?: boolean | Prisma.Project$storageKeysArgs<ExtArgs>
   storageObjects?: boolean | Prisma.Project$storageObjectsArgs<ExtArgs>
@@ -4516,6 +4678,8 @@ export type $ProjectPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     lastPrUrl: string | null
     lastPrNumber: number | null
     lastPushedSequence: number | null
+    lastPushedAt: Date | null
+    lastPushedCommitSha: string | null
     githubPushMode: string
     headSequence: number
   }, ExtArgs["result"]["project"]>
@@ -4985,6 +5149,8 @@ export interface ProjectFieldRefs {
   readonly lastPrUrl: Prisma.FieldRef<"Project", 'String'>
   readonly lastPrNumber: Prisma.FieldRef<"Project", 'Int'>
   readonly lastPushedSequence: Prisma.FieldRef<"Project", 'Int'>
+  readonly lastPushedAt: Prisma.FieldRef<"Project", 'DateTime'>
+  readonly lastPushedCommitSha: Prisma.FieldRef<"Project", 'String'>
   readonly githubPushMode: Prisma.FieldRef<"Project", 'String'>
   readonly headSequence: Prisma.FieldRef<"Project", 'Int'>
 }
