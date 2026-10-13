@@ -48,13 +48,17 @@ export async function uploadToR2(
   }
 }
 
+/**
+ * Confirm the bytes are stored. `defer` asks the server not to read the file
+ * now: it is read when the message it is sent with starts its run, so
+ * attaching costs an upload and nothing more.
+ */
 export function completeUpload(
   attachmentId: string,
-  userMessage?: string,
 ): Promise<{ status: string }> {
   return api
     .post<{ status: string }>(`/attachments/${attachmentId}/complete`, {
-      ...(userMessage ? { userMessage } : {}),
+      defer: true,
     })
     .then((r) => r.data);
 }
@@ -69,10 +73,6 @@ export function createPaste(
       ...(filename ? { filename } : {}),
     })
     .then((r) => r.data);
-}
-
-export function getAttachment(id: string): Promise<AttachmentSummary> {
-  return api.get<AttachmentSummary>(`/attachments/${id}`).then((r) => r.data);
 }
 
 export function getAttachmentContent(

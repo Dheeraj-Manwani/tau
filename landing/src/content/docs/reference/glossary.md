@@ -19,8 +19,9 @@ without breaking deployed apps. → [AI overview](/docs/ai/overview)
 
 ## Attachment
 
-A file on a message: an image, a PDF, a text file, or pasted content. Tau extracts
-text from it before the agent reads it. → [Attachments](/docs/build/attachments)
+A file on a message: an image, a PDF, a text file, or pasted content. Tau reads
+it when the message is sent, and the agent works from what it says.
+→ [Attachments](/docs/build/attachments)
 
 ## Bonus credits
 

@@ -11,6 +11,7 @@ import { publish, makeIndexer } from "../lib/publish";
 import { captureException, log } from "../lib/log";
 import { captureAppScreenshot } from "../lib/screenshot";
 import { markProjectWorkspaceStarted } from "../lib/projectWorkspace";
+import { readAttachmentsForRun } from "../lib/readAttachments";
 import { putScreenshot } from "@/lib/s3";
 import type { Sandbox } from "../lib/sandbox";
 import { waitForPreviewHttp, previewSupportsHealth } from "../lib/previewReadiness";
@@ -481,6 +482,11 @@ export async function runAgentLoop(
     // (context/standing.ts). First, so it frames everything after it.
     const standing = await loadStandingNote(projectId);
     const requestNote = [standing, brief, previousPlan].filter(Boolean).join("\n\n") || null;
+
+    // Files sent with this request are read now rather than at upload, and
+    // their descriptions written into the message the history is about to
+    // load (worker/lib/readAttachments.ts).
+    await readAttachmentsForRun({ userId, projectId, jobId, indexer: nextIndex }, effort);
 
     let entries: Entry[] = [
       { param: { role: "system", content: systemPrompt }, seq: null },

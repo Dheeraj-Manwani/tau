@@ -32,6 +32,7 @@ import {
   HammerIcon,
   HeartPulseIcon,
   HomeIcon,
+  PaperclipIcon,
   ImagesIcon,
   InfoIcon,
   ListPlusIcon,
@@ -152,6 +153,8 @@ function ActionIcon({ kind }: { kind: ActionItem["kind"] }) {
   if (kind === "search_images") return <ImagesIcon className="size-3.5" />;
   if (kind === "image_dimensions") return <RulerIcon className="size-3.5" />;
   if (kind === "download_asset") return <DownloadIcon className="size-3.5" />;
+  if (kind === "read_attachments")
+    return <PaperclipIcon className="size-3.5" />;
   if (kind === "push_to_github")
     return <GitPullRequestIcon className="size-3.5" />;
   if (kind === "create_github_issue")
@@ -1537,7 +1540,7 @@ export function ChatPanel({
             isSubmitting={!canSend && draft.trim().length > 0}
             compact
             attachments={attachments.attachments}
-            onAttach={(files) => attachments.addFiles(files, draft)}
+            onAttach={(files) => attachments.addFiles(files)}
             onRemoveAttachment={attachments.remove}
             onPasteLarge={attachments.addPaste}
             attachmentsBusy={attachments.isBusy}

@@ -200,7 +200,7 @@ function Home() {
                 maxRows={12}
                 submitLabel="Build"
                 attachments={attachments.attachments}
-                onAttach={(files) => attachments.addFiles(files, prompt)}
+                onAttach={(files) => attachments.addFiles(files)}
                 onRemoveAttachment={attachments.remove}
                 onPasteLarge={attachments.addPaste}
                 attachmentsBusy={attachments.isBusy}

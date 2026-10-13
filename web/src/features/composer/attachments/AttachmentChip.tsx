@@ -38,8 +38,9 @@ interface AttachmentChipProps {
 
 export function AttachmentChip({ chip, onOpen, onRemove }: AttachmentChipProps) {
   const thumbnail = useThumbnail(chip);
-  const busy =
-    chip.uploading || chip.status === "PENDING" || chip.status === "EXTRACTING";
+  // Busy means uploading and nothing else. A file is read when its message is
+  // sent, so a stored chip that tau has not read yet is not waiting on anything.
+  const busy = chip.uploading === true;
   const failed = chip.status === "FAILED";
 
   return (

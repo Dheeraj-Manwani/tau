@@ -55,7 +55,9 @@ import { terminateStrandedJob } from "../lib/jobs";
 import { pendingSecretFields } from "./projectSecret.service";
 import {
   attachmentBlock,
-  waitForExtraction,
+  claimableAttachments,
+  runExtraction,
+  unreadAttachmentBlock,
   type ResolvedAttachment,
 } from "../lib/attachments";
 import {
@@ -67,6 +69,7 @@ import {
   type VisualContext,
 } from "../lib/visualContext";
 import {
+  AttachmentStatus,
   MessageRole,
   MessageType,
   FinishReason,
@@ -194,19 +197,25 @@ export interface MessageContext {
 }
 
 /**
- * Build the content-block array for a USER message. Attachment text is
- * materialized in here rather than resolved later, which is what lets the
- * worker's `loadHistory()` stay untouched — it hands `Message.content` straight
- * to the completions API, so every block must be a valid content part.
+ * Build the content-block array for a USER message. Every block is a valid
+ * content part, because the worker's `loadHistory()` hands `Message.content`
+ * straight to the completions API.
  *
- * Call this BEFORE opening the write transaction; it can block for up to
- * `EXTRACTION_WAIT_MS`.
+ * A send does not wait for files to be read. An unread file gets a block that
+ * holds its place, and `worker/lib/readAttachments.ts` replaces it with the
+ * description when the run starts (doc/ATTACHMENTS_PLAN.md §3).
+ *
+ * Call this BEFORE opening the write transaction.
+ *
+ * @param opts.readFirstIfWordless a new project sent with files and no words
+ *        is named from its first file, so that one is read here.
  */
 async function buildUserMessage(
   userId: string,
   text: string,
   attachmentIds: string[],
   context?: MessageContext,
+  opts: { readFirstIfWordless?: boolean } = {},
 ): Promise<{
   content: Prisma.InputJsonValue;
   resolved: ResolvedAttachment[];
@@ -240,7 +249,14 @@ async function buildUserMessage(
 
   let resolved: ResolvedAttachment[];
   try {
-    resolved = await waitForExtraction(userId, attachmentIds);
+    resolved = await claimableAttachments(userId, attachmentIds);
+    // No words to name the app from: read the first file here, as a send
+    // always used to. Every other file waits for the run.
+    const first = resolved[0];
+    if (opts.readFirstIfWordless && !hasUserText && first && first.status !== AttachmentStatus.READY) {
+      await runExtraction(first.id);
+      resolved = await claimableAttachments(userId, attachmentIds);
+    }
   } catch (err) {
     const code = err instanceof Error ? err.message : "";
     if (code === "ATTACHMENT_NOT_FOUND") throw Errors.notFound(code);
@@ -249,8 +265,14 @@ async function buildUserMessage(
     throw err;
   }
 
+  // A file that has been read (a paste, or one a client asked to be read at
+  // upload) goes in as its description. One that has not holds its place, and
+  // the run fills it in before the model sees the message.
   for (const a of resolved) {
-    blocks.push({ type: "text", text: attachmentBlock(a) });
+    blocks.push({
+      type: "text",
+      text: a.status === AttachmentStatus.READY ? attachmentBlock(a) : unreadAttachmentBlock(a),
+    });
   }
 
   // Without this an attachment-only message reads as a bare document dump. It
@@ -332,12 +354,14 @@ export async function initializeProject(
     design === undefined
       ? await defaultDesignOf(userId)
       : normalizeDesignConfig(design);
-  // Before the transaction — this can block on extraction. When the user sent
-  // an image with no words, name off the extracted text instead.
+  // Before the transaction. When the user sent an image with no words, the
+  // first file is read here and the project is named off what it says.
   const { content, resolved } = await buildUserMessage(
     userId,
     message,
     attachmentIds,
+    undefined,
+    { readFirstIfWordless: true },
   );
   const name = await generateProjectName(
     message.trim().length > 0
@@ -428,7 +452,7 @@ export async function addMessage(
     throw Errors.forbidden("You do not have access to this project");
   }
 
-  // Before the transaction — this can block on an in-flight extraction.
+  // Before the transaction.
   const { content, resolved } = await buildUserMessage(
     userId,
     text,

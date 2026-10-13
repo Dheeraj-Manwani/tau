@@ -127,8 +127,11 @@ you will need to add again.
 
 ## Attachments aren't reaching the agent
 
-You probably sent while an attachment was still extracting. Wait for the chip to
-read **Ready**, then send.
+Tau reads your files when you send, and the chat shows it: "Looked at your
+attached files". If that step is missing, the upload did not finish before you
+sent; attach the file again. If the step is there and tau still got the file
+wrong, it could not read it: a scanned page, an unusual format, or a very dense
+screenshot. Say what the file shows in a sentence, or paste the text.
 
 → [Attachments](/docs/build/attachments)
 

@@ -96,16 +96,28 @@ export async function signUpload(
   };
 }
 
-/** Called once the bytes are in R2. Kicks off extraction and returns
- *  immediately; the client polls `get`. */
+/**
+ * Called once the bytes are in R2.
+ *
+ * With `defer` the file is only confirmed as stored: it stays `PENDING` and is
+ * read when the message it is sent with starts its run
+ * (`worker/lib/readAttachments.ts`). Without it the read starts now and the
+ * client polls `get`, which is what clients that have not been updated still
+ * do (doc/ATTACHMENTS_PLAN.md §3).
+ *
+ * At most one read is started for a row however often this is called: a second
+ * call while one is under way changes nothing. That is what lets the route go
+ * without a rate limit of its own.
+ */
 export async function completeUpload(
   userId: string,
   attachmentId: string,
   userMessage?: string,
+  opts: { defer?: boolean } = {},
 ): Promise<{ status: AttachmentStatus }> {
   const row = await requireOwned(userId, attachmentId);
 
-  if (row.status === AttachmentStatus.READY) {
+  if (row.status === AttachmentStatus.READY || row.status === AttachmentStatus.EXTRACTING) {
     return { status: row.status };
   }
   if (!row.blobKey || !(await objectExists(row.blobKey))) {
@@ -118,6 +130,18 @@ export async function completeUpload(
     });
     throw Errors.badRequest("UPLOAD_INCOMPLETE");
   }
+
+  if (opts.defer) return { status: AttachmentStatus.PENDING };
+
+  // Claimed in one statement, so two calls arriving together start one read.
+  const claimed = await prisma.attachment.updateMany({
+    where: {
+      id: attachmentId,
+      status: { in: [AttachmentStatus.PENDING, AttachmentStatus.FAILED] },
+    },
+    data: { status: AttachmentStatus.EXTRACTING, extractionError: null },
+  });
+  if (claimed.count === 0) return { status: AttachmentStatus.EXTRACTING };
 
   // Fire-and-forget — one process, no worker to hand off to. The hourly sweep
   // resets whatever a restart strands.

@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { isTerminalRequestError } from "@/src/lib/api-client";
 
 import {
   completeUpload,
   createPaste,
   deleteAttachment,
-  getAttachment,
   sha256Bytes,
   signUpload,
   uploadToR2,
@@ -18,8 +16,6 @@ export const MAX_ATTACHMENTS = 5;
 /** Mirror the server caps; these only exist to fail fast without a round trip. */
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
-
-const POLL_INTERVAL_MS = 1000;
 
 let keyCounter = 0;
 function nextKey(): string {
@@ -39,21 +35,22 @@ function friendlyError(message: string): string {
   }
 }
 
+/**
+ * A chip can be sent once the server has its bytes. Nothing waits for the
+ * file to be read: that happens when the message it is sent with starts its
+ * run, and the chat shows it as a step.
+ */
 function isSettled(a: AttachmentDraft): boolean {
-  return (
-    !a.uploading &&
-    a.id !== null &&
-    (a.status === "READY" || a.status === "FAILED")
-  );
+  return !a.uploading && a.id !== null;
 }
 
 export interface UseAttachments {
   attachments: AttachmentDraft[];
-  /** Ids safe to send: server rows that have settled. */
+  /** Ids safe to send: files the server has stored. */
   readyIds: string[];
-  /** True while any chip is still uploading or extracting. */
+  /** True while any chip is still uploading. */
   isBusy: boolean;
-  addFiles: (files: File[], userMessage?: string) => void;
+  addFiles: (files: File[]) => void;
   addPaste: (text: string) => void;
   remove: (key: string) => void;
   /** Clear local state after a successful send (does NOT delete server rows). */
@@ -94,7 +91,7 @@ export function useAttachments(): UseAttachments {
 
   /** Sign → PUT → complete, for one file. */
   const uploadOne = useCallback(
-    async (file: File, key: string, userMessage?: string): Promise<void> => {
+    async (file: File, key: string): Promise<void> => {
       try {
         const buffer = await file.arrayBuffer();
         const contentHash = await sha256Bytes(buffer);
@@ -111,9 +108,9 @@ export function useAttachments(): UseAttachments {
         if (signed.uploadUrl) {
           await uploadToR2(signed.uploadUrl, file, mimeType, signed.attachmentId);
         }
-        await completeUpload(signed.attachmentId, userMessage);
+        await completeUpload(signed.attachmentId);
 
-        patch(key, { uploading: false, status: "EXTRACTING" });
+        patch(key, { uploading: false });
       } catch (err) {
         toast.error(
           friendlyError(err instanceof Error ? err.message : "Upload failed"),
@@ -129,7 +126,7 @@ export function useAttachments(): UseAttachments {
   );
 
   const addFiles = useCallback(
-    (files: File[], userMessage?: string) => {
+    (files: File[]) => {
       // Kept outside the state updater: StrictMode invokes it twice.
       const room = MAX_ATTACHMENTS - attachments.length;
       if (room <= 0) {
@@ -175,7 +172,7 @@ export function useAttachments(): UseAttachments {
       if (drafts.length === 0) return;
       setAttachments((prev) => [...prev, ...drafts]);
       pendingUploads.forEach(({ file, key }) => {
-        void uploadOne(file, key, userMessage);
+        void uploadOne(file, key);
       });
     },
     [attachments.length, uploadOne],
@@ -245,52 +242,6 @@ export function useAttachments(): UseAttachments {
   const restore = useCallback((drafts: AttachmentDraft[]) => {
     setAttachments(drafts);
   }, []);
-
-  // One interval for all pending chips.
-  const pendingIds = attachments
-    .filter(
-      (a) =>
-        !a.uploading &&
-        a.id !== null &&
-        (a.status === "PENDING" || a.status === "EXTRACTING"),
-    )
-    .map((a) => a.id!);
-  const pendingKey = pendingIds.join(",");
-
-  useEffect(() => {
-    if (!pendingKey) return;
-    const ids = pendingKey.split(",");
-    let cancelled = false;
-    let inFlight = false;
-
-    const tick = async () => {
-      if (inFlight) return;
-      inFlight = true;
-      const results = await Promise.allSettled(
-        ids.map((id) => getAttachment(id)),
-      );
-      inFlight = false;
-      if (cancelled) return;
-      setAttachments((prev) =>
-        prev.map((a) => {
-          if (a.id === null) return a;
-          const idx = ids.indexOf(a.id);
-          const r = idx === -1 ? undefined : results[idx];
-          if (r?.status === "fulfilled") return { ...a, ...r.value };
-          if (r?.status === "rejected" && isTerminalRequestError(r.reason)) {
-            return { ...a, status: "FAILED", extractionError: "This attachment is no longer available. Please attach it again." };
-          }
-          return a;
-        }),
-      );
-    };
-
-    const handle = setInterval(() => void tick(), POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(handle);
-    };
-  }, [pendingKey]);
 
   return {
     attachments,

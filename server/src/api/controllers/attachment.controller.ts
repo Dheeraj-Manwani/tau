@@ -43,11 +43,12 @@ export const completeUpload = async (
   try {
     const userId = requireUserId(req);
     const { attachmentId } = parse(attachmentIdParamSchema, req.params);
-    const { userMessage } = parse(attachmentCompleteSchema, req.body ?? {});
+    const { userMessage, defer } = parse(attachmentCompleteSchema, req.body ?? {});
     const result = await attachmentService.completeUpload(
       userId,
       attachmentId,
       userMessage,
+      { defer },
     );
     res.status(202).json(result);
   } catch (err) {

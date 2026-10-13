@@ -128,7 +128,8 @@ frames until `done`* rather than *read until the socket closes*.
 |---|---|---|
 | File too large | Over 10 MB, or over 5 MB for an image | Compress it, or attach a smaller excerpt |
 | Too many attachments | Over 5 on one message | Split across messages |
-| Attachment has no content | You sent while it was still extracting | Wait for **Ready**, then send |
+| Attachment could not be read | Tau tried to read the file when you sent it and could not | Attach it again, or paste the text it contains |
+| Too many attachments uploaded | Over 40 files in an hour | Wait a little, then attach again |
 
 ## Handling errors in your generated app
 

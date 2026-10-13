@@ -59,6 +59,7 @@ export type ActionKind =
   | "search_images"
   | "image_dimensions"
   | "download_asset"
+  | "read_attachments"
   | "push_to_github"
   | "create_github_issue";
 
@@ -309,6 +310,29 @@ function withUpdatedPlanTodos(
   return null;
 }
 
+/** The step tau reports while it reads what was attached to a message. */
+const READ_ATTACHMENTS_STEP = "read_attachments";
+
+/**
+ * That step, for a message loaded from the server. It is stored nowhere: tau
+ * reads the files before the agent's first turn, so no tool call records it.
+ * What a message's files say is enough to know. Files that have been read, or
+ * could not be, had the step; files still waiting belong to a request that
+ * has not started. A paste is its own text and is never "looked at".
+ */
+function readAttachmentsAction(
+  attachments: MessageAttachment[],
+): ActionItem | null {
+  const files = attachments.filter(
+    (a) =>
+      a.kind !== "PASTED" && (a.status === "READY" || a.status === "FAILED"),
+  );
+  if (files.length === 0) return null;
+  return deriveActionItem(READ_ATTACHMENTS_STEP, {
+    files: files.map((a) => a.filename),
+  });
+}
+
 function deriveActionItem(
   toolName: string,
   input: Record<string, unknown>,
@@ -432,6 +456,22 @@ function deriveActionItem(
     // extension is corrected to match the file).
     case "use_attachment":
       return { kind: "download_asset", label: "Added your attached file" };
+    // Not a tool the agent calls: tau reads what was attached before the
+    // agent's first turn, and says so (server: worker/lib/readAttachments.ts).
+    case READ_ATTACHMENTS_STEP: {
+      const names = Array.isArray(input.files)
+        ? (input.files as unknown[]).map(String).filter(Boolean)
+        : [];
+      return {
+        kind: "read_attachments",
+        label:
+          names.length === 1
+            ? `Looked at ${truncateLabel(names[0], 40)}`
+            : names.length > 1
+              ? `Looked at ${names.length} attached files`
+              : "Looked at your attached files",
+      };
+    }
     case "push_to_github": {
       const title = String(input.title ?? "");
       const description = String(input.description ?? "").trim();
@@ -773,6 +813,16 @@ function toConversation(
           ...(element ? { element } : {}),
         });
       turnStart = messages.length; // ai messages from here onward are this turn's response
+      // Where the live stream showed tau looking at the files, a reload does too.
+      const looked = readAttachmentsAction(attachments);
+      if (looked)
+        messages.push({
+          id: `${row.id}_att`,
+          role: "ai",
+          content: "",
+          timestamp: ts,
+          actions: [looked],
+        });
     } else if (row.role === "ASSISTANT" && row.type === "TOOL_REQ") {
       const stored = row.content as {
         content?: string | null;

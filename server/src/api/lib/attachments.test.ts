@@ -2,13 +2,20 @@ import { describe, expect, test } from "bun:test";
 
 import {
   attachmentBlock,
+  attachmentBlockId,
   isAllowedUpload,
+  isUnreadBlock,
+  unreadAttachmentBlock,
   isImageMime,
   isPlainTextMime,
   isTextLike,
   kindForMime,
+  readableReply,
+  splitKind,
   truncate,
+  wantsExactRead,
   MAX_ATTACHMENT_CHARS,
+  QUICK_CODE_NOTE,
   type ResolvedAttachment,
 } from "./attachments";
 
@@ -79,6 +86,71 @@ describe("mime classification", () => {
   test("non-image types fall through to FILE", () => {
     expect(kindForMime("application/pdf")).toBe("FILE");
     expect(kindForMime("text/csv")).toBe("FILE");
+  });
+});
+
+describe("a reader's reply", () => {
+  test("nothing, the agreed NO_IMAGE, and a short apology are not readings", () => {
+    for (const reply of [
+      "",
+      "   ",
+      null,
+      "NO_IMAGE",
+      "NO_IMAGE.",
+      "I’m unable to view the image because it is unsupported. Please re-upload it or describe what you see.",
+      "I can't see any image in this message.",
+      "Sorry, I cannot access the attachment.",
+      "The image is unsupported.",
+      "No image was provided.",
+    ]) {
+      expect(readableReply(reply)).toBe(false);
+    }
+  });
+
+  test("a description is a reading, even one about something that cannot be seen", () => {
+    expect(readableReply("A red apple on a white background.")).toBe(true);
+    expect(readableReply("A login form. The password field is hidden behind a dialog.")).toBe(true);
+    // A long reply is a transcription: the words can be in the picture.
+    expect(readableReply(`${"A chat window. ".repeat(40)}"I cannot see the image you sent."`)).toBe(true);
+  });
+
+  test("the KIND line is read and removed", () => {
+    expect(splitKind("KIND: code\n\nTypeError: x")).toEqual({ kind: "code", text: "TypeError: x" });
+    expect(splitKind("KIND: other\n# A page")).toEqual({ kind: "other", text: "# A page" });
+    expect(splitKind("kind: CODE\nfoo")).toEqual({ kind: "code", text: "foo" });
+    // A reader that leaves the line out is taken at its word: not code.
+    expect(splitKind("A page with a table.")).toEqual({ kind: "other", text: "A page with a table." });
+    // Only the first line counts.
+    expect(splitKind("A terminal.\nKIND: code")).toEqual({ kind: "other", text: "A terminal.\nKIND: code" });
+  });
+
+  test("a quick reading of code is recognised by its first line", () => {
+    expect(wantsExactRead(`${QUICK_CODE_NOTE}\n\nSyntaxError`)).toBe(true);
+    expect(wantsExactRead("SyntaxError")).toBe(false);
+    expect(wantsExactRead(null)).toBe(false);
+  });
+});
+
+describe("the block that holds an unread file's place", () => {
+  test("is an attachment block, so a message with no words still opens with one of tau's", () => {
+    const block = unreadAttachmentBlock(resolved({ status: "PENDING", extractedText: null }));
+    expect(block).toBe('<attachment id="11111111-1111-1111-1111-111111111111" name="apple.png" kind="image">\n(not read yet)\n</attachment>');
+    expect(isUnreadBlock(block)).toBe(true);
+    expect(attachmentBlockId(block)).toBe("11111111-1111-1111-1111-111111111111");
+  });
+
+  test("a block with a description, a failed one, and the user's own words are not unread", () => {
+    expect(isUnreadBlock(attachmentBlock(resolved()))).toBe(false);
+    expect(isUnreadBlock(attachmentBlock(resolved({ status: "FAILED", extractedText: null, extractionError: "x" })))).toBe(false);
+    expect(isUnreadBlock("(not read yet)")).toBe(false);
+    expect(attachmentBlockId("make it like the attachment")).toBeNull();
+    // A description that happens to end with the same words is still a description.
+    expect(isUnreadBlock(attachmentBlock(resolved({ extractedText: "A note that says: (not read yet)" })))).toBe(false);
+  });
+
+  test("a filename cannot fake the id", () => {
+    const block = unreadAttachmentBlock(resolved({ filename: `x" id="other` }));
+    expect(attachmentBlockId(block)).toBe("11111111-1111-1111-1111-111111111111");
   });
 });
 

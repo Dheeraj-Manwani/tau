@@ -30,18 +30,25 @@ rather than silently truncated.
 
 ## What happens to them
 
-1. The file uploads directly to storage from your browser.
-2. Tau extracts its text content: a PDF becomes text, an image is described.
-3. You see the chip go from **Extracting** to **Ready**.
-4. When you send, the extracted text is folded into the message the agent reads.
+1. The file uploads from your browser. The chip is ready as soon as it has, and
+   you can send straight away.
+2. When you send, tau reads each file before the agent starts: a PDF becomes
+   text, an image is described. The chat shows this as a step, "Looked at your
+   attached files".
+3. What each file says is folded into the message the agent reads.
 
 That last step matters for understanding cost and behaviour: the agent works from
-extracted **text**, which is part of your message. It is not re-reading the
-original file on every turn.
+**text**, which is part of your message. It is not re-reading the original file
+on every turn. Reading a picture is a small model call and is charged to the
+request it was sent with.
+
+Because a file is read when you send it, what you typed guides the reading:
+"fix this error" gets the text copied out, "build this" gets the layout.
 
 > [!NOTE]
-> Attach the file, wait for **Ready**, then send. Sending while an attachment is
-> still extracting means the agent gets the message without its content.
+> A screenshot of code or an error is read character for character on **HIGH**
+> and **MAX**. On **LOW** it is read quickly, which is reliable for file names
+> and line numbers and can be a character out in the code itself.
 
 ## Putting your own picture in the app
 

@@ -30,6 +30,8 @@ export const attachmentIdParamSchema = z.object({
 export const attachmentCompleteSchema = z.object({
   /** The user's in-progress prompt, used to focus the extraction. Optional. */
   userMessage: z.string().max(10_000).optional(),
+  /** Store only; the file is read when the message it is sent with runs. */
+  defer: z.boolean().optional(),
 });
 
 export type AttachmentSignInput = z.infer<typeof attachmentSignSchema>;
