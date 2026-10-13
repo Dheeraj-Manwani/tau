@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getBlob } from "@/lib/s3";
 import { env } from "@/lib/env";
 import { AppError, Errors } from "./errors";
-import { filterPushableFiles, isPushMode, type PushMode } from "./github";
+import { filterPushableFiles, isPushMode, type PushMode } from "./githubFiles";
 import { gh, GithubApiError, githubReadError, resolveToken } from "./githubClient";
 import { isBinaryPath } from "./projectFiles";
 
@@ -27,6 +27,8 @@ export interface GithubComparison {
   branch: string;
   mode: PushMode;
   headSha: string;
+  prNumber?: number;
+  canPush: boolean;
   localSequence: number;
   files: GithubFileChange[];
   counts: { added: number; modified: number; deleted: number; total: number };
@@ -50,7 +52,7 @@ interface LocalProject {
   lastPushedBranch: string | null;
   lastPrNumber: number | null;
 }
-interface Snapshot {
+export interface GithubSnapshot {
   purpose: "github_comparison";
   userId: string;
   projectId: string;
@@ -59,6 +61,8 @@ interface Snapshot {
   mode: PushMode;
   headSha: string;
   treeSha: string;
+  prNumber?: number;
+  baseBranch: string;
   localSequence: number;
   manifestHash: string;
   deletions: string[];
@@ -72,7 +76,7 @@ function manifestHash(files: LocalFile[]): string {
   return createHash("sha256").update(JSON.stringify(files.map((f) => [f.path, f.contentHash, f.sizeBytes]))).digest("hex");
 }
 
-async function readProjectBlob(userId: string, projectId: string, file: LocalFile): Promise<Uint8Array> {
+export async function readProjectBlob(userId: string, projectId: string, file: LocalFile): Promise<Uint8Array> {
   try {
     const bytes = await getBlob(userId, projectId, file.contentHash);
     if (createHash("sha256").update(bytes).digest("hex") !== file.contentHash) throw new Error("Stored blob hash mismatch");
@@ -99,32 +103,31 @@ async function readLocal(projectId: string) {
   return { project: project as LocalProject, files, hash: manifestHash(files) };
 }
 
-async function targetBranch(token: string, project: LocalProject, mode: PushMode): Promise<string> {
+export async function githubTarget(token: string, project: LocalProject, mode: PushMode, prNumber?: number) {
   const repoPath = `/repos/${project.githubRepo}`;
-  const repo = await gh<{ default_branch: string }>(token, "GET", repoPath);
+  const repo = await gh<{ default_branch: string; node_id: string; html_url: string; permissions?: { push?: boolean } }>(token, "GET", repoPath);
   if (!repo.default_branch) throw Errors.conflict("Initialize a default branch on GitHub before comparing files.");
   if (mode === "update_pr") {
-    if (!project.lastPrNumber || !project.lastPushedBranch) {
-      throw Errors.conflict("There is no Tau pull request to update. Compare a new pull request instead.");
+    const number = prNumber ?? project.lastPrNumber;
+    if (!number || (!prNumber && !project.lastPushedBranch)) throw Errors.conflict("Choose an open pull request to update.");
+    const pr = await gh<{ state: string; merged_at?: string | null; head: { ref: string; repo: { full_name: string } | null }; base: { ref: string; repo: { full_name: string } | null } }>(token, "GET", `${repoPath}/pulls/${number}`);
+    if (pr.state !== "open" || pr.merged_at || pr.head.repo?.full_name.toLowerCase() !== project.githubRepo?.toLowerCase() ||
+      pr.base.repo?.full_name.toLowerCase() !== project.githubRepo?.toLowerCase() ||
+      (!prNumber && pr.head.ref !== project.lastPushedBranch) || pr.head.ref === repo.default_branch || pr.head.ref === pr.base.ref) {
+      throw Errors.conflict("This pull request cannot be updated from Tau. Choose an open pull request in the linked repository.");
     }
-    const pr = await gh<{ state: string; head: { ref: string; repo: { full_name: string } | null } }>(
-      token, "GET", `${repoPath}/pulls/${project.lastPrNumber}`,
-    );
-    if (pr.state !== "open" || pr.head.repo?.full_name.toLowerCase() !== project.githubRepo?.toLowerCase() ||
-      pr.head.ref !== project.lastPushedBranch || pr.head.ref === repo.default_branch) {
-      throw Errors.conflict("The last Tau pull request cannot be updated. Compare a new pull request instead.");
-    }
-    return pr.head.ref;
+    return { repo, branch: pr.head.ref, baseBranch: pr.base.ref, prNumber: number };
   }
-  return repo.default_branch;
+  if (prNumber !== undefined) throw Errors.badRequest("Select a pull request only when updating one.");
+  return { repo, branch: repo.default_branch, baseBranch: repo.default_branch, prNumber: undefined };
 }
 
-async function headSha(token: string, repo: string, branch: string): Promise<string> {
+export async function headSha(token: string, repo: string, branch: string): Promise<string> {
   const ref = await gh<{ object: { sha: string } }>(token, "GET", `/repos/${repo}/git/ref/heads/${encodeURIComponent(branch)}`);
   return ref.object.sha;
 }
 
-async function remoteTree(token: string, repo: string, treeSha: string): Promise<RemoteEntry[]> {
+export async function remoteTree(token: string, repo: string, treeSha: string): Promise<RemoteEntry[]> {
   const tree = await gh<{ tree: RemoteEntry[]; truncated: boolean }>(token, "GET", `/repos/${repo}/git/trees/${treeSha}?recursive=1`);
   // Never show a complete-looking count from GitHub's incomplete tree response.
   if (tree.truncated) throw Errors.badRequest("This repository is too large for a complete comparison in Tau. Review it on GitHub.");
@@ -153,27 +156,28 @@ function fileKind(path: string, beforeBytes: number, bytes: Uint8Array): GithubF
   return Math.max(beforeBytes, bytes.byteLength) > MAX_DIFF_BYTES ? "large" : "text";
 }
 
-async function checkSnapshot(snapshot: Snapshot, token: string) {
+export async function checkGithubSnapshot(snapshot: GithubSnapshot, token: string) {
   const local = await readLocal(snapshot.projectId);
   if (local.project.githubRepo !== snapshot.repo || local.project.headSequence !== snapshot.localSequence || local.hash !== snapshot.manifestHash) {
     throw Errors.conflict("Project files or the linked repository changed. Refresh the comparison.");
   }
-  const branch = await targetBranch(token, local.project, snapshot.mode);
-  if (branch !== snapshot.branch || await headSha(token, snapshot.repo, branch) !== snapshot.headSha) {
+  const target = await githubTarget(token, local.project, snapshot.mode, snapshot.prNumber);
+  if (target.branch !== snapshot.branch || target.baseBranch !== snapshot.baseBranch || await headSha(token, snapshot.repo, target.branch) !== snapshot.headSha) {
     throw Errors.conflict("The GitHub branch changed. Refresh the comparison.");
   }
-  return local;
+  return { ...local, target };
 }
 
 /** Read-only overlay: remote-only entries survive unless explicitly selected. */
-export async function compareGithubFiles(projectId: string, userId: string, opts: { mode?: PushMode; deletions?: string[] }): Promise<GithubComparison> {
+export async function compareGithubFiles(projectId: string, userId: string, opts: { mode?: PushMode; deletions?: string[]; prNumber?: number }): Promise<GithubComparison> {
   const token = await resolveToken(userId);
   if (!token) throw Errors.conflict("Connect your GitHub account before comparing files.");
   try {
     const local = await readLocal(projectId);
     const repo = local.project.githubRepo!;
     const mode = opts.mode ?? (isPushMode(local.project.githubPushMode) ? local.project.githubPushMode : "new_pr");
-    const branch = await targetBranch(token, local.project, mode);
+    const target = await githubTarget(token, local.project, mode, opts.prNumber);
+    const branch = target.branch;
     const sha = await headSha(token, repo, branch);
     const commit = await gh<{ tree: { sha: string } }>(token, "GET", `/repos/${repo}/git/commits/${sha}`);
     const entries = await remoteTree(token, repo, commit.tree.sha);
@@ -209,11 +213,11 @@ export async function compareGithubFiles(projectId: string, userId: string, opts
       changes.push({ path, status: "deleted", kind: isBinaryPath(path) ? "binary" : (before.size ?? 0) > MAX_DIFF_BYTES ? "large" : "text", beforeBytes: before.size ?? 0, afterBytes: 0 });
     }
     changes.sort((a, b) => a.path.localeCompare(b.path));
-    const snapshot: Snapshot = { purpose: "github_comparison", userId, projectId, repo, branch, mode, headSha: sha, treeSha: commit.tree.sha, localSequence: local.project.headSequence, manifestHash: local.hash, deletions };
-    await checkSnapshot(snapshot, token);
+    const snapshot: GithubSnapshot = { purpose: "github_comparison", userId, projectId, repo, branch, mode, headSha: sha, treeSha: commit.tree.sha, prNumber: target.prNumber, baseBranch: target.baseBranch, localSequence: local.project.headSequence, manifestHash: local.hash, deletions };
+    await checkGithubSnapshot(snapshot, token);
     return {
       preview: jwt.sign(snapshot, env.ACCESS_TOKEN_SECRET, { algorithm: "HS256", expiresIn: "15m" }),
-      repo, branch, mode, headSha: sha, localSequence: snapshot.localSequence, files: changes,
+      repo, branch, mode, headSha: sha, prNumber: target.prNumber, canPush: target.repo.permissions?.push === true, localSequence: snapshot.localSequence, files: changes,
       counts: { added: changes.filter((f) => f.status === "added").length, modified: changes.filter((f) => f.status === "modified").length, deleted: deletions.length, total: changes.length },
       repositoryOnly, excludedCount: local.files.length - pushable.length,
     };
@@ -229,18 +233,13 @@ export interface GithubFileDiff {
 }
 
 export async function githubFileDiff(projectId: string, userId: string, path: string, preview: string): Promise<GithubFileDiff> {
-  let snapshot: Snapshot;
-  try {
-    const verified = jwt.verify(preview, env.ACCESS_TOKEN_SECRET, { algorithms: ["HS256"] }) as Snapshot;
-    if (verified.purpose !== "github_comparison" || verified.projectId !== projectId || verified.userId !== userId) throw new Error("Wrong preview");
-    snapshot = verified;
-  } catch { throw Errors.conflict("This comparison expired or is invalid. Refresh the comparison."); }
+  const snapshot = verifyGithubPreview(projectId, userId, preview);
   const token = await resolveToken(userId);
   if (!token) throw Errors.conflict("Reconnect your GitHub account before reviewing files.");
   try {
-    const local = await checkSnapshot(snapshot, token);
+    const local = await checkGithubSnapshot(snapshot, token);
     const reviewed = async (result: GithubFileDiff) => {
-      await checkSnapshot(snapshot, token);
+      await checkGithubSnapshot(snapshot, token);
       return result;
     };
     const pushable = await filterPushableFiles(userId, projectId, local.files);
@@ -272,4 +271,13 @@ export async function githubFileDiff(projectId: string, userId: string, path: st
     if (!patch || Buffer.byteLength(patch) > MAX_PATCH_BYTES) return await reviewed({ path, kind: "large", patch: null, additions: null, deletions: null });
     return await reviewed({ path, kind: "text", patch, additions: parts.reduce((n, p) => n + (p.added ? p.count ?? 0 : 0), 0), deletions: parts.reduce((n, p) => n + (p.removed ? p.count ?? 0 : 0), 0) });
   } catch (err) { return githubReadError(err, userId); }
+}
+
+export function verifyGithubPreview(projectId: string, userId: string, preview: string): GithubSnapshot {
+  try {
+    const verified = jwt.verify(preview, env.ACCESS_TOKEN_SECRET, { algorithms: ["HS256"] }) as GithubSnapshot;
+    if (verified.purpose !== "github_comparison" || verified.projectId !== projectId || verified.userId !== userId) throw new Error("Wrong preview");
+    if (!verified.baseBranch || !isPushMode(verified.mode) || !Array.isArray(verified.deletions)) throw new Error("Old preview");
+    return verified;
+  } catch { throw Errors.conflict("This comparison expired or is invalid. Refresh the comparison."); }
 }

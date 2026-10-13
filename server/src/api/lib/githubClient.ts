@@ -55,3 +55,15 @@ export async function githubReadError(err: unknown, userId: string): Promise<nev
   }
   throw new AppError("GitHub is unavailable. Try again to refresh the comparison.", 503);
 }
+
+/** Preserve actionable write failures without exposing raw upstream payloads. */
+export async function githubWriteError(err: unknown, userId: string): Promise<never> {
+  if (err instanceof AppError) throw err;
+  if (err instanceof GithubApiError) {
+    if (err.status === 401 || err.rateLimited) return githubReadError(err, userId);
+    if (err.status === 403 || /workflow/i.test(err.body)) throw Errors.forbidden("GitHub refused this push. Check repository write access, branch rules, and the workflow scope if GitHub Actions files are included.");
+    if ([409, 422].includes(err.status)) throw Errors.conflict("GitHub rejected the changes or the branch moved. Refresh the comparison and check the branch rules on GitHub.");
+    if (err.status === 404) throw Errors.notFound("The repository or selected pull request is unavailable. Refresh GitHub.");
+  }
+  throw new AppError("GitHub is unavailable. Refresh the comparison before trying again.", 503);
+}

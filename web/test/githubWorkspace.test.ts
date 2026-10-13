@@ -54,3 +54,16 @@ test("sequence counts are presented as edits, without claiming a file count or r
   expect(githubEditLabel(1)).toBe("1 edit since last push");
   expect(githubEditLabel(5)).toBe("5 edits since last push");
 });
+
+
+test("selected PR review links preserve project context and clear the target when leaving Changes", async () => {
+  const { projectToolParams, selectedGithubPr } = await import("../src/features/project/toolNavigation");
+  const current = new URLSearchParams("tab=tools&tool=github&githubSection=pull-requests&chat=keep&githubPr=42");
+  const review = projectToolParams(current, "github", "changes", 39);
+  expect(selectedGithubPr(review)).toBe(39);
+  expect(review.get("chat")).toBe("keep");
+  expect(review.get("githubSection")).toBe("changes");
+  expect(current.get("githubPr")).toBe("42");
+  for (const target of [projectToolParams(review, "deploy", "deployments"), projectToolParams(review, "github", "issues"), projectToolParams(review, "github", "changes")]) expect(target.has("githubPr")).toBe(false);
+  for (const value of ["-1", "0", "1.5", "39junk", "", "9007199254740993"]) expect(selectedGithubPr(new URLSearchParams({ githubPr: value }))).toBeUndefined();
+});

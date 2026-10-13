@@ -65,9 +65,9 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (!bytes) return Response.json({}, { status: 404 });
     return Response.json({ content: Buffer.from(bytes).toString("base64"), encoding: "base64", size: bytes.length });
   }
-  if (path.includes("/pulls/")) return Response.json({ number: 42, title: "Update atlas", state: prState, html_url: "https://github.com/acme/atlas/pull/42", head: { ref: "tau/update", repo: prRepo ? { full_name: prRepo } : null }, base: { ref: "main" }, draft: true, user: { login: "alex" }, body: "Details", updated_at: "2026-10-13T12:00:00Z" });
+  if (path.includes("/pulls/")) return Response.json({ number: 42, title: "Update atlas", state: prState, html_url: "https://github.com/acme/atlas/pull/42", head: { ref: "tau/update", repo: prRepo ? { full_name: prRepo } : null }, base: { ref: "main", repo: { full_name: "acme/atlas" } }, draft: true, user: { login: "alex" }, body: "Details", updated_at: "2026-10-13T12:00:00Z" });
   if (path.includes("/pulls?")) return Response.json([]);
-  return Response.json({ default_branch: "main", full_name: "acme/atlas", name: "atlas", owner: { login: "acme" }, html_url: "https://github.com/acme/atlas", private: true });
+  return Response.json({ permissions: { push: true }, node_id: "R_fixture", default_branch: "main", full_name: "acme/atlas", name: "atlas", owner: { login: "acme" }, html_url: "https://github.com/acme/atlas", private: true });
 }) as typeof fetch;
 
 const controller = await import("@/api/controllers/githubProject.controller");

@@ -1,3 +1,4 @@
+import { pushReviewedProject } from "../lib/githubPush";
 import * as projectRepo from "../repositories/project.repository";
 import { Errors } from "../lib/errors";
 import { compareGithubFiles, githubFileDiff } from "../lib/githubComparison";
@@ -32,7 +33,7 @@ export async function getInfo(projectId: string, userId: string) {
   return getGithubProjectInfo(projectId, userId);
 }
 
-export async function changes(projectId: string, userId: string, opts: { mode?: PushMode; deletions?: string[] }) {
+export async function changes(projectId: string, userId: string, opts: { mode?: PushMode; deletions?: string[]; prNumber?: number }) {
   await assertOwner(projectId, userId);
   return compareGithubFiles(projectId, userId, opts);
 }
@@ -45,9 +46,11 @@ export async function diff(projectId: string, userId: string, path: string, prev
 export async function push(
   projectId: string,
   userId: string,
-  opts: { title?: string; description?: string; mode?: PushMode },
+  opts: { title?: string; description?: string; mode?: PushMode; preview?: string; prNumber?: number; draft?: boolean },
 ) {
   await assertOwner(projectId, userId);
+  if (opts.preview) return pushReviewedProject(projectId, userId, { ...opts, preview: opts.preview, title: opts.title ?? "Update from Tau" });
+  if (opts.prNumber !== undefined || opts.draft !== undefined) throw Errors.badRequest("Refresh and review the comparison before composing this push.");
   const result = await pushProjectToGithub(projectId, userId, {
     title: opts.title ?? "",
     body: opts.description ?? "",

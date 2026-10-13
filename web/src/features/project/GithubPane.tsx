@@ -5,7 +5,7 @@ import { Tabs } from "radix-ui";
 import {
   ArrowUpRightIcon, CircleDotIcon, ExternalLinkIcon, FileDiffIcon,
   GitBranchIcon, GitPullRequestIcon, GlobeIcon,
-  LoaderCircleIcon, LockIcon, PlusIcon, RefreshCwIcon, Settings2Icon,
+  LoaderCircleIcon, LockIcon, PlusIcon, RefreshCwIcon, Settings2Icon, UploadIcon,
 } from "lucide-react";
 import { GithubMark } from "@/src/components/ui/github-mark";
 import {
@@ -20,7 +20,7 @@ import { GithubRepositoryPicker } from "./GithubRepositoryPicker";
 import { GithubChanges } from "./GithubChanges";
 import { GithubSettings } from "./GithubSettings";
 import { githubButtonClass, githubCardClass, githubPrimaryClass } from "./githubStyles";
-import { selectedGithubSection, useProjectToolNavigation, type GithubSection } from "./toolNavigation";
+import { selectedGithubSection, selectedGithubPr, useProjectToolNavigation, type GithubSection } from "./toolNavigation";
 
 const sections = [
   { id: "changes", label: "Changes", icon: FileDiffIcon },
@@ -89,7 +89,7 @@ export function GithubPane({ projectId }: { projectId: string }) {
                   {!info.connected ? <ConnectGithub blocked={query.isError} /> : id === "settings" ? (
                     <GithubSettings key={projectId} projectId={projectId} info={info} blocked={query.isError || query.isFetching} />
                   ) : !info.repo ? <LinkRepository projectId={projectId} blocked={query.isError || query.isFetching} /> : id === "changes" ? (
-                    <GithubChanges key={`${projectId}:${info.repo.fullName}:${info.pushMode}`} projectId={projectId} info={info} blocked={query.isError} />
+                    <GithubChanges key={`${projectId}:${info.repo.fullName}:${info.pushMode}:${selectedGithubPr(params) ?? ""}`} projectId={projectId} info={info} blocked={query.isError} />
                   ) : id === "pull-requests" ? <GithubPullRequests info={info} /> : <GithubIssues info={info} />}
                 </Tabs.Content>
               ))}
@@ -184,6 +184,7 @@ function GithubPullRequests({ info }: { info: GithubProjectInfo }) {
 }
 
 function PullRequestRow({ pr }: { pr: PrSummary }) {
+  const openTool = useProjectToolNavigation();
   const state = githubPrState(pr);
   return (
     <Dialog>
@@ -204,6 +205,7 @@ function PullRequestRow({ pr }: { pr: PrSummary }) {
           {(pr.author || pr.updatedAt) && <p className="text-silver-600">{pr.author && `Opened by @${pr.author}`}{pr.updatedAt && ` Updated ${new Date(pr.updatedAt).toLocaleString()}`}</p>}
           <div className="rounded-lg border border-silver-200 bg-space-void p-4"><h3 className="font-medium">Description</h3><p className="mt-2 whitespace-pre-wrap break-words leading-relaxed text-silver-600">{pr.body === undefined ? "Description unavailable. Open on GitHub to read it." : pr.body || "No description provided."}</p></div>
           <div className="rounded-lg border border-silver-200 bg-space-void p-4"><p className="font-medium">Reviews and checks</p><p className="mt-2 leading-relaxed text-silver-600">Detailed reviews and checks aren't available in Tau yet. Open this pull request on GitHub to review them.</p></div>
+          {pr.canUpdate && <button type="button" onClick={() => openTool("github", "changes", false, pr.number)} className={cn(githubButtonClass, githubPrimaryClass)}>Review changes for this PR<UploadIcon className="size-3.5" /></button>}
           <a href={pr.url} target="_blank" rel="noopener noreferrer" className={cn(githubButtonClass, githubPrimaryClass)}>Open on GitHub<ArrowUpRightIcon className="size-3.5" /></a>
         </div>
       </DialogContent>

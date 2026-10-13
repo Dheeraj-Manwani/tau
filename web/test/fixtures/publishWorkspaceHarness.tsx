@@ -25,16 +25,17 @@ let repoError = githubScenario === "repos-error";
 let comparisonError = githubScenario === "changes-error";
 let diffError = githubScenario === "diff-error" || githubScenario === "diff-stale";
 let diffReads = 0;
+let pushedPr: number | null = null;
 let githubInfo: GithubProjectInfo = {
   connected: scenario === "github" && githubScenario !== "disconnected",
   username: "alex",
   repo: scenario === "github" && !["unlinked", "disconnected", "repos-error"].includes(githubScenario)
-    ? { fullName: "acme/atlas", htmlUrl: "https://github.com/acme/atlas", visibility: "private", defaultBranch: "main" }
+    ? { fullName: "acme/atlas", htmlUrl: "https://github.com/acme/atlas", visibility: "private", defaultBranch: "main", canPush: githubScenario !== "read-only" }
     : null,
-  lastPr: { number: 42, title: "Add workspace navigation", state: "open", url: "https://github.com/acme/atlas/pull/42", author: "alex", headBranch: "tau/add-workspace-navigation", baseBranch: "main", updatedAt: "2026-10-13T10:00:00Z", draft: true, body: "Adds the GitHub workspace with file review and consistent navigation.\n\nVerified desktop and mobile layouts." },
+  lastPr: { number: 42, title: "Add workspace navigation", state: "open", url: "https://github.com/acme/atlas/pull/42", author: "alex", headBranch: "tau/add-workspace-navigation", baseBranch: "main", updatedAt: "2026-10-13T10:00:00Z", draft: true, canUpdate: githubScenario !== "read-only", body: "Adds the GitHub workspace with file review and consistent navigation.\n\nVerified desktop and mobile layouts." },
   openPrs: [
     { number: 42, title: "Add workspace navigation", state: "open", url: "https://github.com/acme/atlas/pull/42" },
-    { number: 39, title: "Improve mobile layout", state: "open", url: "https://github.com/acme/atlas/pull/39" },
+    { number: 39, title: "Improve mobile layout", state: "open", url: "https://github.com/acme/atlas/pull/39", canUpdate: githubScenario !== "read-only", headBranch: "tau/improve-mobile-layout", baseBranch: "main", body: "Makes the workspace fit small screens." },
   ],
   unpushedChanges: 3,
   pushMode: "new_pr",
@@ -190,7 +191,7 @@ api.defaults.adapter = async (config) => {
     if (githubScenario === "changes-loading") await new Promise<never>(() => {});
     if (comparisonError) throw new Error("GitHub's rate limit was reached. Try again later.");
     const deletions: string[] = JSON.parse(config.params?.deletions ?? "[]");
-    const files: GithubComparison["files"] = githubScenario === "empty" ? [] : [
+    const files: GithubComparison["files"] = githubScenario === "empty" || (pushedPr === Number(config.params?.prNumber) && config.params?.mode === "update_pr") ? [] : [
       { path: "src/App.tsx", status: "modified", kind: "text", beforeBytes: 130, afterBytes: 168 },
       { path: "src/components/RepositoryHeader.tsx", status: "added", kind: "text", beforeBytes: 0, afterBytes: 120 },
       { path: "public/logo.png", status: "modified", kind: "binary", beforeBytes: 15_000, afterBytes: 18_000 },
@@ -198,12 +199,27 @@ api.defaults.adapter = async (config) => {
       ...deletions.map((path): GithubComparison["files"][number] => ({ path, status: "deleted", kind: "text", beforeBytes: 48, afterBytes: 0 })),
     ];
     data = {
-      preview: `fixture-preview-${config.params?.mode}-${deletions.join(",")}-${useProjectStore.getState().headSequence}`,
-      repo: githubInfo.repo?.fullName ?? "acme/atlas", branch: config.params?.mode === "update_pr" ? "tau/add-workspace-navigation" : "main",
+      preview: `fixture-preview-${config.params?.mode}-${config.params?.prNumber ?? ""}-${deletions.join(",")}-${useProjectStore.getState().headSequence}`,
+      repo: githubInfo.repo?.fullName ?? "acme/atlas", branch: config.params?.mode === "update_pr" ? Number(config.params?.prNumber) === 39 ? "tau/improve-mobile-layout" : "tau/add-workspace-navigation" : "main",
+      prNumber: config.params?.mode === "update_pr" ? Number(config.params?.prNumber ?? 42) : undefined, canPush: githubScenario !== "read-only",
       mode: config.params?.mode ?? "new_pr", headSha: "a153a40832d80ac81491194d26145119d3d9b201", localSequence: useProjectStore.getState().headSequence ?? 3,
       files, counts: { added: files.filter((f) => f.status === "added").length, modified: files.filter((f) => f.status === "modified").length, deleted: deletions.length, total: files.length },
       repositoryOnly: [{ path: "docs/README.md", sizeBytes: 48 }, { path: "LICENSE", sizeBytes: 1_040 }], excludedCount: 2,
     } satisfies GithubComparison;
+  } else if (url.endsWith("/github/push")) {
+    const body = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
+    if (githubScenario === "push-pending") await new Promise<never>(() => {});
+    if (githubScenario === "push-stale") throw new Error("The GitHub branch changed. Refresh the comparison.");
+    if (githubScenario === "push-error") throw new Error("GitHub refused the push. Check write access, branch rules, and workflow permissions.");
+    const partial = githubScenario === "push-partial";
+    const number = body.mode === "update_pr" ? body.prNumber : 43;
+    const branch = body.mode === "direct" ? "main" : body.mode === "update_pr" ? githubInfo.openPrs.find((pr) => pr.number === number)?.headBranch ?? githubInfo.lastPr!.headBranch! : "tau/reviewed-changes-abc123";
+    pushedPr = body.mode === "update_pr" ? number : null;
+    data = { repoUrl: "https://github.com/acme/atlas", commitUrl: "https://github.com/acme/atlas/commit/c153a40832d80ac81491194d26145119d3d9b201", ...(body.mode !== "direct" && !partial ? { prUrl: `https://github.com/acme/atlas/pull/${number}`, prNumber: number } : {}), branch, mode: body.mode, summary: "Pushed reviewed changes", ...(partial ? { warning: "The commit was pushed. GitHub could not create the pull request. Open the commit on GitHub to finish the pull request; do not repeat the push." } : {}) };
+    if (!partial && body.mode !== "direct") {
+      const pr = { number, title: body.title, state: "open", url: `https://github.com/acme/atlas/pull/${number}`, body: body.description, draft: body.mode === "new_pr" ? body.draft : githubInfo.lastPr?.draft, headBranch: branch, baseBranch: "main", canUpdate: true };
+      githubInfo = { ...githubInfo, lastPr: pr, openPrs: [pr, ...githubInfo.openPrs.filter((item) => item.number !== number)] };
+    }
   } else if (url.endsWith("/github/diff")) {
     diffReads++;
     if (diffError) throw new Error(githubScenario === "diff-stale" ? "The GitHub branch changed. Refresh the comparison." : "Couldn't load this diff. Try again.");
@@ -222,7 +238,7 @@ api.defaults.adapter = async (config) => {
     ] };
   } else if (url.endsWith("/github/link")) {
     const body = typeof config.data === "string" ? JSON.parse(config.data) : config.data;
-    githubInfo = { ...githubInfo, repo: method === "delete" ? null : { fullName: body.repo, htmlUrl: `https://github.com/${body.repo}`, visibility: "private", defaultBranch: "main" }, lastPr: null, unpushedChanges: 0 };
+    githubInfo = { ...githubInfo, repo: method === "delete" ? null : { fullName: body.repo, htmlUrl: `https://github.com/${body.repo}`, visibility: "private", defaultBranch: "main", canPush: githubScenario !== "read-only" }, lastPr: null, unpushedChanges: 0 };
     data = githubInfo.repo;
   } else if (url === "/auth/github" && method === "delete") {
     githubInfo = { ...githubInfo, connected: false, repo: null, username: null };

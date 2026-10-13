@@ -27,6 +27,7 @@ export interface PrSummary {
   baseBranch?: string;
   draft?: boolean;
   body?: string;
+  canUpdate?: boolean;
 }
 
 export interface RepoSummary {
@@ -34,6 +35,7 @@ export interface RepoSummary {
   htmlUrl: string;
   visibility: "private" | "public";
   defaultBranch: string;
+  canPush?: boolean;
 }
 
 export interface GithubProjectInfo {
@@ -52,6 +54,9 @@ export interface PushResult {
   branch: string;
   mode: PushMode;
   summary: string;
+  commitUrl?: string;
+  prNumber?: number;
+  warning?: string;
 }
 
 export interface UserRepo {
@@ -64,8 +69,8 @@ export const projectGithubKeys = {
   info: (projectId: string) => ["project", projectId, "github"] as const,
   repos: (projectId: string) =>
     ["project", projectId, "github", "repos"] as const,
-  changes: (projectId: string, repo: string, mode: PushMode, deletions: string[], sequence: number | null) =>
-    ["project", projectId, "github", "changes", repo, mode, [...deletions].sort(), sequence] as const,
+  changes: (projectId: string, repo: string, mode: PushMode, deletions: string[], sequence: number | null, prNumber?: number) =>
+    ["project", projectId, "github", "changes", repo, mode, [...deletions].sort(), sequence, prNumber ?? null] as const,
   diff: (projectId: string, preview: string, path: string) =>
     ["project", projectId, "github", "diff", preview, path] as const,
 };
@@ -84,6 +89,8 @@ export interface GithubComparison {
   branch: string;
   mode: PushMode;
   headSha: string;
+  prNumber?: number;
+  canPush: boolean;
   localSequence: number;
   files: GithubFileChange[];
   counts: { added: number; modified: number; deleted: number; total: number };
@@ -99,12 +106,12 @@ export interface GithubFileDiff {
   deletions: number | null;
 }
 
-export function useGithubChanges(projectId: string, repo: string, mode: PushMode, deletions: string[], enabled: boolean) {
+export function useGithubChanges(projectId: string, repo: string, mode: PushMode, deletions: string[], enabled: boolean, prNumber?: number) {
   const sequence = useProjectStore((s) => s.projectId === projectId ? s.headSequence : null);
   return useQuery({
-    queryKey: projectGithubKeys.changes(projectId, repo, mode, deletions, sequence),
+    queryKey: projectGithubKeys.changes(projectId, repo, mode, deletions, sequence, prNumber),
     queryFn: ({ signal }) => api.get<GithubComparison>(`/project/${projectId}/github/changes`, {
-      params: { mode, deletions: JSON.stringify([...deletions].sort()) }, signal,
+      params: { mode, prNumber, deletions: JSON.stringify([...deletions].sort()) }, signal,
     }).then((r) => r.data),
     enabled,
     staleTime: 15_000,
@@ -112,7 +119,7 @@ export function useGithubChanges(projectId: string, repo: string, mode: PushMode
     // Keep repository-only checkboxes mounted while a deletion selection loads.
     // A new repository, target or local version must never inherit an old diff.
     placeholderData: (previous, previousQuery) =>
-      previousQuery?.queryKey[4] === repo && previousQuery.queryKey[5] === mode && previousQuery.queryKey[7] === sequence
+      previousQuery?.queryKey[4] === repo && previousQuery.queryKey[5] === mode && previousQuery.queryKey[7] === sequence && previousQuery.queryKey[8] === (prNumber ?? null)
         ? previous : undefined,
   });
 }
@@ -166,12 +173,13 @@ function useInvalidateInfo(projectId: string | null) {
 export function usePushToGithub(projectId: string | null) {
   const invalidate = useInvalidateInfo(projectId);
   return useMutation({
-    mutationFn: (body: { title?: string; mode?: PushMode }) =>
+    mutationFn: (body: { title: string; description: string; mode: PushMode; draft?: boolean; prNumber?: number; preview: string }) =>
       api
         .post<PushResult>(`/project/${projectId}/github/push`, body)
         .then((r) => r.data),
     onSuccess: (res) => {
-      toast.success(
+      if (res.warning) toast(res.warning, { duration: 8_000 });
+      else toast.success(
         res.mode === "direct"
           ? "Committed to GitHub"
           : res.prUrl

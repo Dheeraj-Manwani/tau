@@ -25,6 +25,13 @@ export function selectedGithubSection(params: URLSearchParams): GithubSection {
   return githubSections.includes(value) ? value : "changes";
 }
 
+export function selectedGithubPr(params: URLSearchParams): number | undefined {
+  const value = params.get("githubPr");
+  if (!value || !/^[1-9]\d*$/.test(value)) return undefined;
+  const number = Number(value);
+  return Number.isSafeInteger(number) ? number : undefined;
+}
+
 /** Old links still resolve into the Tools workspace. */
 export function selectedDeploySection(params: URLSearchParams): DeploySection {
   const value = params.get("deploySection") ?? params.get("publishSection");
@@ -40,16 +47,19 @@ export function projectToolParams(
   params: URLSearchParams,
   tool: ProjectTool,
   section?: DeploySection | GithubSection,
+  prNumber?: number,
 ) {
   const next = new URLSearchParams(params);
   next.delete("publish");
   next.delete("publishSection");
   next.delete("deploySection");
   next.delete("githubSection");
+  next.delete("githubPr");
   next.set("tab", "tools");
   next.set("tool", tool);
   if (tool === "deploy" && section && sections.includes(section as DeploySection)) next.set("deploySection", section);
   if (tool === "github" && section && githubSections.includes(section as GithubSection)) next.set("githubSection", section);
+  if (tool === "github" && section === "changes" && prNumber && Number.isSafeInteger(prNumber) && prNumber > 0) next.set("githubPr", String(prNumber));
   if (tool !== "storage") next.delete("storageEnv");
   return next;
 }
@@ -61,8 +71,9 @@ export function useProjectToolNavigation() {
     tool: ProjectTool,
     section?: DeploySection | GithubSection,
     productionStorage = false,
+    prNumber?: number,
   ) => {
-    const next = projectToolParams(params, tool, section);
+    const next = projectToolParams(params, tool, section, prNumber);
     if (productionStorage) next.set("storageEnv", "LIVE");
     setParams(next);
   };

@@ -299,12 +299,16 @@ export const secretValueSchema = z.object({
 export const pushModeSchema = z.enum(["new_pr", "update_pr", "direct"]);
 
 export const githubPushSchema = z.object({
+  preview: z.string().min(1).max(30_000).optional(),
+  prNumber: z.number().int().positive().optional(),
+  draft: z.boolean().optional(),
   title: z.string().trim().max(200).optional(),
   description: z.string().trim().max(5_000).optional(),
   mode: pushModeSchema.optional(),
 });
 
 export const githubComparisonQuerySchema = z.object({
+  prNumber: z.coerce.number().int().positive().optional(),
   mode: pushModeSchema.optional(),
   deletions: z.string().max(15_000).transform((value, ctx) => {
     try { return JSON.parse(value) as unknown; } catch {
