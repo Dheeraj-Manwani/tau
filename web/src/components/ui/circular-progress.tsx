@@ -78,7 +78,7 @@ export function CircularProgress({
         r={radius}
         fill="none"
         strokeWidth={strokeWidth}
-        className="stroke-[var(--silver-200)]"
+        className="stroke-line-strong"
       />
       <circle
         cx={size / 2}

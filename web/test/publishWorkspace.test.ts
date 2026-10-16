@@ -229,6 +229,26 @@ describe("reported deployment progress", () => {
       deploymentSteps({ ...deployment, status: "FAILED" }, true)[0].state,
     ).toBe("review");
   });
+  test("a failure this browser watched stops the track where it was seen", () => {
+    const steps = deploymentSteps(
+      { ...deployment, target: "FULLSTACK", status: "FAILED", error: "Bundling failed" },
+      false,
+      "BUILDING",
+    );
+    expect(steps.map((s) => [s.id, s.state])).toEqual([
+      ["QUEUED", "done"],
+      ["VALIDATING", "done"],
+      ["BUILDING", "failed"],
+      ["UPLOADING", "pending"],
+      ["PROVISIONING", "pending"],
+      ["VERIFYING", "pending"],
+      ["READY", "pending"],
+    ]);
+    expect(steps[2].detail).toBe("Bundling failed");
+    expect(
+      deploymentSteps({ ...deployment, status: "FAILED" }, true, "VALIDATING").map((s) => s.state),
+    ).toEqual(["done", "review", "pending", "pending", "pending", "pending", "pending"]);
+  });
   test("timing is total requested-to-completed time, not build time", () => {
     expect(deploymentDuration(deployment)).toBe("1m 5s");
     expect(

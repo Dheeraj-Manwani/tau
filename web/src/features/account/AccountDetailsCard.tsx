@@ -43,13 +43,13 @@ export function AccountDetailsCard({ user }: { user: AuthUser }) {
   const { data: balance } = useBalance();
 
   return (
-    <div className="rounded-xl border bg-card px-5 py-2">
-      <div className="divide-y divide-border">
+    <div className="rounded-lg border border-line bg-space-surface px-6 py-2">
+      <div className="divide-y divide-line">
         <Row icon={<MailIcon className="size-4" />} label="Email">
           <span className="truncate">{user.email}</span>
           {user.emailVerifiedAt && (
             <BadgeCheckIcon
-              className="size-4 shrink-0 text-[color:var(--blue-500)]"
+              className="size-4 shrink-0 text-blue-500"
               aria-label="Verified"
             />
           )}
@@ -59,10 +59,10 @@ export function AccountDetailsCard({ user }: { user: AuthUser }) {
           {balance && (
             <span
               className={cn(
-                "rounded-full px-2.5 py-0.5 text-xs font-medium",
+                "rounded-xs px-2 py-0.5 text-[11px] font-medium",
                 balance.plan === "PRO"
-                  ? "bg-indigo-500/10 text-indigo-400"
-                  : "bg-muted text-muted-foreground",
+                  ? "bg-orange-400 font-semibold text-orange-ink"
+                  : "border border-line-strong bg-space-surface text-silver-600",
               )}
             >
               {balance.plan}

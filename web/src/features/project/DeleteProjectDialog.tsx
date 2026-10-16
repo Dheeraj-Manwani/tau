@@ -10,7 +10,6 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogMedia,
   AlertDialogTitle,
 } from "@/src/components/ui/alert-dialog";
 import { ApiError } from "@/src/lib/api-client";
@@ -61,44 +60,31 @@ export function DeleteProjectDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent
-        size="sm"
-        className="border-silver-200 bg-space-surface"
-      >
+      <AlertDialogContent className="sm:max-w-[440px]">
         <AlertDialogHeader>
-          <AlertDialogMedia className="bg-red-500/10 text-red-400">
-            <Trash2Icon />
-          </AlertDialogMedia>
-          <AlertDialogTitle className="text-silver-900">
-            Delete project?
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-silver-600">
-            <span className="font-medium text-silver-900">{project?.name}</span>{" "}
-            and all its messages, files, and history will be permanently deleted
-            and{" "}
-            <span className="text-red-400">cannot be recovered</span>.
+          <AlertDialogTitle>Delete project?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This removes{" "}
+            <span className="font-medium text-silver-900">{project?.name}</span>,
+            its code, its chat and its history.
             {storedFiles > 0 && (
               <>
                 {" "}
-                The {storedFiles === 1 ? "1 file" : `${storedFiles} files`} its app has stored will be deleted too.
+                The {storedFiles === 1 ? "1 file" : `${storedFiles} files`} its app has stored go too.
               </>
-            )}
+            )}{" "}
+            This can&rsquo;t be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <AlertDialogFooter className="border-t border-border pt-4">
-          <AlertDialogCancel
-            variant="outline"
-            className="border-silver-200 bg-transparent text-silver-600 hover:bg-space-overlay hover:text-silver-900"
-          >
-            Cancel
-          </AlertDialogCancel>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            variant="destructive"
+            variant="destructive-solid"
             disabled={deleteProject.isPending}
             onClick={handleDelete}
-            className="bg-red-500/15 text-red-400 hover:bg-red-500/25"
           >
+            {!deleteProject.isPending && <Trash2Icon />}
             {deleteProject.isPending ? "Deleting…" : "Delete project"}
           </AlertDialogAction>
         </AlertDialogFooter>

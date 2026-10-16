@@ -10,7 +10,6 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogMedia,
   AlertDialogTitle,
 } from "@/src/components/ui/alert-dialog";
 import { ApiError } from "@/src/lib/api-client";
@@ -55,35 +54,23 @@ export function ClearChatDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent size="sm" className="border-silver-200 bg-space-surface">
+      <AlertDialogContent className="sm:max-w-[440px]">
         <AlertDialogHeader>
-          <AlertDialogMedia className="bg-red-500/10 text-red-400">
-            <EraserIcon />
-          </AlertDialogMedia>
-          <AlertDialogTitle className="text-silver-900">
-            Clear chat?
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-silver-600">
-            Starts a brand-new conversation. Your current chat history will no
-            longer be visible and{" "}
-            <span className="text-red-400">cannot be recovered</span>. Your
-            project files and build are not affected.
+          <AlertDialogTitle>Clear chat?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Starts a new conversation. Your project files and build stay as
+            they are; the old messages are no longer shown.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <AlertDialogFooter className="border-t border-border pt-4">
-          <AlertDialogCancel
-            variant="outline"
-            className="border-silver-200 bg-transparent text-silver-600 hover:bg-space-overlay hover:text-silver-900"
-          >
-            Cancel
-          </AlertDialogCancel>
+        <AlertDialogFooter>
+          <AlertDialogCancel variant="ghost">Cancel</AlertDialogCancel>
           <AlertDialogAction
-            variant="destructive"
+            variant="secondary"
             disabled={clearChat.isPending}
             onClick={handleClear}
-            className="bg-red-500/15 text-red-400 hover:bg-red-500/25"
           >
+            {!clearChat.isPending && <EraserIcon />}
             {clearChat.isPending ? "Clearing…" : "Clear chat"}
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { DownloadIcon, FileTextIcon, Loader2Icon } from "lucide-react";
 
+import { Button } from "@/src/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -70,14 +71,14 @@ function ImageBody({ target }: { target: PreviewTarget }) {
         <img
           src={src}
           alt={target.filename}
-          className="max-h-[75vh] w-auto max-w-full rounded-lg object-contain"
+          className="max-h-[75vh] w-auto max-w-full rounded-lg border border-line object-contain"
         />
       ) : (
         <div className="flex h-64 items-center justify-center">
-          <Loader2Icon className="size-5 animate-spin text-silver-600" />
+          <Loader2Icon className="size-5 animate-spin text-blue-500 motion-reduce:animate-none" />
         </div>
       )}
-      <p className="text-sm text-muted-foreground">{target.filename}</p>
+      <p className="font-mono text-xs text-silver-500">{target.filename}</p>
     </div>
   );
 }
@@ -106,7 +107,7 @@ function PastedBody({ target }: { target: PreviewTarget }) {
     <div className="flex flex-col gap-3">
       <div>
         <DialogTitle>Pasted content</DialogTitle>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-2 font-mono text-xs text-silver-500">
           {formatBytes(target.sizeBytes)}
           {lineCount !== null && ` · ${lineCount} lines`} · Formatting may be
           inconsistent from source
@@ -115,11 +116,11 @@ function PastedBody({ target }: { target: PreviewTarget }) {
 
       {text === null ? (
         <div className="flex h-64 items-center justify-center">
-          <Loader2Icon className="size-5 animate-spin text-silver-600" />
+          <Loader2Icon className="size-5 animate-spin text-blue-500 motion-reduce:animate-none" />
         </div>
       ) : (
-        <div className="scrollbar-thin max-h-[65vh] overflow-auto rounded-lg border border-silver-400/40 bg-space-void p-3">
-          <pre className="font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-silver-700">
+        <div className="scrollbar-thin max-h-[65vh] overflow-auto rounded-md border border-line bg-space-void p-3.5">
+          <pre className="font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-silver-600">
             {text}
           </pre>
         </div>
@@ -145,26 +146,23 @@ function FileBody({ target }: { target: PreviewTarget }) {
   return (
     <div className="flex flex-col items-center gap-4 py-6">
       <DialogTitle className="sr-only">{target.filename}</DialogTitle>
-      <FileTextIcon className="size-12 text-silver-600" />
+      <span className="grid size-11 place-items-center rounded-lg border border-line-strong bg-space-surface">
+        <FileTextIcon className="size-5 text-silver-600" />
+      </span>
       <div className="text-center">
-        <p className="text-sm font-medium text-foreground">{target.filename}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="text-sm font-semibold text-silver-900">{target.filename}</p>
+        <p className="mt-1 font-mono text-xs text-silver-500">
           {formatBytes(target.sizeBytes)} · {target.mimeType}
         </p>
       </div>
-      <button
-        type="button"
+      <Button
         onClick={() => void download()}
-        disabled={!target.id || downloading}
-        className="flex items-center gap-2 rounded-lg bg-brand px-3 py-1.5 text-sm text-primary-foreground transition-[background-color,transform] hover:bg-brand/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={!target.id}
+        loading={downloading}
       >
-        {downloading ? (
-          <Loader2Icon className="size-4 animate-spin" />
-        ) : (
-          <DownloadIcon className="size-4" />
-        )}
+        {!downloading && <DownloadIcon />}
         Download
-      </button>
+      </Button>
     </div>
   );
 }

@@ -155,7 +155,7 @@ export function WorkspaceTour() {
 
 function MockLabel({ children }: { children: string }) {
   return (
-    <p className="text-[0.6rem] font-medium uppercase tracking-[0.14em] text-silver-400">
+    <p className="text-[0.6rem] font-medium uppercase tracking-[0.14em] text-silver-500">
       {children}
     </p>
   );

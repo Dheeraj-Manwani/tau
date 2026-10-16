@@ -52,8 +52,8 @@ export function ResizeHandle({
           danger
             ? "bg-red-500"
             : active
-              ? "bg-[var(--blue-500)]"
-              : "bg-[var(--silver-200)] group-hover:bg-[var(--blue-500)]",
+              ? "bg-blue-500"
+              : "bg-line group-hover:bg-blue-500",
         )}
       />
       {/* Wide, invisible grab zone centered over the line for easy dragging. */}

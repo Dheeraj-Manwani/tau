@@ -13,7 +13,7 @@ export function ChatMarkdown({
       remarkPlugins={[remarkGfm]}
       components={{
         p: ({ children }) => (
-          <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+          <p className="mb-2.5 leading-[1.65] last:mb-0">{children}</p>
         ),
         strong: ({ children }) => (
           <strong className="font-semibold">{children}</strong>
@@ -35,24 +35,24 @@ export function ChatMarkdown({
           <ol className="mb-2 list-decimal space-y-0.5 pl-4 last:mb-0">{children}</ol>
         ),
         li: ({ children }) => (
-          <li className="leading-relaxed">{children}</li>
+          <li className="leading-[1.65]">{children}</li>
         ),
         a: ({ href, children }) => (
           <a
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-inherit underline underline-offset-2 hover:opacity-70"
+            className="text-blue-500 underline-offset-3 hover:text-blue-hi hover:underline"
           >
             {children}
           </a>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="mb-2 border-l-2 border-[var(--silver-400)] pl-3 italic opacity-70 last:mb-0">
+          <blockquote className="mb-2 border-l-2 border-line-strong pl-3 text-silver-600 last:mb-0">
             {children}
           </blockquote>
         ),
-        hr: () => <hr className="my-2 border-[var(--silver-200)]" />,
+        hr: () => <hr className="my-3 border-line" />,
         code: ({ className, children }) => {
           if (compact) {
             return (
@@ -76,15 +76,15 @@ export function ChatMarkdown({
           const isBlock = /language-/.test(className ?? "");
           if (isBlock) {
             return (
-              <pre className="mb-2 overflow-x-auto rounded-md bg-[var(--space-overlay)] p-3 last:mb-0">
-                <code className="font-mono text-[0.78rem] leading-relaxed">
+              <pre className="mb-2.5 overflow-x-auto rounded-md border border-line bg-space-void px-3.5 py-3 last:mb-0">
+                <code className="block bg-transparent p-0 font-mono text-[12.5px] leading-[1.7] text-silver-600">
                   {children}
                 </code>
               </pre>
             );
           }
           return (
-            <code className="rounded bg-[var(--space-overlay)] px-1 py-px font-mono text-[0.82em]">
+            <code className="inline rounded-xs border border-line bg-space-surface px-1 py-px font-mono text-[0.85em] text-silver-900">
               {children}
             </code>
           );

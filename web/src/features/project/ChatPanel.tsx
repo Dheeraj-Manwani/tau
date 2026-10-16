@@ -55,13 +55,22 @@ import {
   XIcon,
   Summary,
 } from "lucide-react";
-import { DropdownMenu } from "radix-ui";
 import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
 import { ChatMarkdown } from "@/src/components/ChatMarkdown";
-import { ChatLoader } from "@/src/components/ui/tau-loader";
-import { DataSpinner } from "@/src/components/ui/data-spinner";
+import { Button } from "@/src/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu";
+import { Skeleton } from "@/src/components/ui/skeleton";
+import { ChatLoader } from "@/src/components/motion/ChatLoader";
+import { TauMark } from "@/src/components/motion/TauMark";
+import { chatLoaderView, type ChatLoaderView } from "@/src/features/project/chatLoaderState";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { EffortToggle } from "@/src/features/composer/EffortToggle";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
@@ -167,13 +176,13 @@ const TODO_STATUS_CFG = {
   skipped: {
     Icon: MinusIcon,
     label: "Skipped",
-    cls: "text-[var(--silver-600)]",
+    cls: "text-silver-500",
   },
   blocked: { Icon: XIcon, label: "Blocked", cls: "text-red-400" },
   pending: {
     Icon: CircleIcon,
     label: "Pending",
-    cls: "text-[var(--silver-600)] opacity-50",
+    cls: "text-silver-500 opacity-60",
   },
 } as const;
 
@@ -185,7 +194,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
     return (
       <div className="space-y-2">
         {meta?.description && (
-          <p className="leading-relaxed text-[var(--silver-700)]">
+          <p className="leading-relaxed text-silver-600">
             {meta.description}
           </p>
         )}
@@ -202,7 +211,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
               return (
                 <div
                   key={item.sno}
-                  className="flex items-center gap-2 text-[var(--silver-700)]"
+                  className="flex items-center gap-2 text-silver-600"
                 >
                   <cfg.Icon className={cn("size-3 shrink-0", cfg.cls)} />
                   <span
@@ -229,7 +238,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
         {meta.todos.map((todo, i) => (
           <div
             key={i}
-            className="flex items-start gap-2 text-[var(--silver-700)]"
+            className="flex items-start gap-2 text-silver-600"
           >
             <CircleIcon className="mt-0.5 size-2.5 shrink-0 opacity-30" />
             <span>{todo}</span>
@@ -258,7 +267,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
             return (
               <div
                 key={todo.sno}
-                className="flex items-center gap-2 text-[var(--silver-700)]"
+                className="flex items-center gap-2 text-silver-600"
               >
                 <cfg.Icon className={cn("size-3 shrink-0", cfg.cls)} />
                 <span
@@ -280,7 +289,7 @@ function ActionDetail({ action }: { action: ActionItem }) {
       const s = (meta.status ?? "pending") as keyof typeof TODO_STATUS_CFG;
       const cfg = TODO_STATUS_CFG[s] ?? TODO_STATUS_CFG.pending;
       return (
-        <div className="flex items-center gap-2 text-[var(--silver-700)]">
+        <div className="flex items-center gap-2 text-silver-600">
           <cfg.Icon className={cn("size-3 shrink-0", cfg.cls)} />
           <span>
             Item #{meta.sno} marked as {meta.status}
@@ -331,25 +340,25 @@ function ActionDetail({ action }: { action: ActionItem }) {
       <div className="space-y-2.5">
         {meta?.prompt && (
           <div>
-            <div className="mb-1 text-[10px] font-medium tracking-wide text-[var(--silver-600)] uppercase">
+            <div className="lab mb-1.5 text-[10px]">
               {taskLabel}
             </div>
-            <p className="whitespace-pre-wrap leading-relaxed text-[var(--silver-700)]">
+            <p className="whitespace-pre-wrap leading-relaxed text-silver-600">
               {meta.prompt}
             </p>
           </div>
         )}
         <div>
-          <div className="mb-1 text-[10px] font-medium tracking-wide text-[var(--silver-600)] uppercase">
+          <div className="lab mb-1.5 text-[10px]">
             {resultLabel}
           </div>
           {meta?.result ? (
-            <div className="text-[var(--silver-700)]">
+            <div className="text-silver-600">
               <ChatMarkdown content={meta.result} compact />
             </div>
           ) : (
-            <p className="flex items-center gap-1.5 text-[var(--silver-600)] italic">
-              <Loader2Icon className="size-3 animate-spin" />
+            <p className="flex items-center gap-1.5 text-silver-500">
+              <Loader2Icon className="size-3 animate-spin text-blue-500 motion-reduce:animate-none" />
               {loadingLabel}
             </p>
           )}
@@ -389,12 +398,13 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
 
   if (!open) {
     return (
+      // The quiet chip for the work in between (boards/Surfaces.dc.html §04).
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-3 flex items-center gap-2 rounded-[8px] border border-silver-400/25 px-1.5 py-1 text-xs text-silver-600 transition-colors hover:border-silver-400/50 hover:bg-space-overlay hover:text-silver-900"
+        className="mt-3 inline-flex h-[26px] cursor-pointer items-center gap-2 rounded-sm border border-line px-2.5 text-xs font-medium text-silver-600 transition-colors duration-150 outline-none hover:border-line-strong hover:bg-space-surface hover:text-silver-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
       >
-        <div className="flex items-center gap-1.5 opacity-60">
+        <div className="flex items-center gap-1.5 opacity-70">
           {actions.slice(0, 8).map((a, i) => (
             <span key={i}>
               <ActionIcon kind={a.kind} />
@@ -411,17 +421,19 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
   }
 
   return (
-    <div className="mt-3 text-xs text-[var(--silver-600)]">
-      <button
-        type="button"
+    // Expanded: a quiet inset with mono rows, no icons in colour.
+    <div className="mt-3 text-xs text-silver-600">
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => setOpen(false)}
-        className="mb-0.5 flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:text-[var(--silver-900)]"
+        className="mb-1.5 -ml-1.5 px-1.5"
       >
-        <ChevronUpIcon className="size-3.5 shrink-0" />
-        <span>Show less</span>
-      </button>
+        <ChevronUpIcon />
+        Show less
+      </Button>
 
-      <div>
+      <div className="rounded-md border border-line bg-space-void p-1 font-mono text-[12px]">
         {actions.map((action, i) => {
           const hasTodoSnapshot =
             action.kind === "update_todo" &&
@@ -464,14 +476,14 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
                     : undefined
                 }
                 className={cn(
-                  "flex items-center gap-2.5 px-1.5 py-1.5 transition-colors",
+                  "flex items-center gap-2.5 px-2 py-1.5 transition-colors outline-none focus-visible:bg-space-raised",
                   isExpandable && !isOpen
-                    ? "cursor-pointer rounded-md hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+                    ? "cursor-pointer rounded-sm hover:bg-space-raised hover:text-silver-900"
                     : isExpandable && isOpen
-                      ? "cursor-pointer rounded-t-md bg-[var(--space-overlay)] text-[var(--silver-900)]"
+                      ? "cursor-pointer rounded-t-sm bg-space-raised text-silver-900"
                       : isFileLink && filePath
-                        ? "cursor-pointer rounded-md hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
-                        : "rounded-md",
+                        ? "cursor-pointer rounded-sm hover:bg-space-raised hover:text-silver-900"
+                        : "rounded-sm",
                 )}
               >
                 <span className="shrink-0 opacity-50">
@@ -489,7 +501,7 @@ function ActionsAccordion({ actions }: { actions: ActionItem[] }) {
                 )}
               </div>
               {isExpandable && isOpen && (
-                <div className="mb-1 rounded-b-md border border-white/10 bg-[var(--space-surface)] px-3 py-2.5 text-[11px]">
+                <div className="mb-1 rounded-b-sm border border-line bg-space-surface px-3 py-2.5 font-sans text-xs">
                   <ActionDetail action={action} />
                 </div>
               )}
@@ -523,7 +535,7 @@ function CopyMessageButton({ text }: { text: string }) {
       }}
       aria-label="Copy message"
       title="Copy"
-      className="absolute right-0 bottom-0 flex size-6 items-center justify-center rounded-md text-[var(--silver-600)] opacity-0 pointer-events-none transition-opacity group-hover/message:pointer-events-auto group-hover/message:opacity-100 hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+      className="pointer-events-none absolute right-0 bottom-0 flex size-7 items-center justify-center rounded-sm text-silver-600 opacity-0 transition-[opacity,background-color,color] group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100 group-hover/message:pointer-events-auto group-hover/message:opacity-100 hover:bg-space-raised hover:text-silver-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
     >
       {copied ? (
         <CheckIcon className="size-3.5" />
@@ -567,7 +579,7 @@ function ElementChip({ element }: { element: MessageElement }) {
           ? `Open ${element.path}`
           : `${element.path} isn't in the file tree yet`
       }
-      className="flex max-w-[85%] items-center gap-1.5 rounded-full border border-[var(--silver-200)] bg-[var(--space-surface)] px-2 py-0.5 text-[11px] text-[var(--silver-600)] transition-colors enabled:hover:border-[var(--blue-500)] enabled:hover:text-[var(--silver-900)] disabled:cursor-default"
+      className="flex max-w-[80%] items-center gap-1.5 rounded-xs border border-line bg-space-surface px-2 py-0.5 text-[11px] text-silver-600 transition-colors enabled:cursor-pointer enabled:hover:border-line-strong enabled:hover:text-silver-900 disabled:cursor-default"
     >
       <SquareMousePointerIcon className="size-3 shrink-0" />
       <span className="truncate font-mono">
@@ -585,10 +597,13 @@ function ChatBubble({
   message,
   delay,
   noAnimate = false,
+  streaming = false,
 }: {
   message: Message;
   delay: number;
   noAnimate?: boolean;
+  /** Text is streaming into this bubble: a blue caret follows it. */
+  streaming?: boolean;
 }) {
   const transition = { ...ENTRANCE.transition, delay };
   const [expanded, setExpanded] = useState(false);
@@ -615,7 +630,8 @@ function ChatBubble({
         {/* Attachment-only turns have no text of their own: render the chips
             and the timestamp, but no empty bubble. */}
         {message.content && (
-          <div className="max-w-[85%] rounded-[14px] rounded-br-[6px] border border-[var(--silver-200)] bg-[var(--space-overlay)] px-4 py-3 text-sm leading-relaxed text-[var(--silver-900)]">
+          // You: a raised bubble on the right. Tau: plain text, no bubble.
+          <div className="max-w-[80%] rounded-xl border border-line bg-space-raised px-4 py-3 text-sm leading-[1.6] text-silver-900">
             <div
               ref={contentRef}
               style={
@@ -636,14 +652,14 @@ function ChatBubble({
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
-                className="mt-1 text-[11px] text-[var(--blue-500)] hover:underline"
+                className="mt-1 cursor-pointer text-xs text-blue-500 underline-offset-3 hover:text-blue-hi hover:underline"
               >
                 {expanded ? "Show less" : "Show more"}
               </button>
             )}
           </div>
         )}
-        <span className="px-1 text-[11px] text-[var(--silver-600)]">
+        <span className="px-1 font-mono text-[11px] text-silver-500">
           {formatRelativeTime(message.timestamp)}
         </span>
       </div>
@@ -664,8 +680,10 @@ function ChatBubble({
   const aiBody = (
     <div>
       {message.content && (
-        <div className="group/message relative pr-7 text-sm text-[var(--silver-900)]">
-          <ChatMarkdown content={message.content} />
+        <div className="group/message relative pr-8 text-sm text-silver-900">
+          <div className={streaming ? "stream-caret" : undefined}>
+            <ChatMarkdown content={message.content} />
+          </div>
           <CopyMessageButton text={message.content} />
         </div>
       )}
@@ -688,36 +706,40 @@ function ChatBubble({
   );
 }
 
-// While tau works, surface its live activity as a flat icon + shimmer-label row
-// (no bubble): matching the inline "step" rows in the conversation flow.
+// While tau works, the chat loader says what it is doing (thinking, a live
+// action, writing); when the run ends it says how it ended (stopped, done).
 function TypingBubble({
-  activity,
+  view,
+  runStartedAt,
   stalled = false,
   onStop,
+  onResume,
+  resuming,
 }: {
-  activity: string | null;
+  view: ChatLoaderView;
+  runStartedAt: number | null;
   /** The run has gone quiet past the stall threshold: say so instead of
    *  shimmering indefinitely at a job that may never speak again. */
   stalled?: boolean;
   onStop?: (() => void) | null;
+  onResume?: () => void;
+  resuming?: boolean;
 }) {
-  if (stalled) {
+  const running = view.kind === "thinking" || view.kind === "working" || view.kind === "writing";
+  if (stalled && running) {
     return (
       <motion.div
         initial={ENTRANCE.initial}
         animate={ENTRANCE.animate}
         exit={{ opacity: 0 }}
-        className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
+        className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-silver-600"
       >
+        <TauMark state="still" />
         <span>Tau has gone quiet. It may need a fresh start.</span>
         {onStop && (
-          <button
-            type="button"
-            onClick={onStop}
-            className="underline underline-offset-2 hover:text-foreground"
-          >
+          <Button variant="secondary" size="sm" onClick={onStop}>
             Stop it
-          </button>
+          </Button>
         )}
       </motion.div>
     );
@@ -728,9 +750,19 @@ function TypingBubble({
       initial={ENTRANCE.initial}
       animate={ENTRANCE.animate}
       exit={{ opacity: 0 }}
-      className="mt-6 flex items-center"
+      className={view.kind === "writing" ? "mt-2" : "mt-6"}
     >
-      <ChatLoader text={activity ?? "Thinking"} />
+      <ChatLoader
+        view={view}
+        runStartedAt={runStartedAt}
+        actionIcon={
+          view.kind === "working" ? (
+            view.action ? <ActionIcon kind={view.action.kind} /> : <FilePen className="size-3.5" />
+          ) : undefined
+        }
+        onResume={onResume}
+        resuming={resuming}
+      />
     </motion.div>
   );
 }
@@ -742,12 +774,12 @@ function ContextDivider({ meta }: { meta: DividerMeta }) {
   return (
     <div className="my-1">
       <div className="flex items-center gap-2">
-        <div className="h-px flex-1 bg-[var(--silver-200)]" />
+        <div className="h-px flex-1 bg-line" />
         <button
           type="button"
           disabled={!hasSummary}
           onClick={() => hasSummary && setOpen((v) => !v)}
-          className="flex items-center gap-1.5 rounded-full bg-[var(--space-surface)] px-2.5 py-1 text-[11px] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-default disabled:hover:text-[var(--silver-600)]"
+          className="flex cursor-pointer items-center gap-1.5 rounded-xs border border-line bg-space-surface px-2.5 py-1 font-mono text-[11px] text-silver-500 transition-colors hover:text-silver-900 disabled:cursor-default disabled:hover:text-silver-500"
         >
           <ScrollTextIcon className="size-3 shrink-0 opacity-60" />
           <span>Earlier conversation tucked away</span>
@@ -758,14 +790,34 @@ function ContextDivider({ meta }: { meta: DividerMeta }) {
               <ChevronDownIcon className="size-3 shrink-0" />
             ))}
         </button>
-        <div className="h-px flex-1 bg-[var(--silver-200)]" />
+        <div className="h-px flex-1 bg-line" />
       </div>
       {open && hasSummary && (
-        <div className="mt-2 rounded-md border border-white/10 bg-[var(--space-surface)] px-3 py-2.5 text-[11px] text-[var(--silver-700)]">
+        <div className="mt-2 rounded-md border border-line bg-space-surface px-3 py-2.5 text-xs text-silver-600">
           <ChatMarkdown content={meta.summary} compact />
         </div>
       )}
     </div>
+  );
+}
+
+/** An info icon at the end of a menu row, explaining it in a tooltip. */
+function MenuHint({ children }: { children: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className="flex size-4 shrink-0 items-center justify-center text-silver-500 hover:text-silver-600"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <InfoIcon className="size-3.5" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="right" className="max-w-56">
+        {children}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -820,120 +872,77 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
 
   return (
     <>
-      <DropdownMenu.Root>
+      {/* The project name is a place, not a status: a ghost trigger
+          (boards/Overlays.dc.html "Menus in context"). */}
+      <DropdownMenu>
         <Tooltip>
           <TooltipTrigger asChild>
-            <DropdownMenu.Trigger asChild>
-              <button
-                type="button"
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
                 data-tour="project-switcher"
-                className="group flex max-w-full min-w-0 items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-[var(--silver-900)] outline-none transition-colors hover:bg-[var(--space-overlay)] focus-visible:ring-2 focus-visible:ring-[var(--silver-400)]"
+                className="group max-w-full min-w-0 gap-2.5 px-2.5 text-silver-900 hover:text-silver-900"
               >
-                <FolderOpenIcon className="size-4 shrink-0 text-[var(--silver-600)]" />
-                <span ref={nameRef} className="min-w-0 max-w-[220px] truncate">
+                <FolderOpenIcon className="text-silver-600" />
+                <span ref={nameRef} className="max-w-[220px] min-w-0 truncate font-medium">
                   {name}
                 </span>
-                <ChevronDownIcon className="size-3.5 shrink-0 text-[var(--silver-600)] transition-transform group-data-[state=open]:rotate-180" />
-              </button>
-            </DropdownMenu.Trigger>
+                <ChevronDownIcon className="text-silver-600 transition-transform group-data-[state=open]:rotate-180" />
+              </Button>
+            </DropdownMenuTrigger>
           </TooltipTrigger>
           {isTruncated && <TooltipContent>{name}</TooltipContent>}
         </Tooltip>
 
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content
-            align="start"
-            sideOffset={6}
-            className="z-50 w-52 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-1 shadow-2xl"
+        <DropdownMenuContent align="start" className="w-60">
+          <DropdownMenuItem onSelect={() => navigate(APP_HOME)}>
+            <HomeIcon />
+            Home
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setEditOpen(true)}>
+            <PencilIcon />
+            Edit project
+          </DropdownMenuItem>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem onSelect={() => setClearOpen(true)} disabled={jobActive}>
+            <EraserIcon />
+            <span className="flex-1">Clear chat</span>
+            <MenuHint>
+              {jobActive
+                ? "Finish or cancel the current run first."
+                : "Clears the chat, keeps your files. Recommended before starting an unrelated piece of work."}
+            </MenuHint>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onSelect={handleSummarize}
+            disabled={jobActive || summarizeChat.isPending}
           >
-            <DropdownMenu.Item
-              onSelect={() => navigate(APP_HOME)}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-[var(--silver-600)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-[var(--silver-900)]"
-            >
-              <HomeIcon className="size-3.5 shrink-0" />
-              Home
-            </DropdownMenu.Item>
+            {summarizeChat.isPending ? (
+              <Loader2Icon className="animate-spin motion-reduce:animate-none" />
+            ) : (
+              <Summary />
+            )}
+            <span className="flex-1">
+              {summarizeChat.isPending ? "Summarizing…" : "Summarize chat"}
+            </span>
+            <MenuHint>
+              {jobActive
+                ? "Finish or cancel the current run first."
+                : "Shortens the chat history so tau keeps more room to work. Recommended when a conversation has been running long."}
+            </MenuHint>
+          </DropdownMenuItem>
 
-            <DropdownMenu.Separator className="my-1 h-px bg-[var(--silver-200)]" />
+          <DropdownMenuSeparator />
 
-            <DropdownMenu.Item
-              onSelect={() => setEditOpen(true)}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-[var(--silver-600)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-[var(--silver-900)]"
-            >
-              <PencilIcon className="size-3.5 shrink-0" />
-              Edit project
-            </DropdownMenu.Item>
-
-            <DropdownMenu.Separator className="my-1 h-px bg-[var(--silver-200)]" />
-
-            <DropdownMenu.Item
-              onSelect={() => setClearOpen(true)}
-              disabled={jobActive}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-[var(--silver-600)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-[var(--silver-900)] data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-            >
-              <EraserIcon className="size-3.5 shrink-0" />
-              <span className="flex-1">Clear chat</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    className="flex size-4 shrink-0 items-center justify-center text-[var(--silver-400)] hover:text-[var(--silver-600)]"
-                    onClick={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
-                  >
-                    <InfoIcon className="size-3.5" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-56">
-                  {jobActive
-                    ? "Finish or cancel the current run first."
-                    : "Deletes the current chat and starts a fresh chat. Recommended before starting work on a new, unrelated piece of work."}
-                </TooltipContent>
-              </Tooltip>
-            </DropdownMenu.Item>
-
-            <DropdownMenu.Item
-              onSelect={handleSummarize}
-              disabled={jobActive || summarizeChat.isPending}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-[var(--silver-600)] outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-[var(--silver-900)] data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
-            >
-              {summarizeChat.isPending ? (
-                <Loader2Icon className="size-3.5 shrink-0 animate-spin" />
-              ) : (
-                <Summary className="size-3.5 shrink-0" />
-              )}
-              <span className="flex-1">
-                {summarizeChat.isPending ? "Summarizing…" : "Summarize chat"}
-              </span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    className="flex size-4 shrink-0 items-center justify-center text-[var(--silver-400)] hover:text-[var(--silver-600)]"
-                    onClick={(e) => e.stopPropagation()}
-                    onPointerDown={(e) => e.stopPropagation()}
-                  >
-                    <InfoIcon className="size-3.5" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-56">
-                  {jobActive
-                    ? "Finish or cancel the current run first."
-                    : "Summarizes the chat history, resulting in a shorter context window. Usually results in better responses. Recommended when a conversation has been running long."}
-                </TooltipContent>
-              </Tooltip>
-            </DropdownMenu.Item>
-
-            <DropdownMenu.Separator className="my-1 h-px bg-[var(--silver-200)]" />
-
-            <DropdownMenu.Item
-              onSelect={() => setDeleteOpen(true)}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-red-400 outline-none select-none transition-colors data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-500"
-            >
-              <Trash2Icon className="size-3.5 shrink-0" />
-              Delete project
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
+          <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
+            <Trash2Icon />
+            Delete project
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <EditProjectDialog
         project={projectAsListItem}
@@ -978,22 +987,22 @@ function AskUserOptionRow({
       type="button"
       disabled={disabled}
       onClick={onSelect}
+      role="radio"
+      aria-checked={selected}
       className={cn(
-        "flex w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:opacity-50",
+        "flex w-full cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2.5 text-left text-sm transition-colors duration-150 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-40",
         selected
-          ? "border-[var(--blue-500)]/50 bg-[var(--blue-500)]/10 text-foreground"
-          : "border-transparent bg-space-overlay text-muted-foreground hover:text-foreground",
+          ? "border-blue-500 bg-blue-500/12 text-silver-900"
+          : "border-line-strong bg-space-void text-silver-600 hover:border-line-hover hover:text-silver-900",
       )}
     >
       <span
         className={cn(
-          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-          selected ? "border-[var(--blue-500)]" : "border-silver-400",
+          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+          selected ? "border-blue-500" : "border-line-hover",
         )}
       >
-        {selected && (
-          <span className="size-1.5 rounded-full bg-[var(--blue-500)]" />
-        )}
+        {selected && <span className="size-[7px] rounded-full bg-blue-500" />}
       </span>
       <span className="leading-snug">{label}</span>
     </button>
@@ -1042,24 +1051,27 @@ function AskUserPrompt({
   };
 
   return (
-    <div className="rounded-xl border border-silver-400/40 bg-space-surface shadow-xl focus-within:border-silver-600/45 focus-within:ring-3 focus-within:ring-silver-400/10">
-      <div className="flex items-start justify-between gap-3 border-b border-white/5 px-4 py-3">
-        <p className="text-sm font-semibold leading-snug text-foreground">
+    // tau asks you something: the composer's surface, one strong edge, the
+    // options as choice rows and one primary to answer.
+    <div className="rounded-[14px] border border-line-strong bg-space-surface">
+      <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+        <p className="text-sm leading-snug font-semibold text-silver-900">
           {question}
         </p>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-sm"
           disabled={submitting}
           onClick={() => void submit(ASK_USER_SKIP_ANSWER)}
           aria-label="Skip this question"
           title="Skip"
-          className="-mt-0.5 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-space-overlay hover:text-foreground disabled:opacity-50"
+          className="-mt-1 -mr-1.5"
         >
-          <XIcon className="size-4" />
-        </button>
+          <XIcon />
+        </Button>
       </div>
 
-      <div className="space-y-1.5 px-3 py-3">
+      <div role="radiogroup" aria-label={question} className="space-y-1.5 px-3 py-3">
         {options.map((opt) => (
           <AskUserOptionRow
             key={opt}
@@ -1076,22 +1088,20 @@ function AskUserPrompt({
             customInputRef.current?.focus();
           }}
           className={cn(
-            "flex cursor-text items-center gap-2.5 rounded-lg border px-3 py-2.5 transition-colors",
+            "flex cursor-text items-center gap-2.5 rounded-md border px-3 py-2.5 transition-colors duration-150",
             selected === ASK_USER_CUSTOM
-              ? "border-[var(--blue-500)]/50 bg-[var(--blue-500)]/10"
-              : "border-transparent bg-space-overlay hover:border-silver-400/40",
+              ? "border-blue-500 bg-blue-500/12"
+              : "border-line-strong bg-space-void hover:border-line-hover",
           )}
         >
           <span
             className={cn(
-              "flex size-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-              selected === ASK_USER_CUSTOM
-                ? "border-[var(--blue-500)]"
-                : "border-silver-400",
+              "flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+              selected === ASK_USER_CUSTOM ? "border-blue-500" : "border-line-hover",
             )}
           >
             {selected === ASK_USER_CUSTOM && (
-              <span className="size-1.5 rounded-full bg-[var(--blue-500)]" />
+              <span className="size-[7px] rounded-full bg-blue-500" />
             )}
           </span>
           <input
@@ -1111,34 +1121,23 @@ function AskUserPrompt({
             }}
             disabled={submitting}
             placeholder="Write your own…"
-            className="w-full min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50"
+            className="w-full min-w-0 bg-transparent text-sm text-silver-900 placeholder:text-silver-500 focus:outline-none focus-visible:outline-none disabled:opacity-40"
           />
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-2 border-t border-white/5 px-3 py-2.5">
-        <button
-          type="button"
+      <div className="flex items-center justify-end gap-2 border-t border-line px-3 py-2.5">
+        <Button
+          variant="ghost"
+          size="sm"
           disabled={submitting}
           onClick={() => void submit(ASK_USER_SKIP_ANSWER)}
-          className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-space-overlay hover:text-foreground disabled:opacity-50"
         >
           Skip
-        </button>
-        <button
-          type="button"
-          disabled={!canSubmit}
-          onClick={handleSubmit}
-          className={cn(
-            "flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-medium transition-[background-color,transform]",
-            canSubmit
-              ? "bg-brand text-primary-foreground hover:bg-brand/90 active:scale-95"
-              : "cursor-not-allowed bg-space-overlay text-silver-600",
-          )}
-        >
-          {submitting && <Loader2Icon className="size-3.5 animate-spin" />}
-          Submit
-        </button>
+        </Button>
+        <Button size="sm" disabled={!canSubmit} loading={submitting} onClick={handleSubmit}>
+          Answer
+        </Button>
       </div>
     </div>
   );
@@ -1158,6 +1157,11 @@ export function ChatPanel({
   const activity = useProjectStore((s) => s.activity);
   const isStalled = useProjectStore((s) => s.isStalled);
   const status = useProjectStore((s) => s.status);
+  const streamingId = useProjectStore((s) => s.streamingId);
+  const writingPath = useProjectStore((s) => s.writingPath);
+  const liveAction = useProjectStore((s) => s.liveAction);
+  const runStartedAt = useProjectStore((s) => s.runStartedAt);
+  const runEndedAt = useProjectStore((s) => s.runEndedAt);
   const prependMessages = useProjectStore((s) => s.prependMessages);
   const hasMoreMessages = useProjectStore((s) => s.hasMoreMessages);
   const oldestSequence = useProjectStore((s) => s.oldestSequence);
@@ -1186,6 +1190,17 @@ export function ChatPanel({
     !isStreaming &&
     !isSending &&
     shouldOfferCreditResume(messages, balance?.credits.available);
+  const loaderView = chatLoaderView({
+    isAiTyping,
+    status,
+    streaming: streamingId !== null,
+    writingPath,
+    activity,
+    liveAction,
+    messages,
+    runStartedAt,
+    runEndedAt,
+  });
 
   const [draft, setDraft] = useState("");
 
@@ -1328,16 +1343,20 @@ export function ChatPanel({
   };
 
   return (
-    <div className="flex h-full min-w-0 flex-col bg-[var(--space-void)]">
-      <div className="flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-[var(--silver-200)] px-4 py-3">
+    <div className="flex h-full min-w-0 flex-col bg-space-void">
+      <div className="flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-line py-3 pr-3.5 pl-3">
         <div className="min-w-0">
           {projectId && <ProjectSwitcher projectId={projectId} />}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {contextUsage && (
+            // The ring is a context-usage meter, not a loader.
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="flex items-center justify-center rounded-[var(--radius-md)] p-1.5">
+                <span
+                  tabIndex={0}
+                  className="flex size-8 items-center justify-center rounded-sm outline-none hover:bg-space-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                >
                   <CircularProgress
                     percent={contextUsage.usagePercent}
                     flashKind={contextUsageFlashKind}
@@ -1354,18 +1373,21 @@ export function ChatPanel({
           {/* Collapse only makes sense once the chat is docked beside the
             workspace; pre-build it owns the whole (centered) screen. */}
           {showCollapse && (
-            <motion.button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={toggleChat}
-              whileHover={{ scale: 1.1 }}
               aria-label="Collapse chat"
               data-tour="collapse-chat"
-              className="flex size-8 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
             >
-              <PanelLeftCloseIcon className="size-4.5" />
-            </motion.button>
+              <PanelLeftCloseIcon />
+            </Button>
           )}
-          {!showCollapse && <UserMenu />}
+          {!showCollapse && (
+            <span className="ml-1.5 flex">
+              <UserMenu />
+            </span>
+          )}
         </div>
       </div>
 
@@ -1373,22 +1395,34 @@ export function ChatPanel({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="h-full overflow-y-auto px-5 py-5 [scrollbar-width:thin] [scrollbar-color:var(--silver-200)_transparent]"
+          className={cn(
+            "h-full overflow-y-auto py-[22px] [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]",
+            showCollapse ? "px-5" : "px-1",
+          )}
         >
           {isLoadingOlder && (
-            <div className="flex justify-center py-2">
-              <DataSpinner label="Loading earlier messages" />
+            <div role="status" className="flex items-center justify-center gap-2.5 py-2">
+              <TauMark size={20} />
+              <span className="font-mono text-xs text-silver-500">Loading earlier messages</span>
             </div>
           )}
           {chatLoading && (
-            <div className="flex h-full items-center justify-center">
-              <DataSpinner label="Loading chat" />
+            <div className="flex flex-col gap-6" aria-busy="true" aria-label="Loading chat">
+              <Skeleton className="ml-auto h-11 w-3/5 rounded-xl" />
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-3 w-[90%]" />
+                <Skeleton className="h-3 w-[75%]" />
+                <Skeleton className="h-3 w-[40%]" />
+              </div>
             </div>
           )}
           {chatEmpty && (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-[var(--silver-500)]">
-              <MessageSquareIcon className="size-6" />
-              <p className="text-sm">No messages yet</p>
+            <div className="flex h-full flex-col items-center justify-center gap-2.5 text-center">
+              <span className="grid size-10 place-items-center rounded-md border border-line-strong bg-space-surface text-silver-600">
+                <MessageSquareIcon className="size-4" />
+              </span>
+              <p className="text-sm font-semibold text-silver-900">No messages yet</p>
+              <p className="max-w-60 text-[13px] text-silver-500">Ask tau for a change below.</p>
             </div>
           )}
           {messages.map((m, i) => {
@@ -1408,7 +1442,7 @@ export function ChatPanel({
               i === 0 && !isLoadingOlder
                 ? undefined
                 : sameSpeakerAsPrev
-                  ? "mt-2"
+                  ? "mt-3"
                   : "mt-6";
             return (
               <div key={m.id} className={spacing}>
@@ -1425,30 +1459,36 @@ export function ChatPanel({
                           : 0
                     }
                     noAnimate={prependedIds.has(m.id)}
+                    streaming={m.id === streamingId}
                   />
                 )}
               </div>
             );
           })}
           {canContinueAfterCredits && (
-            <motion.button
-              type="button"
+            <motion.div
               initial={ENTRANCE.initial}
               animate={ENTRANCE.animate}
               transition={ENTRANCE.transition}
-              onClick={() => void send(CREDIT_RESUME_PROMPT, { effort })}
-              className="mt-6 flex items-center gap-2 rounded-lg border border-[var(--blue-500)]/50 bg-[var(--blue-500)]/10 px-3 py-2 text-sm font-medium text-[var(--blue-500)] transition-colors hover:bg-[var(--blue-500)]/20"
+              className="mt-6"
             >
-              <PlayIcon className="size-4 fill-current" />
-              Continue
-            </motion.button>
+              <Button onClick={() => void send(CREDIT_RESUME_PROMPT, { effort })}>
+                <PlayIcon className="fill-current" />
+                Continue
+              </Button>
+            </motion.div>
           )}
           <AnimatePresence>
-            {isAiTyping && (
+            {loaderView && !canContinueAfterCredits && (
               <TypingBubble
-                activity={activity}
+                // A new key per run end so "done" fires its one flash fresh.
+                key={loaderView.kind === "done" || loaderView.kind === "stopped" ? loaderView.kind : "run"}
+                view={loaderView}
+                runStartedAt={runStartedAt}
                 stalled={isStalled}
                 onStop={cancelStream}
+                onResume={() => void send(CREDIT_RESUME_PROMPT, { effort })}
+                resuming={isSending}
               />
             )}
           </AnimatePresence>
@@ -1465,7 +1505,7 @@ export function ChatPanel({
               type="button"
               onClick={scrollToBottom}
               aria-label="Scroll to bottom"
-              className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center justify-center size-8 rounded-full bg-[var(--space-surface)] border border-[var(--silver-200)] shadow-md text-[var(--silver-600)] hover:text-[var(--silver-900)] hover:border-[var(--silver-400)] transition-colors"
+              className="absolute bottom-3 left-1/2 flex size-8 -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-line-strong bg-space-overlay text-silver-600 shadow-[0_8px_24px_rgba(0,0,0,0.5)] transition-colors hover:border-line-hover hover:bg-space-raised hover:text-silver-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             >
               <ArrowDownIcon className="size-4" />
             </motion.button>
@@ -1473,35 +1513,38 @@ export function ChatPanel({
         </AnimatePresence>
       </div>
 
-      <div className="shrink-0 p-4" data-tour="composer">
+      <div
+        className={cn("shrink-0", showCollapse ? "px-4 pb-4" : "pb-[22px]")}
+        data-tour="composer"
+      >
         {!pendingQuestion && readyNotification?.showPrompt && (
-          <div className="mb-2 flex w-full items-center gap-2.5 rounded-lg border border-[var(--silver-400)]/25 bg-[var(--space-surface)] px-3 py-2">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--space-overlay)] text-[var(--silver-600)]">
+          <div className="mb-2 flex w-full items-center gap-2.5 rounded-lg border border-line bg-space-surface py-2 pr-2 pl-3">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-sm border border-line-strong bg-space-overlay text-silver-600">
               <BellIcon className="size-3.5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-xs font-medium text-[var(--silver-900)]">
+              <span className="block text-[13px] font-medium text-silver-900">
                 Notify when ready?
               </span>
-              <span className="block truncate text-[11px] text-[var(--silver-600)]">
+              <span className="block truncate text-xs text-silver-500">
                 You can switch tabs while Tau works
               </span>
             </span>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={readyNotification.snooze}
               title="Hide this for 3 days"
-              className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)]"
             >
               Not now
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => void readyNotification.enable()}
-              className="shrink-0 rounded-md bg-[var(--space-overlay)] px-2 py-1 text-[11px] font-medium text-[var(--silver-900)] transition-colors hover:bg-[var(--silver-200)]"
             >
               Notify me
-            </button>
+            </Button>
           </div>
         )}
         {pendingQuestion?.secrets?.length && currentJobId && projectId ? (
@@ -1548,6 +1591,13 @@ export function ChatPanel({
               <EffortToggle effort={effort} onChange={setEffort} compact />
             }
           />
+        )}
+        {/* Before the first build the chat owns the screen alone. */}
+        {!showCollapse && (
+          <p className="mt-4 text-center text-xs text-silver-500">
+            Chat only until the workspace is ready. The preview, code and tools
+            appear here once the first build lands.
+          </p>
         )}
       </div>
     </div>

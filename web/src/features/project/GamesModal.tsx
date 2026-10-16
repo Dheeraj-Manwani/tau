@@ -20,10 +20,10 @@ import {
 import type { GamesStatus } from "@/src/features/project/gamesStatus";
 
 const STATUS_DOT: Record<GamesStatus["tone"], string> = {
-  working: "animate-pulse bg-blue-500",
-  done: "bg-emerald-400",
-  attention: "bg-amber-400",
-  idle: "bg-muted-foreground",
+  working: "animate-pulse bg-blue-500 motion-reduce:animate-none",
+  done: "bg-green-400",
+  attention: "bg-orange-400",
+  idle: "bg-silver-500",
 };
 
 /**
@@ -65,9 +65,9 @@ export function GamesModal({
         onInteractOutside={(event) => {
           if (game) event.preventDefault();
         }}
-        className="flex h-[min(46rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl"
+        className="flex h-[min(46rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 max-sm:px-0 sm:max-w-4xl"
       >
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5">
+        <div className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-3">
           {game && (
             <Button
               variant="ghost"
@@ -83,7 +83,7 @@ export function GamesModal({
             {game ? game.title : "Play while tau builds"}
           </DialogTitle>
           <DialogClose asChild>
-            <Button variant="ghost" size="icon-sm">
+            <Button variant="ghost" size="icon">
               <XIcon />
               <span className="sr-only">Close</span>
             </Button>
@@ -91,7 +91,7 @@ export function GamesModal({
         </div>
 
         {game ? (
-          <div className="relative min-h-0 flex-1 bg-black">
+          <div className="relative min-h-0 flex-1 bg-space-void">
             <DialogDescription className="sr-only">
               {game.blurb}
             </DialogDescription>
@@ -113,7 +113,7 @@ export function GamesModal({
             />
           </div>
         ) : (
-          <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-5">
             <DialogDescription>
               Pick a game. The bar below keeps you posted on the build.
             </DialogDescription>
@@ -123,19 +123,19 @@ export function GamesModal({
                   <button
                     type="button"
                     onClick={() => pick(entry)}
-                    className="group flex h-full w-full flex-col overflow-hidden rounded-lg border border-border bg-card text-left transition-colors hover:border-blue-500/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500"
+                    className="group flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-lg border border-line bg-space-surface text-left transition-colors duration-150 hover:border-line-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                   >
                     <img
                       src={gameThumbnailUrl(entry)}
                       alt=""
                       loading="lazy"
-                      className="aspect-[4/3] w-full bg-muted object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                      className="aspect-[4/3] w-full bg-space-raised object-cover"
                     />
-                    <span className="relative flex flex-col gap-0.5 bg-card px-3 py-2.5">
-                      <span className="text-sm font-medium text-foreground">
+                    <span className="relative flex flex-col gap-0.5 border-t border-line px-3 py-2.5">
+                      <span className="text-[13.5px] font-medium text-silver-900">
                         {entry.title}
                       </span>
-                      <span className="text-xs leading-snug text-muted-foreground">
+                      <span className="text-xs leading-snug text-silver-500">
                         {entry.blurb}
                       </span>
                     </span>
@@ -143,7 +143,7 @@ export function GamesModal({
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-xs text-muted-foreground">
+            <p className="mt-4 text-xs text-silver-500">
               Games are provided by GameDistribution and may show ads.
             </p>
           </div>
@@ -153,16 +153,16 @@ export function GamesModal({
           role="status"
           aria-live="polite"
           className={cn(
-            "flex min-h-12 shrink-0 items-center gap-2.5 border-t border-border px-4 py-2 transition-colors",
-            status.tone === "done" && "bg-emerald-500/10",
-            status.tone === "attention" && "bg-amber-500/10",
+            "flex min-h-14 shrink-0 items-center gap-2.5 border-t border-line px-4 py-2.5 transition-colors duration-150 max-sm:pb-[max(0.625rem,env(safe-area-inset-bottom))]",
+            status.tone === "done" && "bg-green-400/11",
+            status.tone === "attention" && "bg-orange-400/11",
           )}
         >
           <span
             aria-hidden="true"
             className={cn("size-2 shrink-0 rounded-full", STATUS_DOT[status.tone])}
           />
-          <p className="min-w-0 flex-1 truncate text-sm text-foreground">
+          <p className="min-w-0 flex-1 truncate text-[13px] text-silver-900">
             {status.label}
           </p>
           {status.actionLabel && (

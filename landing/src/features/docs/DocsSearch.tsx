@@ -45,7 +45,7 @@ export function DocsSearch({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="dialog-theme fixed inset-0 z-[70] flex items-start justify-center bg-black/60 px-4 pt-[12vh] backdrop-blur-sm"
+      className="fixed inset-0 z-[70] flex items-start justify-center bg-black/60 px-4 pt-[12vh] backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Search the documentation"
@@ -55,7 +55,7 @@ export function DocsSearch({ onClose }: { onClose: () => void }) {
     >
       <div className="w-full max-w-xl overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
         <div className="flex items-center gap-3 border-b border-silver-200 px-4">
-          <SearchIcon className="size-4 shrink-0 text-silver-400" />
+          <SearchIcon className="size-4 shrink-0 text-silver-500" />
           <input
             ref={inputRef}
             value={query}
@@ -82,7 +82,7 @@ export function DocsSearch({ onClose }: { onClose: () => void }) {
             aria-label="Search the docs"
             className="w-full bg-transparent py-4 text-sm text-silver-900 placeholder:text-silver-600 focus:outline-none"
           />
-          <kbd className="shrink-0 rounded border border-silver-200 px-1.5 py-0.5 font-mono text-[0.65rem] text-silver-600">
+          <kbd className="shrink-0 rounded border border-silver-200 px-1.5 py-0.5 font-mono text-[11px] text-silver-600">
             esc
           </kbd>
         </div>

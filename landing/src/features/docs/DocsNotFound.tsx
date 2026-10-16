@@ -19,7 +19,7 @@ export function DocsNotFound() {
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center py-16 text-center">
       <TauWatermark size={72} opacity={0.14} />
-      <h1 className="mt-6 text-2xl font-semibold text-silver-900">
+      <h1 className="display-s mt-6 text-silver-900">
         You're off the map
       </h1>
       <p className="mt-3 max-w-sm text-sm text-silver-600">
@@ -29,7 +29,7 @@ export function DocsNotFound() {
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
         <Link
           to="/docs"
-          className="rounded-lg border border-silver-200 px-4 py-2 text-silver-900 transition-colors hover:border-silver-400"
+          className="rounded-lg border border-silver-200 px-4 py-2 text-silver-900 transition-colors hover:border-line-hover"
         >
           Back to the docs
         </Link>

@@ -52,7 +52,7 @@ export function DocsToc({ entries }: { entries: TocEntry[] }) {
 
   return (
     <nav aria-label="On this page" className="sticky top-24">
-      <p className="text-xs font-medium uppercase tracking-[0.14em] text-silver-400">
+      <p className="text-xs font-medium uppercase tracking-[0.14em] text-silver-500">
         On this page
       </p>
       <ul className="mt-3 space-y-1.5 border-l border-silver-200">

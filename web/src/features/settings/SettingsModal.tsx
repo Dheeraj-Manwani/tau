@@ -1,6 +1,4 @@
 import { useLocation } from "react-router-dom";
-import { Switch } from "radix-ui";
-import { BellRingIcon, CompassIcon, Volume2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 
 import {
@@ -10,6 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/src/components/ui/dialog";
+import { Button } from "@/src/components/ui/button";
+import { Switch } from "@/src/components/ui/switch";
+import { SettingsRow } from "@/src/features/settings/SettingsRow";
 import { useSettings } from "@/src/hooks/useSettings";
 import {
   DefaultLookCard,
@@ -71,151 +72,100 @@ export function SettingsModal() {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && close()}>
-      <DialogContent className="scrollbar-thin sm:max-w-lg">
+      <DialogContent className="scrollbar-thin sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="max-w-[420px] text-[13px] text-silver-500">
             Saved to your account, except notifications, which are set per
             device.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="-mt-1">
           <StandingInstructionsCard />
           <DefaultLookCard />
 
-          <label
+          <SettingsRow
+            title="Reduce motion"
             htmlFor="reduce-motion"
-            className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 p-4"
-          >
-            <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-silver-900">
-                Reduce motion
-              </span>
-              <span className="text-xs text-silver-600">
-                Turn off animated effects like the lightning border and glitch
-                stars for a calmer interface.
-              </span>
-            </span>
+            help="Turn off animated effects like the lightning border and glitch stars for a calmer interface."
+            control={
+              <Switch
+                id="reduce-motion"
+                checked={reduceMotion}
+                onCheckedChange={setReduceMotion}
+              />
+            }
+          />
 
-            <Switch.Root
-              id="reduce-motion"
-              checked={reduceMotion}
-              onCheckedChange={setReduceMotion}
-              className="relative mt-0.5 h-5 w-9 shrink-0 cursor-pointer rounded-full bg-space-overlay ring-1 ring-silver-400/40 outline-none transition-colors data-[state=checked]:bg-brand"
-            >
-              <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-silver-900 transition-transform data-[state=checked]:translate-x-[18px] data-[state=checked]:bg-zinc-950" />
-            </Switch.Root>
-          </label>
-
-          <label
+          <SettingsRow
+            title="Desktop notifications"
             htmlFor="notify-when-ready"
-            className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 p-4"
-          >
-            <span className="flex gap-2.5">
-              <BellRingIcon className="mt-0.5 size-4 shrink-0 text-silver-600" />
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-silver-900">
-                  Desktop notifications
-                </span>
-                <span className="text-xs text-silver-600">
-                  Get a system notification when a build finishes or needs
-                  you while Tau is in the background. Keep Tau open in a tab.
-                </span>
-                {!notificationsSupported && (
-                  <span className="text-xs text-amber-400">
-                    Browser notifications are not supported here.
-                  </span>
-                )}
-                {notificationsSupported && notificationPermission === "denied" && (
-                  <span className="text-xs text-amber-400">
-                    Notifications are blocked in browser settings.
-                  </span>
-                )}
-                {notificationsSupported &&
+            help="Get a system notification when a build finishes or needs you while Tau is in the background. Keep Tau open in a tab."
+            warning={
+              !notificationsSupported
+                ? "Browser notifications are not supported here."
+                : notificationPermission === "denied"
+                  ? "Notifications are blocked in browser settings."
+                  : notifyWhenReady && notificationPermission === "default"
+                    ? "Browser permission needs to be granted again."
+                    : undefined
+            }
+            control={
+              <Switch
+                id="notify-when-ready"
+                checked={
                   notifyWhenReady &&
-                  notificationPermission === "default" && (
-                    <span className="text-xs text-amber-400">
-                      Browser permission needs to be granted again.
-                    </span>
-                  )}
-              </span>
-            </span>
+                  notificationsSupported &&
+                  notificationPermission === "granted"
+                }
+                disabled={!notificationsSupported}
+                onCheckedChange={(enabled) =>
+                  void changeReadyNotifications(enabled)
+                }
+              />
+            }
+          />
 
-            <Switch.Root
-              id="notify-when-ready"
-              checked={
-                notifyWhenReady &&
-                notificationsSupported &&
-                notificationPermission === "granted"
-              }
-              disabled={!notificationsSupported}
-              onCheckedChange={(enabled) =>
-                void changeReadyNotifications(enabled)
-              }
-              className="relative mt-0.5 h-5 w-9 shrink-0 cursor-pointer rounded-full bg-space-overlay ring-1 ring-silver-400/40 outline-none transition-colors data-[state=checked]:bg-brand disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-silver-900 transition-transform data-[state=checked]:translate-x-[18px] data-[state=checked]:bg-zinc-950" />
-            </Switch.Root>
-          </label>
-
-          <label
+          <SettingsRow
+            title="Sound"
             htmlFor="notification-sound"
-            className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 p-4"
-          >
-            <span className="flex gap-2.5">
-              <Volume2Icon className="mt-0.5 size-4 shrink-0 text-silver-600" />
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-silver-900">
-                  Sound
-                </span>
-                <span className="text-xs text-silver-600">
-                  A soft chime when a build finishes or needs you; louder when
-                  you&rsquo;re in another tab.
-                </span>
-              </span>
-            </span>
+            help={
+              <>
+                A soft chime when a build finishes or needs you; louder when
+                you&rsquo;re in another tab.
+              </>
+            }
+            control={
+              <Switch
+                id="notification-sound"
+                checked={notificationSound}
+                onCheckedChange={(enabled) => void changeSound(enabled)}
+              />
+            }
+          />
 
-            <Switch.Root
-              id="notification-sound"
-              checked={notificationSound}
-              onCheckedChange={(enabled) => void changeSound(enabled)}
-              className="relative mt-0.5 h-5 w-9 shrink-0 cursor-pointer rounded-full bg-space-overlay ring-1 ring-silver-400/40 outline-none transition-colors data-[state=checked]:bg-brand"
-            >
-              <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-silver-900 transition-transform data-[state=checked]:translate-x-[18px] data-[state=checked]:bg-zinc-950" />
-            </Switch.Root>
-          </label>
-
-          <div className="flex flex-col gap-4 rounded-xl border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <span className="flex gap-2.5">
-              <CompassIcon className="mt-0.5 size-4 shrink-0 text-silver-600" />
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-silver-900">
-                  Product tours
-                </span>
-                <span className="text-xs text-silver-600">
-                  {inProject
-                    ? "Replay a quick walkthrough of the project workspace."
-                    : "Open a project to replay its walkthroughs."}
-                </span>
-              </span>
-            </span>
-
-            <span className="flex shrink-0 gap-1.5">
-              {TOUR_IDS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  disabled={!inProject}
-                  title={TOUR_INFO[id].summary}
-                  onClick={() => requestTour(id)}
-                  className="rounded-md border border-silver-400/30 px-2.5 py-1.5 text-xs font-medium text-silver-700 transition-colors hover:border-silver-400/60 hover:text-silver-900 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {TOUR_INFO[id].short}
-                </button>
-              ))}
-            </span>
-          </div>
+          <SettingsRow
+            title="Product tours"
+            help={
+              inProject
+                ? "Replay a quick walkthrough of the project workspace."
+                : "Open a project to replay its walkthroughs."
+            }
+            className="pb-0"
+            control={TOUR_IDS.map((id) => (
+              <Button
+                key={id}
+                variant="secondary"
+                size="sm"
+                disabled={!inProject}
+                title={TOUR_INFO[id].summary}
+                onClick={() => requestTour(id)}
+              >
+                {TOUR_INFO[id].short}
+              </Button>
+            ))}
+          />
         </div>
       </DialogContent>
     </Dialog>

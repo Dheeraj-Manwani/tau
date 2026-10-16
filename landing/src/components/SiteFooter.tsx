@@ -3,22 +3,22 @@ import { SupportTauButton } from "@/src/components/SupportTauButton";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-border/50 px-6 py-2">
+    <footer className="border-t border-line px-6 py-3">
       <div className="mx-auto max-w-6xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>© {new Date().getFullYear()} Tau. All rights reserved.</span>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-silver-500">
+          <span className="font-mono text-[11px]">© {new Date().getFullYear()} Tau. All rights reserved.</span>
           <nav className="flex flex-wrap items-center gap-4">
-            <SupportTauButton className="cursor-pointer hover:text-foreground" />
-            <Link to="/pricing" className="hover:text-foreground">
+            <SupportTauButton className="cursor-pointer hover:text-silver-900" />
+            <Link to="/pricing" className="hover:text-silver-900">
               Pricing
             </Link>
-            <Link to="/privacy" className="hover:text-foreground">
+            <Link to="/privacy" className="hover:text-silver-900">
               Privacy Policy
             </Link>
-            <Link to="/terms" className="hover:text-foreground">
+            <Link to="/terms" className="hover:text-silver-900">
               Terms &amp; Cancellation
             </Link>
-            <a href="mailto:iammadfortech@gmail.com" className="hover:text-foreground">
+            <a href="mailto:iammadfortech@gmail.com" className="hover:text-silver-900">
               Contact
             </a>
           </nav>

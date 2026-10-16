@@ -35,13 +35,13 @@ function formatDate(iso: string): string {
 function Entry({ entry }: { entry: ChangelogEntry }) {
   return (
     <ScrollReveal>
-      <article className="group grid gap-x-10 gap-y-3 md:grid-cols-[9rem_minmax(0,1fr)]">
+      <article className="group grid gap-x-10 gap-y-3 border-t border-line py-12 md:grid-cols-[9rem_minmax(0,1fr)]">
         {/* Sticky only from md up: on a phone the date would pin itself over
             the prose it belongs to. */}
         <div className="md:sticky md:top-24 md:self-start">
           <time
             dateTime={entry.date}
-            className="font-mono text-xs text-silver-400"
+            className="font-mono text-xs text-silver-500"
           >
             {formatDate(entry.date)}
           </time>
@@ -50,13 +50,13 @@ function Entry({ entry }: { entry: ChangelogEntry }) {
         <div className="min-w-0">
           <h2
             id={entry.id}
-            className="scroll-mt-24 text-xl font-semibold text-silver-900"
+            className="display-heading display-s scroll-mt-24 text-silver-900"
           >
             {entry.title}
             <a
               href={`#${entry.id}`}
               aria-label={`Link to ${entry.title}`}
-              className="ml-2 inline-block align-middle text-silver-400 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+              className="ml-2 inline-block align-middle text-silver-500 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             >
               <LinkIcon className="size-3.5" />
             </a>
@@ -95,10 +95,10 @@ export function Changelog() {
   return (
     <div className="mx-auto w-full max-w-4xl px-6 py-20">
       <header>
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-blue-500">
-          Changelog
+        <p className="eyebrow font-mono text-[11px] tracking-[0.16em] text-blue-500">
+          // CHANGELOG
         </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-silver-900 sm:text-4xl">
+        <h1 className="display-heading display-l mt-3 text-silver-900">
           What shipped, and when.
         </h1>
         <p className="mt-4 max-w-2xl text-silver-600">
@@ -123,7 +123,7 @@ export function Changelog() {
       ) : entries.length === 0 ? (
         <p className="text-silver-600">Nothing here yet.</p>
       ) : (
-        <div className="flex flex-col gap-16">
+        <div className="flex flex-col border-b border-line">
           {entries.map((entry) => (
             <Entry key={entry.id} entry={entry} />
           ))}

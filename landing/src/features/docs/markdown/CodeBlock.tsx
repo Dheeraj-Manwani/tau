@@ -102,9 +102,10 @@ export function CodeBlock({ code, language, filename }: CodeBlockProps) {
   };
 
   return (
-    <div className="group relative my-6 overflow-hidden rounded-xl border border-silver-200 bg-space-void">
+    // An inset well (boards/Surfaces.dc.html): void, a hairline, r12.
+    <div className="group relative my-6 overflow-hidden rounded-lg border border-line bg-space-void">
       {filename && (
-        <div className="border-b border-silver-200 px-4 py-2 font-mono text-xs text-silver-400">
+        <div className="border-b border-line px-4 py-2 font-mono text-xs text-silver-500">
           {filename}
         </div>
       )}
@@ -114,11 +115,11 @@ export function CodeBlock({ code, language, filename }: CodeBlockProps) {
         onClick={copy}
         aria-label={copied ? "Copied" : "Copy code"}
         className={cn(
-          "absolute right-2 z-10 flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-all",
+          "absolute right-2 z-10 flex items-center gap-1 rounded-sm border bg-space-overlay px-2 py-1 text-xs transition-all",
           filename ? "top-11" : "top-2",
           copied
-            ? "border-flux/60 text-flux"
-            : "border-silver-200 text-silver-600 opacity-0 hover:text-silver-900 focus-visible:opacity-100 group-hover:opacity-100",
+            ? "border-green-400/32 text-green-400"
+            : "border-line-strong text-silver-600 opacity-0 hover:text-silver-900 focus-visible:opacity-100 group-hover:opacity-100",
         )}
       >
         {copied ? (
@@ -142,7 +143,7 @@ export function CodeBlock({ code, language, filename }: CodeBlockProps) {
           dangerouslySetInnerHTML={{ __html: html }}
         />
       ) : (
-        <pre className="overflow-x-auto p-4 font-mono text-[0.8rem] leading-relaxed text-silver-600">
+        <pre className="overflow-x-auto p-4 font-mono text-[0.8rem] leading-relaxed text-silver-900">
           <code>{code}</code>
         </pre>
       )}

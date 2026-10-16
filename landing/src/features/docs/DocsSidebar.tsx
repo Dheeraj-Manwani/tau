@@ -92,7 +92,7 @@ export function DocsSidebar({ onNavigate }: { onNavigate?: () => void }) {
                     [section.slug]: open,
                   }))
                 }
-                className="flex w-full items-center gap-1.5 rounded-md py-1.5 text-left text-xs font-medium uppercase tracking-[0.12em] text-silver-400 transition-colors hover:text-silver-900"
+                className="flex w-full items-center gap-1.5 rounded-md py-1.5 text-left text-xs font-medium uppercase tracking-[0.12em] text-silver-500 transition-colors hover:text-silver-900"
               >
                 <ChevronRightIcon
                   className={cn(

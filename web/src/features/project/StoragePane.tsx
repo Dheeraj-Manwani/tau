@@ -1,16 +1,13 @@
-import { useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   DownloadIcon,
   EyeIcon,
-  FolderIcon,
+  FileIcon,
   HardDriveIcon,
-  InfoIcon,
+  ImageIcon,
   KeyRoundIcon,
-  Loader2Icon,
-  SearchIcon,
   Trash2Icon,
-  TriangleAlertIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -18,6 +15,7 @@ import { cn } from "@/src/lib/utils";
 import { ToolPaneContent } from "./ToolPaneContent";
 import { APP_BILLING } from "@/src/lib/routes";
 import { useDebounced } from "@/src/hooks/useDebounced";
+import { Alert } from "@/src/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,16 +24,22 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogMedia,
   AlertDialogTitle,
 } from "@/src/components/ui/alert-dialog";
+import { Button } from "@/src/components/ui/button";
+import { Card } from "@/src/components/ui/card";
+import { Checkbox } from "@/src/components/ui/checkbox";
+import { EmptyState } from "@/src/components/ui/empty-state";
+import { SearchInput } from "@/src/components/ui/input";
+import { PageHeader } from "@/src/components/ui/page-header";
+import { Segmented, SegmentedItem } from "@/src/components/ui/segmented";
+import { Skeleton } from "@/src/components/ui/skeleton";
 import { errorMessage } from "@/src/features/project/secrets";
 import {
   NEARLY_FULL_PERCENT,
   canPreview,
   fetchFileUrl,
   formatSize,
-  splitKey,
   typeLabel,
   useClearPreviewFiles,
   useDeleteStorageFiles,
@@ -47,51 +51,59 @@ import {
   type StoredFile,
 } from "@/src/features/project/storage";
 
-function formatDate(iso: string): string {
+/** "2d ago" in the narrow Added column; a date once it is older than a month. */
+function formatAdded(iso: string): string {
   const ts = Date.parse(iso);
-  return ts ? new Date(ts).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+  if (!ts) return "";
+  const day = Math.floor((Date.now() - ts) / 86_400_000);
+  if (day < 1) return "today";
+  if (day < 30) return `${day}d ago`;
+  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function UsageBar({ used, quota, maxFile }: { used: number; quota: number; maxFile: number }) {
+/** The allowance meter: blue, orange once nearly full, red when full. */
+function UsageCard({ used, quota, maxFile }: { used: number; quota: number; maxFile: number }) {
   const navigate = useNavigate();
   const pct = usagePercent(used, quota);
   const nearlyFull = pct >= NEARLY_FULL_PERCENT;
   return (
-    <div className="mt-4 rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-4">
+    <Card className="flex flex-col gap-3 px-5.5 py-4.5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-sm font-medium text-[var(--silver-900)]">
-          {formatSize(used)} <span className="font-normal text-[var(--silver-600)]">of {formatSize(quota)} used</span>
+        <p className="text-sm">
+          <b className="font-mono font-semibold">{formatSize(used)}</b>{" "}
+          <span className="text-silver-600">of {formatSize(quota)} used</span>
         </p>
-        <p className="text-[11px] text-[var(--silver-600)]">
-          Across all your apps · largest file {formatSize(maxFile)}
-        </p>
+        <p className="text-xs text-silver-500">Across all your apps · largest file {formatSize(maxFile)}</p>
       </div>
       <div
-        role="progressbar"
+        role="meter"
         aria-label="Storage used"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={pct}
-        className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--space-overlay)]"
+        className="h-1.5 overflow-hidden rounded-full bg-space-raised"
       >
         <div
-          className={cn("h-full rounded-full transition-[width]", nearlyFull ? "bg-red-400" : "bg-[var(--blue-500)]")}
-          style={{ width: `${pct}%` }}
+          className={cn(
+            "h-full rounded-full transition-[width] duration-300",
+            pct >= 100 ? "bg-red-400" : nearlyFull ? "bg-orange-400" : "bg-blue-500",
+          )}
+          style={{ width: `${Math.max(pct, 1)}%` }}
         />
       </div>
       {nearlyFull && (
-        <p className="mt-3 flex flex-wrap items-center gap-x-2 text-xs text-[var(--silver-600)]">
+        <Alert
+          tone={pct >= 100 ? "danger" : "warning"}
+          action={
+            <Button variant="secondary" size="sm" onClick={() => navigate(APP_BILLING)}>
+              Get more room
+            </Button>
+          }
+        >
           {pct >= 100 ? "Your storage is full, so new uploads are refused." : "Your storage is nearly full."}
-          <button
-            type="button"
-            onClick={() => navigate(APP_BILLING)}
-            className="text-[var(--blue-500)] hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            Get more room
-          </button>
-        </p>
+        </Alert>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -118,6 +130,9 @@ async function openFile(projectId: string, env: StorageEnv, file: StoredFile, do
   }
 }
 
+const columns =
+  "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3.5 sm:grid-cols-[auto_minmax(0,1fr)_70px_90px_auto]";
+
 function FileRow({
   file,
   projectId,
@@ -125,7 +140,6 @@ function FileRow({
   selected,
   onToggle,
   onDelete,
-  deleting,
 }: {
   file: StoredFile;
   projectId: string;
@@ -133,171 +147,99 @@ function FileRow({
   selected: boolean;
   onToggle: () => void;
   onDelete: () => void;
-  deleting: boolean;
 }) {
-  const { folder, name } = splitKey(file.key);
-  const [confirming, setConfirming] = useState(false);
+  const Icon = file.contentType.startsWith("image/") ? ImageIcon : FileIcon;
   return (
-    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3 sm:grid-cols-[auto_minmax(0,1fr)_4rem_5rem_7rem_6.5rem]">
-      <input
-        type="checkbox"
-        checked={selected}
-        onChange={onToggle}
-        aria-label={`Select ${name}`}
-        className="size-4 accent-[var(--blue-500)]"
-      />
-      <div className="min-w-0">
-        <p title={file.key} className="truncate text-xs font-medium text-[var(--silver-900)]">
-          {name}
-        </p>
-        {folder && (
-          <p className="inline-flex max-w-full items-center gap-1 truncate font-mono text-[11px] text-[var(--silver-600)]">
-            <FolderIcon className="size-3 shrink-0" />
-            <span className="truncate">{folder}</span>
+    <li className={`${columns} min-h-[49px] border-t border-line px-5.5 py-2 transition-colors hover:bg-space-raised/40`}>
+      <Checkbox checked={selected} onCheckedChange={onToggle} aria-label={`Select ${file.key}`} />
+      <div className="flex min-w-0 items-center gap-3.5">
+        <span
+          title={typeLabel(file.contentType, file.key)}
+          className="grid size-7 shrink-0 place-items-center rounded-sm border border-line-strong bg-space-overlay text-silver-600"
+        >
+          <Icon className="size-3.5" />
+        </span>
+        <div className="min-w-0">
+          <p title={file.key} className="truncate font-mono text-[12.5px] text-silver-900">
+            {file.key}
           </p>
-        )}
-        <p className="truncate text-[11px] text-[var(--silver-600)] sm:hidden">
-          {formatSize(file.size)} · {formatDate(file.createdAt)}
-        </p>
+          <p className="truncate font-mono text-[11px] text-silver-500 sm:hidden">
+            {formatSize(file.size)} · {formatAdded(file.createdAt)}
+          </p>
+        </div>
       </div>
-      <span className="hidden text-[11px] text-[var(--silver-600)] sm:block">{typeLabel(file.contentType, name)}</span>
-      <span className="hidden text-right text-xs tabular-nums text-[var(--silver-600)] sm:block">{formatSize(file.size)}</span>
-      <span className="hidden text-xs text-[var(--silver-600)] sm:block">{formatDate(file.createdAt)}</span>
-
-      {confirming ? (
-        <div className="flex shrink-0 items-center justify-end gap-1">
-          <button
-            type="button"
-            onClick={() => setConfirming(false)}
-            disabled={deleting}
-            className="h-7 rounded-lg px-2 text-xs text-[var(--silver-600)] hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)] disabled:opacity-50"
+      <span className="hidden text-right font-mono text-[11.5px] text-silver-500 sm:block">{formatSize(file.size)}</span>
+      <span className="hidden text-right text-xs text-silver-500 sm:block">{formatAdded(file.createdAt)}</span>
+      <div className="flex justify-end gap-0.5">
+        {canPreview(file.contentType) && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => void openFile(projectId, env, file, false)}
+            aria-label={`Preview ${file.key}`}
           >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={deleting}
-            className="flex h-7 items-center gap-1.5 rounded-lg bg-red-500/15 px-2 text-xs font-medium text-red-400 hover:bg-red-500/25 disabled:opacity-50"
-          >
-            {deleting && <Loader2Icon className="size-3.5 animate-spin" />}
-            Delete
-          </button>
-        </div>
-      ) : (
-        <div className="flex shrink-0 items-center justify-end gap-0.5">
-          {canPreview(file.contentType) && (
-            <button
-              type="button"
-              onClick={() => void openFile(projectId, env, file, false)}
-              aria-label={`Preview ${name}`}
-              className="flex size-8 items-center justify-center rounded-lg text-[var(--silver-600)] hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
-            >
-              <EyeIcon className="size-4" />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => void openFile(projectId, env, file, true)}
-            aria-label={`Download ${name}`}
-            className="flex size-8 items-center justify-center rounded-lg text-[var(--silver-600)] hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
-          >
-            <DownloadIcon className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirming(true)}
-            aria-label={`Delete ${name}`}
-            className="flex size-8 items-center justify-center rounded-lg text-[var(--silver-600)] hover:bg-[var(--space-overlay)] hover:text-red-400"
-          >
-            <Trash2Icon className="size-4" />
-          </button>
-        </div>
-      )}
+            <EyeIcon />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => void openFile(projectId, env, file, true)}
+          aria-label={`Download ${file.key}`}
+        >
+          <DownloadIcon />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={onDelete}
+          aria-label={`Delete ${file.key}`}
+          className="hover:text-red-400"
+        >
+          <Trash2Icon />
+        </Button>
+      </div>
     </li>
   );
 }
 
-function ClearPreviewDialog({
-  count,
+function ConfirmDialog({
   open,
   onOpenChange,
-  projectId,
-}: {
-  count: number;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  projectId: string;
-}) {
-  const clear = useClearPreviewFiles(projectId);
-  const handle = (event: MouseEvent) => {
-    event.preventDefault();
-    clear.mutate(undefined, { onSettled: () => onOpenChange(false) });
-  };
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent size="sm" className="border-silver-200 bg-space-surface">
-        <AlertDialogHeader>
-          <AlertDialogMedia className="bg-red-500/10 text-red-400">
-            <Trash2Icon />
-          </AlertDialogMedia>
-          <AlertDialogTitle className="text-silver-900">Clear preview files?</AlertDialogTitle>
-          <AlertDialogDescription className="text-silver-600">
-            {count === 1 ? "The 1 file" : `All ${count} files`} uploaded while testing the app in the preview will be
-            permanently deleted. Files on your deployed app are not touched.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="border-t border-border pt-4">
-          <AlertDialogCancel variant="outline" className="border-silver-200 bg-transparent text-silver-600 hover:bg-space-overlay hover:text-silver-900">
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction onClick={handle} disabled={clear.isPending} className="bg-red-500/15 text-red-400 hover:bg-red-500/25">
-            {clear.isPending ? "Clearing…" : "Clear files"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
-function RotateKeyDialog({
-  open,
-  onOpenChange,
-  projectId,
-  env,
+  title,
+  children,
+  action,
+  pending,
+  onConfirm,
+  destructive = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId: string;
-  env: StorageEnv;
+  title: string;
+  children: ReactNode;
+  action: string;
+  pending: boolean;
+  onConfirm: () => void;
+  destructive?: boolean;
 }) {
-  const rotate = useRotateStorageKey(projectId, env);
-  const handle = (event: MouseEvent) => {
-    event.preventDefault();
-    rotate.mutate(undefined, { onSettled: () => onOpenChange(false) });
-  };
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent size="sm" className="border-silver-200 bg-space-surface">
+      <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogMedia className="bg-[var(--blue-500)]/10 text-[var(--blue-500)]">
-            <KeyRoundIcon />
-          </AlertDialogMedia>
-          <AlertDialogTitle className="text-silver-900">Replace the storage key?</AlertDialogTitle>
-          <AlertDialogDescription className="text-silver-600">
-            {env === "LIVE"
-              ? "Your deployed app gets a new key within a few seconds, without being rebuilt. "
-              : "Your app gets a new key and its server restarts to pick it up. "}
-            The old key keeps working for 24 hours, then stops. Do this if you think the key has leaked. Your files are
-            not touched.
-          </AlertDialogDescription>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{children}</AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="border-t border-border pt-4">
-          <AlertDialogCancel variant="outline" className="border-silver-200 bg-transparent text-silver-600 hover:bg-space-overlay hover:text-silver-900">
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction onClick={handle} disabled={rotate.isPending}>
-            {rotate.isPending ? "Replacing…" : "Replace key"}
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant={destructive ? "destructive-solid" : "primary"}
+            disabled={pending}
+            onClick={(event: MouseEvent) => {
+              event.preventDefault();
+              onConfirm();
+            }}
+          >
+            {pending ? `${action}…` : action}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -306,9 +248,10 @@ function RotateKeyDialog({
 }
 
 const EMPTY_KEYS: Set<string> = new Set();
-const ENV_LABEL: Record<StorageEnv, string> = { PREVIEW: "Preview", LIVE: "Live" };
+const ENV_LABEL: Record<StorageEnv, string> = { PREVIEW: "Preview", LIVE: "Production" };
 
-/** Tools → Storage: the files this app has stored, with usage against the allowance. */
+/** Tools → Storage (boards/Workspace-Storage.dc.html): the files this app has
+ *  stored, with usage against the allowance. */
 export function StoragePane({ projectId }: { projectId: string }) {
   const overview = useProjectStorage(projectId);
   const [params] = useSearchParams();
@@ -325,7 +268,7 @@ export function StoragePane({ projectId }: { projectId: string }) {
     setPick((p) => ({ scope, keys: update(p.scope === scope ? p.keys : EMPTY_KEYS) }));
   const [clearing, setClearing] = useState(false);
   const [rotating, setRotating] = useState(false);
-  const [deletingKeys, setDeletingKeys] = useState<Set<string>>(new Set());
+  const [pendingKeys, setPendingKeys] = useState<string[] | null>(null);
 
   const data = overview.data;
   const hasFiles = (data?.environments ?? []).some((e) => e.fileCount > 0);
@@ -333,18 +276,19 @@ export function StoragePane({ projectId }: { projectId: string }) {
   const showFiles = Boolean(data && (data.enabled || hasFiles));
   const files = useStorageFiles(projectId, env, prefix, showFiles);
   const del = useDeleteStorageFiles(projectId, env);
+  const clear = useClearPreviewFiles(projectId);
+  const rotate = useRotateStorageKey(projectId, env);
 
   const rows = useMemo(() => files.data?.pages.flatMap((p) => p.files) ?? [], [files.data]);
   const current = data?.environments.find((e) => e.env === env);
   const previewCount = data?.environments.find((e) => e.env === "PREVIEW")?.fileCount ?? 0;
 
   const remove = (keys: string[]) => {
-    setDeletingKeys(new Set(keys));
     del.mutate(keys, {
       onSuccess: () => {
         setSelected((s) => new Set([...s].filter((k) => !keys.includes(k))));
       },
-      onSettled: () => setDeletingKeys(new Set()),
+      onSettled: () => setPendingKeys(null),
     });
   };
 
@@ -357,177 +301,165 @@ export function StoragePane({ projectId }: { projectId: string }) {
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.key));
 
   return (
-    <div className="h-full overflow-y-auto bg-[var(--space-void)] [scrollbar-gutter:stable]">
-      <ToolPaneContent>
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-medium text-[var(--silver-900)]">Storage</h2>
-          <div className="flex shrink-0 items-center gap-1">
-            {data?.enabled && (
-              <button
-                type="button"
-                onClick={() => setRotating(true)}
-                className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
-              >
-                <KeyRoundIcon className="size-3.5" />
-                Replace key
-              </button>
-            )}
-          {env === "PREVIEW" && previewCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setClearing(true)}
-              className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3 text-xs text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-red-400"
-            >
-              <Trash2Icon className="size-3.5" />
-              Clear preview files
-            </button>
-          )}
-          </div>
-        </div>
+    <div className="h-full overflow-y-auto bg-space-void [scrollbar-gutter:stable]">
+      <ToolPaneContent className="flex flex-col gap-[22px]">
+        <PageHeader
+          title="Storage"
+          description="Files your app keeps for its users."
+          actions={
+            <>
+              {data?.enabled && (
+                <Button variant="secondary" onClick={() => setRotating(true)}>
+                  <KeyRoundIcon />
+                  Replace key
+                </Button>
+              )}
+              {env === "PREVIEW" && previewCount > 0 && (
+                <Button variant="destructive" onClick={() => setClearing(true)}>
+                  <Trash2Icon />
+                  Clear preview files
+                </Button>
+              )}
+            </>
+          }
+        />
 
         {overview.isLoading ? (
-          <div role="status" aria-label="Loading storage" className="mt-8 flex justify-center text-[var(--silver-600)]">
-            <Loader2Icon className="size-4 animate-spin" />
-          </div>
+          <Card className="flex flex-col gap-3 px-5.5 py-4.5" aria-busy="true" aria-label="Loading storage">
+            <Skeleton className="h-3.5 w-48" />
+            <Skeleton className="h-1.5 w-full" />
+          </Card>
         ) : overview.isError || !data ? (
-          <div role="alert" className="mt-8 text-center text-xs text-[var(--silver-600)]">
-            <p>Couldn&apos;t load storage.</p>
-            <button type="button" onClick={() => void overview.refetch()} className="mt-2 text-[var(--blue-500)] hover:underline">
-              Try again
-            </button>
-          </div>
+          <Alert
+            tone="danger"
+            action={
+              <Button variant="secondary" size="sm" onClick={() => void overview.refetch()}>
+                Try again
+              </Button>
+            }
+          >
+            Couldn&apos;t load storage.
+          </Alert>
         ) : (
           <>
-            <p className="mt-4 flex items-start gap-2 rounded-lg border border-[var(--blue-500)]/25 bg-[var(--blue-500)]/10 p-3 text-xs leading-relaxed text-[var(--silver-900)]">
-              <InfoIcon className="mt-0.5 size-3.5 shrink-0 text-[var(--blue-500)]" />
-              <span>
-                Files your app keeps for its users. They stay when the preview is rebuilt, and only your app&apos;s
-                server can read them. Files uploaded while testing in the preview are separate from the ones on your
-                deployed app.
-              </span>
-            </p>
+            <Alert tone="info">
+              Files your app keeps for its users. They stay when the preview is rebuilt, and only your app&apos;s
+              server can read them. Files uploaded while testing in the preview are separate from the ones on your
+              deployed app.
+            </Alert>
 
             {data.suspended && (
-              <p role="alert" className="mt-4 flex items-start gap-2 rounded-lg border border-red-500/25 bg-red-500/10 p-3 text-xs leading-relaxed text-[var(--silver-900)]">
-                <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0 text-red-400" />
-                <span>
-                  Storage for this app has been suspended by tau. Your files are kept, but nothing can be uploaded or
-                  opened until it is lifted.
-                </span>
-              </p>
+              <Alert tone="danger">
+                Storage for this app has been suspended by tau. Your files are kept, but nothing can be uploaded or
+                opened until it is lifted.
+              </Alert>
             )}
 
-            <UsageBar used={data.usage.usedBytes} quota={data.usage.quotaBytes} maxFile={data.usage.maxFileBytes} />
+            <UsageCard used={data.usage.usedBytes} quota={data.usage.quotaBytes} maxFile={data.usage.maxFileBytes} />
 
             {!showFiles ? (
-              <div className="mt-6 rounded-xl border border-dashed border-[var(--silver-200)] px-4 py-10 text-center">
-                <HardDriveIcon className="mx-auto mb-3 size-6 text-[var(--silver-600)]" />
-                <p className="text-sm font-medium text-[var(--silver-900)]">This app doesn&apos;t store files</p>
-                <p className="mx-auto mt-1 max-w-sm text-xs text-[var(--silver-600)]">
-                  To let people upload pictures or documents, ask tau for it in the chat, for example &ldquo;let users
-                  upload a profile picture&rdquo;.
-                </p>
-              </div>
+              <EmptyState
+                icon={HardDriveIcon}
+                title="This app doesn't store files"
+                description="To let people upload pictures or documents, ask tau for it in the chat, for example “let users upload a profile picture”."
+              />
             ) : (
               <>
-                {data.environments.length > 1 && (
-                  <div role="tablist" aria-label="Environment" className="mt-5 flex gap-1">
-                    {data.environments.map((e) => (
-                      <button
-                        key={e.env}
-                        type="button"
-                        role="tab"
-                        aria-selected={env === e.env}
-                        onClick={() => setEnv(e.env)}
-                        className={cn(
-                          "h-8 rounded-lg px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-ring",
-                          env === e.env
-                            ? "bg-[var(--space-overlay)] text-[var(--silver-900)]"
-                            : "text-[var(--silver-600)] hover:bg-[var(--space-overlay)]/60 hover:text-[var(--silver-900)]",
-                        )}
-                      >
-                        {ENV_LABEL[e.env]} · {e.fileCount}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <div className="relative mt-5">
-                  <input
-                    type="search"
-                    aria-label="Filter files by folder or name prefix"
-                    placeholder="Filter by folder, e.g. users/42/"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="h-9 w-full rounded-lg border border-[var(--silver-200)] bg-[var(--space-surface)] pr-10 pl-3 text-xs text-[var(--silver-900)] placeholder:text-[var(--silver-600)] focus-visible:outline-2 focus-visible:outline-ring"
-                  />
-                  <SearchIcon className="pointer-events-none absolute top-2.5 right-3 size-4 text-[var(--silver-600)]" />
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  {data.environments.length > 1 ? (
+                    <Segmented
+                      size="sm"
+                      value={env}
+                      onValueChange={(v) => setEnv(v as StorageEnv)}
+                      aria-label="Environment"
+                    >
+                      {data.environments.map((e) => (
+                        <SegmentedItem key={e.env} value={e.env}>
+                          {ENV_LABEL[e.env]}
+                        </SegmentedItem>
+                      ))}
+                    </Segmented>
+                  ) : (
+                    <span className="lab">{ENV_LABEL[env]}</span>
+                  )}
+                  {current && (
+                    <span className="text-[12.5px] text-silver-500">
+                      {current.fileCount} {current.fileCount === 1 ? "file" : "files"} ·{" "}
+                      <span className="font-mono">{formatSize(current.usedBytes)}</span>
+                    </span>
+                  )}
                 </div>
 
+                <SearchInput
+                  aria-label="Filter files by folder or name prefix"
+                  placeholder="Filter by folder, e.g. users/42/"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+
                 {selected.size > 0 && (
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-[var(--space-overlay)] px-3 py-2">
-                    <span className="text-xs text-[var(--silver-900)]">{selected.size} selected</span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setSelected(() => new Set())}
-                        className="h-7 rounded-lg px-2 text-xs text-[var(--silver-600)] hover:text-[var(--silver-900)]"
-                      >
+                  <div className="flex items-center justify-between gap-3 rounded-md border border-line bg-space-surface py-2 pr-2 pl-4">
+                    <span className="text-[13px] text-silver-900">{selected.size} selected</span>
+                    <div className="flex items-center gap-1.5">
+                      <Button variant="ghost" size="sm" onClick={() => setSelected(() => new Set())}>
                         Clear selection
-                      </button>
-                      <button
-                        type="button"
-                        disabled={del.isPending}
-                        onClick={() => remove([...selected])}
-                        className="flex h-7 items-center gap-1.5 rounded-lg bg-red-500/15 px-2 text-xs font-medium text-red-400 hover:bg-red-500/25 disabled:opacity-50"
-                      >
-                        {del.isPending && <Loader2Icon className="size-3.5 animate-spin" />}
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => setPendingKeys([...selected])}>
+                        <Trash2Icon />
                         Delete selected
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
 
                 {files.isLoading ? (
-                  <div role="status" aria-label="Loading files" className="mt-6 flex justify-center text-[var(--silver-600)]">
-                    <Loader2Icon className="size-4 animate-spin" />
-                  </div>
+                  <Card className="overflow-hidden" aria-busy="true" aria-label="Loading files">
+                    {Array.from({ length: 3 }, (_, i) => (
+                      <div key={i} className="flex h-[49px] items-center gap-4 border-t border-line px-5.5 first:border-t-0">
+                        <Skeleton className="size-7" />
+                        <Skeleton className="h-3 w-56" />
+                      </div>
+                    ))}
+                  </Card>
                 ) : files.isError ? (
-                  <div role="alert" className="mt-6 text-center text-xs text-[var(--silver-600)]">
-                    <p>Couldn&apos;t load the files.</p>
-                    <button type="button" onClick={() => void files.refetch()} className="mt-2 text-[var(--blue-500)] hover:underline">
-                      Try again
-                    </button>
-                  </div>
+                  <Alert
+                    tone="danger"
+                    action={
+                      <Button variant="secondary" size="sm" onClick={() => void files.refetch()}>
+                        Try again
+                      </Button>
+                    }
+                  >
+                    Couldn&apos;t load the files.
+                  </Alert>
                 ) : rows.length === 0 ? (
-                  <div className="mt-6 rounded-xl border border-dashed border-[var(--silver-200)] px-4 py-10 text-center">
-                    <HardDriveIcon className="mx-auto mb-3 size-6 text-[var(--silver-600)]" />
-                    <p className="text-sm font-medium text-[var(--silver-900)]">{prefix ? "No matching files" : "No files yet"}</p>
-                    <p className="mt-1 text-xs text-[var(--silver-600)]">
-                      {prefix
+                  <EmptyState
+                    icon={HardDriveIcon}
+                    title={prefix ? "No matching files" : "No files yet"}
+                    description={
+                      prefix
                         ? "Try a different folder."
                         : env === "PREVIEW"
                           ? "Files uploaded while you test the app will show up here."
-                          : "Files uploaded on your deployed app will show up here."}
-                    </p>
-                  </div>
+                          : "Files uploaded on your deployed app will show up here."
+                    }
+                  />
                 ) : (
-                  <div className="mt-5 overflow-hidden rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)]">
-                    <div className="hidden grid-cols-[auto_minmax(0,1fr)_4rem_5rem_7rem_6.5rem] items-center gap-x-3 border-b border-[var(--silver-200)] px-4 py-2 text-[11px] font-medium uppercase tracking-wider text-[var(--silver-600)] sm:grid">
-                      <input
-                        type="checkbox"
+                  <Card className="overflow-hidden">
+                    <div className={`${columns} h-[38px] bg-space-overlay px-5.5`}>
+                      <Checkbox
                         checked={allSelected}
-                        onChange={() => setSelected(() => (allSelected ? new Set() : new Set(rows.map((r) => r.key))))}
+                        onCheckedChange={() =>
+                          setSelected(() => (allSelected ? new Set() : new Set(rows.map((r) => r.key))))
+                        }
                         aria-label="Select all files shown"
-                        className="size-4 accent-[var(--blue-500)]"
                       />
-                      <span>File</span>
-                      <span>Type</span>
-                      <span className="text-right">Size</span>
-                      <span>Uploaded</span>
+                      <span className="lab pl-[42px]">Name</span>
+                      <span className="lab hidden text-right sm:block">Size</span>
+                      <span className="lab hidden text-right sm:block">Added</span>
                       <span />
                     </div>
-                    <ul className="divide-y divide-[var(--silver-200)]">
+                    <ul aria-label="Files">
                       {rows.map((f) => (
                         <FileRow
                           key={f.id}
@@ -536,39 +468,75 @@ export function StoragePane({ projectId }: { projectId: string }) {
                           env={env}
                           selected={selected.has(f.key)}
                           onToggle={() => toggle(f.key)}
-                          onDelete={() => remove([f.key])}
-                          deleting={del.isPending && deletingKeys.has(f.key)}
+                          onDelete={() => setPendingKeys([f.key])}
                         />
                       ))}
                     </ul>
                     {files.hasNextPage && (
-                      <div className="border-t border-[var(--silver-200)] p-3 text-center">
-                        <button
-                          type="button"
-                          disabled={files.isFetchingNextPage}
+                      <div className="flex justify-center border-t border-line p-3">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          loading={files.isFetchingNextPage}
                           onClick={() => void files.fetchNextPage()}
-                          className="inline-flex h-8 items-center gap-2 rounded-lg px-3 text-xs text-[var(--silver-600)] hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)] disabled:opacity-50"
                         >
-                          {files.isFetchingNextPage && <Loader2Icon className="size-3.5 animate-spin" />}
                           Show more
-                        </button>
+                        </Button>
                       </div>
                     )}
-                  </div>
-                )}
-                {current && rows.length > 0 && (
-                  <p className="mt-3 text-[11px] text-[var(--silver-600)]">
-                    {current.fileCount} {current.fileCount === 1 ? "file" : "files"} · {formatSize(current.usedBytes)} in{" "}
-                    {ENV_LABEL[env].toLowerCase()}
-                  </p>
+                  </Card>
                 )}
               </>
             )}
           </>
         )}
       </ToolPaneContent>
-      <RotateKeyDialog open={rotating} onOpenChange={setRotating} projectId={projectId} env={env} />
-      <ClearPreviewDialog count={previewCount} open={clearing} onOpenChange={setClearing} projectId={projectId} />
+
+      <ConfirmDialog
+        open={pendingKeys !== null}
+        onOpenChange={(open) => !open && setPendingKeys(null)}
+        title={pendingKeys?.length === 1 ? "Delete file?" : `Delete ${pendingKeys?.length ?? 0} files?`}
+        action="Delete"
+        pending={del.isPending}
+        onConfirm={() => pendingKeys && remove(pendingKeys)}
+      >
+        {pendingKeys?.length === 1 ? (
+          <>
+            <span className="font-mono text-silver-900">{pendingKeys[0]}</span> is deleted from{" "}
+            {ENV_LABEL[env].toLowerCase()} storage. This can&apos;t be undone.
+          </>
+        ) : (
+          <>The selected files are deleted from {ENV_LABEL[env].toLowerCase()} storage. This can&apos;t be undone.</>
+        )}
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={clearing}
+        onOpenChange={setClearing}
+        title="Clear preview files?"
+        action="Clear files"
+        pending={clear.isPending}
+        onConfirm={() => clear.mutate(undefined, { onSettled: () => setClearing(false) })}
+      >
+        {previewCount === 1 ? "The 1 file" : `All ${previewCount} files`} uploaded while testing the app in the
+        preview will be permanently deleted. Files on your deployed app are not touched.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={rotating}
+        onOpenChange={setRotating}
+        title="Replace the storage key?"
+        action="Replace key"
+        destructive={false}
+        pending={rotate.isPending}
+        onConfirm={() => rotate.mutate(undefined, { onSettled: () => setRotating(false) })}
+      >
+        {env === "LIVE"
+          ? "Your deployed app gets a new key within a few seconds, without being rebuilt. "
+          : "Your app gets a new key and its server restarts to pick it up. "}
+        The old key keeps working for 24 hours, then stops. Do this if you think the key has leaked. Your files are
+        not touched.
+      </ConfirmDialog>
     </div>
   );
 }

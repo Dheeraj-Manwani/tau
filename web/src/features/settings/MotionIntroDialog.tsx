@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Checkbox } from "radix-ui";
-import { CheckIcon } from "lucide-react";
 
 import {
   Dialog,
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/src/components/ui/dialog";
+import { Button } from "@/src/components/ui/button";
+import { Switch } from "@/src/components/ui/switch";
 import { useSettings } from "@/src/hooks/useSettings";
+import { SettingsRow } from "@/src/features/settings/SettingsRow";
 
 /**
  * One-time "reduce motion" offer on a user's first visit.
@@ -35,59 +37,36 @@ export function MotionIntroDialog() {
           markMotionIntroSeen(reduce ? { reduceMotion: true } : undefined);
       }}
     >
-      <DialogContent
-        showCloseButton={false}
-        className="gap-6 border border-zinc-800 bg-zinc-950 p-6 text-zinc-100 sm:max-w-sm"
-      >
-        <DialogHeader className="items-center gap-3 pr-0 text-center">
-          {/* <div aria-hidden="true" className="flex size-12 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900">
-            <SparklesIcon className="size-5 text-zinc-200" />
-          </div> */}
-          <DialogTitle className="text-lg leading-snug">
-            Make tau comfortable for you
-          </DialogTitle>
-          <DialogDescription className="text-zinc-400">
+      <DialogContent showCloseButton={false} className="sm:max-w-[440px]">
+        <DialogHeader className="pr-0">
+          <DialogTitle>Make tau comfortable</DialogTitle>
+          <DialogDescription>
             Prefer a calmer interface? Reduce animations and visual effects.
           </DialogDescription>
         </DialogHeader>
 
-        <label
+        <SettingsRow
+          title="Reduce motion"
           htmlFor="motion-intro-reduce"
-          className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 transition-colors hover:bg-zinc-900 has-[[data-state=checked]]:border-zinc-500"
-        >
-          <span className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-zinc-100">
-              Reduce motion
-            </span>
-            <span className="text-xs leading-relaxed text-zinc-400">
-              Turn off lightning borders and animated stars.
-            </span>
-          </span>
-          <Checkbox.Root
-            id="motion-intro-reduce"
-            checked={reduce}
-            onCheckedChange={(v) => setReduce(v === true)}
-            className="flex size-5 shrink-0 items-center justify-center rounded-md border border-zinc-600 bg-zinc-950 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 data-[state=checked]:border-zinc-100 data-[state=checked]:bg-zinc-100"
-          >
-            <Checkbox.Indicator>
-              <CheckIcon className="size-3.5 text-zinc-950" />
-            </Checkbox.Indicator>
-          </Checkbox.Root>
-        </label>
+          help="Turn off the rain, lightning and glitch effects."
+          className="-mt-1 pb-0"
+          control={
+            <Switch
+              id="motion-intro-reduce"
+              checked={reduce}
+              onCheckedChange={setReduce}
+            />
+          }
+        />
 
-        <div className="space-y-3">
-          <DialogClose asChild>
-            <button
-              type="button"
-              className="h-11 w-full cursor-pointer rounded-lg bg-zinc-100 px-4 text-sm font-medium text-zinc-950 outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
-            >
-              Continue
-            </button>
-          </DialogClose>
-          <p className="text-center text-xs leading-relaxed text-zinc-500">
+        <DialogFooter className="items-center sm:justify-between">
+          <p className="text-xs text-silver-500">
             You can change this anytime in Settings.
           </p>
-        </div>
+          <DialogClose asChild>
+            <Button>Continue</Button>
+          </DialogClose>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

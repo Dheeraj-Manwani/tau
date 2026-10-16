@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AlertTriangleIcon, ArrowLeftIcon, Wallet } from "lucide-react";
+import { ArrowLeftIcon, Wallet } from "lucide-react";
 
 import { env } from "@/src/lib/env";
+import { Alert } from "@/src/components/ui/alert";
+import { StatusDot } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { celebrateSuccess } from "@/src/lib/confetti";
@@ -91,7 +93,7 @@ export default function CheckoutPage() {
       name: "Tau",
       description: credits ? `${credits} credits` : "Credit top-up",
       prefill: email ? { email } : undefined,
-      theme: { color: "#6366f1" },
+      theme: { color: "#60a5fa" },
       handler: () => {
         celebrateSuccess("Payment received! Your credits will appear shortly.");
         setDone("success");
@@ -114,47 +116,49 @@ export default function CheckoutPage() {
   }, [open]);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center px-6 text-center">
-      <Wallet className="size-6 text-indigo-400" />
-      <h1 className="mt-3 text-lg font-semibold">
+    // A focused purchase (tier C): one card, one action, nothing decorative.
+    <div className="flex min-h-dvh items-center justify-center px-4">
+      <div className="flex w-full max-w-sm flex-col items-center rounded-lg border border-line bg-space-surface p-8 text-center">
+      <span className="grid size-10 place-items-center rounded-md border border-line-strong bg-space-overlay text-silver-600">
+        <Wallet className="size-4" />
+      </span>
+      <h1 className="display-s mt-4">
         {credits ? `${credits} credits` : "Credit top-up"}
       </h1>
 
       {error ? (
         <>
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-red-400">
-            <AlertTriangleIcon className="size-3.5 shrink-0" />
+          <Alert tone="danger" className="mt-4 w-full text-left">
             {error}
-          </p>
+          </Alert>
           <div className="mt-5 flex w-full flex-col gap-2">
             <Button onClick={() => void open()}>Try again</Button>
             <Button variant="ghost" onClick={() => returnToApp("failed")}>
-              <ArrowLeftIcon className="size-3.5" />
+              <ArrowLeftIcon />
               Back to the app
             </Button>
           </div>
         </>
       ) : done ? (
         <>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <Alert tone={done === "success" ? "success" : "info"} className="mt-4 w-full text-left">
             {done === "success"
               ? "Payment received. Returning to the app: your credits will appear in a moment."
               : "Checkout cancelled."}
-          </p>
+          </Alert>
           {/* The deep link normally fires on its own; this is the manual escape
               hatch for browsers that block a programmatic scheme navigation. */}
-          <a
-            href={`${RETURN_URL}?status=${done}`}
-            className="mt-5 text-sm underline hover:text-foreground"
-          >
-            Back to the app
-          </a>
+          <Button variant="secondary" asChild className="mt-5 w-full">
+            <a href={`${RETURN_URL}?status=${done}`}>Back to the app</a>
+          </Button>
         </>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 flex items-center gap-2 text-sm text-silver-500">
+          <StatusDot tone="deploying" />
           Opening secure checkout…
         </p>
       )}
+      </div>
     </div>
   );
 }

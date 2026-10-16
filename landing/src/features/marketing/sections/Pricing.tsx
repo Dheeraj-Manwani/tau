@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
-import { CheckCircleIcon } from "lucide-react";
+import { CheckIcon, ZapIcon } from "lucide-react";
 
 import { Button } from "@/src/components/ui/button";
 import { cn } from "@/src/lib/utils";
+import { APP_BILLING, appPath } from "@/src/lib/routes";
 import {
   CREDIT_PACKS,
   FREE_MAX_PROJECTS,
@@ -94,26 +95,26 @@ export function PlanCard({
   highlight?: boolean;
 }) {
   return (
+    // The same card as the app's Billing page (boards/Billing.dc.html): one
+    // surface and a hairline. PRO adds the orange badge and the slow sheen,
+    // the band's one loop; its CTA is the orange Upgrade, as in the app.
     <div
       className={cn(
-        "tier-card flex cursor-default flex-col gap-5",
-        highlight && "max-tier",
+        "tier-card relative flex flex-col gap-5",
+        highlight && "max-tier conic-sheen overflow-hidden",
       )}
     >
-      {/* storm.css's `@media (max-width: 760px) .tier-top { flex-direction: row }`
-          was tuned for a short mono tag next to the name, not a full sentence -
-          force column at every width so our longer description never shares a
-          row with the name/badge. */}
-      <div className="tier-top flex-col! items-stretch! justify-start!">
+      <div className="flex flex-col gap-2.5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="display-heading text-silver-900">{name}</h3>
           {badge && (
-            <span className="mt-1 shrink-0 rounded-full bg-blue-500/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-300">
+            <span className="mt-1 inline-flex h-5 shrink-0 items-center gap-1.5 rounded-xs border border-orange-400 bg-orange-400 px-2 text-[11px] font-semibold text-orange-ink">
+              <ZapIcon className="size-3" />
               {badge}
             </span>
           )}
         </div>
-        <p className="mono">{description}</p>
+        <p className="text-[13px] leading-relaxed text-silver-500">{description}</p>
       </div>
 
       <div className="tier-stats">
@@ -129,19 +130,19 @@ export function PlanCard({
 
       <CreditMeter lit={litSegments} />
 
-      <ul className="flex-1 space-y-2.5 text-sm">
+      <ul className="flex-1 space-y-2.5 text-[13.5px]">
         {features.map((f) => (
-          <li key={f} className="flex items-start gap-2">
-            <CheckCircleIcon className="mt-0.5 size-4 shrink-0 text-blue-400" />
-            <span className="text-silver-900/80">{f}</span>
+          <li key={f} className="flex items-start gap-2.5">
+            <CheckIcon className="mt-0.5 size-4 shrink-0 text-green-400" />
+            <span className="text-silver-900">{f}</span>
           </li>
         ))}
       </ul>
 
       <div className="tier-bottom items-center">
-        <span className="text-silver-600">{bestFor}</span>
-        <Button asChild size="sm" variant={highlight ? "default" : "outline"}>
-          <Link to={ctaHref}>{cta}</Link>
+        <span className="text-[13px] text-silver-500">{bestFor}</span>
+        <Button asChild variant={highlight ? "upgrade" : "secondary"}>
+          <a href={ctaHref}>{cta}</a>
         </Button>
       </div>
     </div>
@@ -166,7 +167,7 @@ export function PricingSection() {
 
       <div className="mt-14 grid gap-6 lg:grid-cols-2">
         <PlanCard
-          name="FREE"
+          name="Free"
           description="For turning your first few ideas into real apps."
           price="₹0"
           period="forever"
@@ -174,12 +175,12 @@ export function PricingSection() {
           litSegments={litSegmentsFor(FREE_SIGNUP_CREDITS)}
           features={FREE_FEATURES}
           bestFor="For a handful of real projects"
-          cta="Open Tau"
-          ctaHref="/pricing"
+          cta="Start free"
+          ctaHref={appPath()}
         />
         <PlanCard
-          name="PRO"
-          badge="Most picked"
+          name="Pro"
+          badge="PRO"
           description="For people who build often and want more room to run."
           price={`₹${PRO_PRICE_INR}`}
           period="/ month"
@@ -187,8 +188,8 @@ export function PricingSection() {
           litSegments={litSegmentsFor(PRO_MONTHLY_CREDITS)}
           features={PRO_FEATURES}
           bestFor="For builders who ship every week"
-          cta="Upgrade to PRO"
-          ctaHref="/pricing"
+          cta="Upgrade to Pro"
+          ctaHref={APP_BILLING}
           highlight
         />
       </div>
@@ -197,9 +198,9 @@ export function PricingSection() {
         <p className="mono text-silver-600">
           Top-ups from {CREDIT_PACKS[0]!.credits} credits · ₹{CREDIT_PACKS[0]!.inr}
         </p>
-        <Link className="outline-link" to="/pricing">
-          See full pricing →
-        </Link>
+        <Button asChild variant="secondary">
+          <Link to="/pricing">See full pricing →</Link>
+        </Button>
       </div>
     </section>
   );

@@ -6,7 +6,6 @@ import {
   ImageUpIcon,
   LoaderCircleIcon,
   MoonIcon,
-  SearchIcon,
   SparklesIcon,
   SunIcon,
   TriangleAlertIcon,
@@ -15,6 +14,10 @@ import {
 import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
+import { Button } from "@/src/components/ui/button";
+import { SearchInput } from "@/src/components/ui/input";
+import { Skeleton } from "@/src/components/ui/skeleton";
+import { fieldClass } from "@/src/components/ui/styles";
 import { ApiError } from "@/src/lib/api-client";
 import {
   MAX_REFERENCE_IMAGE_BYTES,
@@ -54,6 +57,20 @@ const FEELS: { key: FeelPreset; label: string }[] = [
   { key: "bold", label: "Bold" },
 ];
 
+/** While the catalog loads: the picker's shape, not a spinner (plan §4.3). */
+export function PickerSkeleton() {
+  return (
+    <div className="space-y-3" aria-label="Loading styles" role="status">
+      <Skeleton className="h-10 w-full rounded-md" />
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="aspect-[8/6] rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Section({
   title,
   hint,
@@ -64,19 +81,17 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-2">
+    <section className="space-y-2.5">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-silver-900">
-          {title}
-        </h3>
-        {hint && <span className="text-[11px] text-silver-600">{hint}</span>}
+        <h3 className="lab">{title}</h3>
+        {hint && <span className="min-w-0 truncate text-xs text-silver-500">{hint}</span>}
       </div>
       {children}
     </section>
   );
 }
 
-/** A small rounded choice; the selected one is filled the way the effort toggle's is. */
+/** A small choice; chosen is a blue edge and a 12% blue tint, like a choice card. */
 function Chip({
   selected,
   onClick,
@@ -95,10 +110,10 @@ function Chip({
       onClick={onClick}
       title={title}
       className={cn(
-        "flex items-center gap-1.5 rounded-[7px] border px-2.5 py-1 text-xs font-medium transition-colors",
+        "flex h-7 cursor-pointer items-center gap-1.5 rounded-sm border px-2.5 text-xs font-medium transition-colors duration-150",
         selected
-          ? "border-blue-500/50 bg-blue-500/20 text-blue-300"
-          : "border-silver-400/30 text-silver-600 hover:bg-space-overlay hover:text-silver-900",
+          ? "border-blue-500 bg-blue-500/12 text-silver-900"
+          : "border-line-strong bg-space-surface text-silver-600 hover:border-line-hover hover:text-silver-900",
       )}
     >
       {children}
@@ -122,10 +137,10 @@ function StyleCard({
       onClick={onSelect}
       title={`${style.look} Suits: ${style.suits}`}
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-lg border text-left transition-colors",
+        "group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border text-left transition-colors duration-150",
         selected
-          ? "border-blue-500 ring-2 ring-blue-500/30"
-          : "border-silver-400/30 hover:border-silver-600/60",
+          ? "border-blue-500 bg-blue-500/12"
+          : "border-line bg-space-surface hover:border-line-hover",
       )}
     >
       {/* The background is the style's own page colour, so a thumbnail that is
@@ -144,26 +159,26 @@ function StyleCard({
           }}
         />
       </div>
-      <div className="flex flex-1 items-start justify-between gap-2 border-t border-silver-400/20 px-2.5 py-1.5">
+      <div className="flex flex-1 items-start justify-between gap-2 border-t border-line px-3 py-2">
         <span className="min-w-0">
-          <span className="block truncate text-xs font-semibold text-silver-900">
+          <span className="block truncate text-[12.5px] font-semibold text-silver-900">
             {style.name}
           </span>
           {/* The name people may know it by, where tau's is different. */}
           {style.aka?.[0] && (
-            <span className="block truncate text-[10px] text-silver-600">
+            <span className="block truncate text-[11px] text-silver-500">
               {style.aka[0]}
             </span>
           )}
         </span>
         <span
-          className="mt-0.5 size-3 shrink-0 rounded-full border border-black/10"
+          className="mt-0.5 size-3 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]"
           style={{ backgroundColor: style.swatch.primary }}
         />
       </div>
       {selected && (
-        <span className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-blue-500 text-white">
-          <CheckIcon className="size-3" />
+        <span className="absolute top-2 right-2 flex size-5 items-center justify-center rounded-full bg-blue-500 text-blue-900">
+          <CheckIcon className="size-3" strokeWidth={3} />
         </span>
       )}
     </button>
@@ -311,7 +326,7 @@ export function DesignPicker({
   const fromScreenshot = Boolean(value.designMd && value.reference);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <Section
         title="Style"
         hint={
@@ -327,14 +342,14 @@ export function DesignPicker({
           aria-pressed={!value.style}
           onClick={() => set({ style: undefined, fonts: undefined })}
           className={cn(
-            "flex w-full items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-left transition-colors",
+            "flex h-10 w-full cursor-pointer items-center gap-2.5 rounded-md border px-3 text-left transition-colors duration-150",
             !value.style
-              ? "border-blue-500 bg-blue-500/10 text-blue-300"
-              : "border-silver-400/40 text-silver-600 hover:border-silver-600/60 hover:text-silver-900",
+              ? "border-blue-500 bg-blue-500/12 text-silver-900 [&_svg]:text-blue-500"
+              : "border-dashed border-line-strong text-silver-600 hover:border-line-hover hover:text-silver-900",
           )}
         >
           <SparklesIcon className="size-4 shrink-0" />
-          <span className="text-xs font-semibold">
+          <span className="text-[13px] font-medium">
             {restyling ? `Keep ${current.styleName}` : "Let tau decide"}
           </span>
           {!value.style && <CheckIcon className="ml-auto size-3.5 shrink-0" />}
@@ -354,21 +369,17 @@ export function DesignPicker({
               {g.label}
             </Chip>
           ))}
-          <label className="relative ml-auto w-full sm:w-44">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3 -translate-y-1/2 text-silver-600" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search styles"
-              aria-label="Search styles"
-              className="w-full rounded-[7px] border border-silver-400/30 bg-transparent py-1 pr-2 pl-6 text-xs text-silver-900 outline-none placeholder:text-silver-600/70 focus-visible:border-blue-500/60"
-            />
-          </label>
+          <SearchInput
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search styles"
+            aria-label="Search styles"
+            className="ml-auto w-full sm:w-52"
+          />
         </div>
 
         {sections.length === 0 ? (
-          <p className="rounded-lg border border-silver-400/20 px-3 py-6 text-center text-xs text-silver-600">
+          <p className="rounded-lg border border-line px-3 py-6 text-center text-[13px] text-silver-500">
             No style matches “{query.trim()}”.
           </p>
         ) : (
@@ -377,11 +388,11 @@ export function DesignPicker({
               <div key={section.group.key} className="space-y-1.5">
                 {/* One family on show needs no heading; the chip already names it. */}
                 {sections.length > 1 && (
-                  <h4 className="text-[11px] font-medium text-silver-600">
+                  <h4 className="text-xs font-medium text-silver-500">
                     {section.group.title}
                   </h4>
                 )}
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                   {section.styles.map((s) => (
                     <StyleCard
                       key={s.key}
@@ -411,10 +422,10 @@ export function DesignPicker({
               aria-pressed={value.accent === hex}
               onClick={() => set({ accent: hex })}
               className={cn(
-                "size-6 rounded-full border transition-transform hover:scale-110",
+                "size-6 cursor-pointer rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] transition-shadow duration-150",
                 value.accent === hex
-                  ? "border-white ring-2 ring-blue-500"
-                  : "border-black/20",
+                  ? "ring-2 ring-blue-500 ring-offset-2 ring-offset-space-overlay"
+                  : "hover:ring-1 hover:ring-line-hover hover:ring-offset-2 hover:ring-offset-space-overlay",
               )}
               style={{ backgroundColor: hex }}
             />
@@ -423,10 +434,10 @@ export function DesignPicker({
               form the server accepts. */}
           <label
             className={cn(
-              "flex cursor-pointer items-center gap-1.5 rounded-[7px] border px-2 py-1 text-xs font-medium transition-colors",
+              "flex h-7 cursor-pointer items-center gap-1.5 rounded-sm border px-2 text-xs font-medium transition-colors duration-150",
               value.accent && !catalog.suggestedAccents.includes(value.accent)
-                ? "border-blue-500/50 bg-blue-500/20 text-blue-300"
-                : "border-silver-400/30 text-silver-600 hover:bg-space-overlay hover:text-silver-900",
+                ? "border-blue-500 bg-blue-500/12 text-silver-900"
+                : "border-line-strong bg-space-surface text-silver-600 hover:border-line-hover hover:text-silver-900",
             )}
           >
             <input
@@ -442,24 +453,24 @@ export function DesignPicker({
         {warning && (
           <div
             role="status"
-            className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-200"
+            className="flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-lg border border-orange-400/34 bg-orange-400/11 px-3 py-2 text-xs text-silver-900"
           >
-            <TriangleAlertIcon className="size-3.5 shrink-0" />
+            <TriangleAlertIcon className="size-4 shrink-0 text-orange-400" />
             <span className="min-w-0 flex-1">
               <span className="font-mono">{warning.accent}</span> is hard to see on a{" "}
               {warning.mode} page. tau uses your colour exactly as chosen.
             </span>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => set({ accent: warning.readable })}
-              className="flex shrink-0 items-center gap-1.5 rounded-[7px] border border-amber-500/40 px-2 py-0.5 font-medium text-amber-100 transition-colors hover:bg-amber-500/20"
             >
               <span
-                className="size-3 rounded-full border border-black/20"
+                className="size-3 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]"
                 style={{ backgroundColor: warning.readable }}
               />
               Make it readable
-            </button>
+            </Button>
           </div>
         )}
       </Section>
@@ -505,21 +516,21 @@ export function DesignPicker({
               onClick={() => setFineTune((open) => !open)}
             >
               Fine-tune
-              <ChevronDownIcon className={cn("size-3 transition-transform", fineTune && "rotate-180")} />
+              <ChevronDownIcon className={cn("size-3.5 transition-transform duration-150", fineTune && "rotate-180")} />
             </Chip>
           </div>
         </Section>
       </div>
 
       {fineTune && (
-        <div className="grid gap-3 rounded-lg border border-silver-400/20 bg-space-overlay/40 p-3 sm:grid-cols-3">
+        <div className="grid gap-4 rounded-lg border border-line bg-space-void p-4 sm:grid-cols-3">
           {DIALS.map((d) => {
             const chosen = value.dials?.[d.key];
             return (
               <label key={d.key} className="space-y-1">
-                <span className="flex items-baseline justify-between text-[11px]">
-                  <span className="font-semibold text-silver-900">{d.label}</span>
-                  <span className={chosen ? "text-blue-300" : "text-silver-600"}>
+                <span className="flex items-baseline justify-between text-xs">
+                  <span className="font-medium text-silver-900">{d.label}</span>
+                  <span className={cn("font-mono text-[11px]", chosen ? "text-blue-500" : "text-silver-500")}>
                     {chosen ?? `${unset.toLowerCase()} (${baseDials[d.key]})`}
                   </span>
                 </span>
@@ -534,7 +545,7 @@ export function DesignPicker({
                   }
                   className="w-full accent-blue-500"
                 />
-                <span className="flex justify-between text-[10px] text-silver-600">
+                <span className="flex justify-between text-[11px] text-silver-500">
                   <span>{d.low}</span>
                   <span>{d.high}</span>
                 </span>
@@ -563,7 +574,7 @@ export function DesignPicker({
           )}
           {NEUTRAL_CHOICES.map(({ key, label, swatch }) => (
             <Chip key={key} selected={value.neutral === key} onClick={() => set({ neutral: key })}>
-              <span className="size-3 rounded-full border border-black/15" style={{ backgroundColor: swatch }} />
+              <span className="size-3 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]" style={{ backgroundColor: swatch }} />
               {label}
             </Chip>
           ))}
@@ -598,24 +609,24 @@ export function DesignPicker({
             })}
           </div>
         ) : (
-          <p className="text-xs text-silver-600">
+          <p className="text-[12.5px] text-silver-500">
             Each style comes with a pairing of its own and two alternatives.
           </p>
         )}
       </Section>
 
       {allowImport && (
-      <section className="rounded-lg border border-silver-400/20">
+      <section className="rounded-lg border border-line bg-space-surface">
         <button
           type="button"
           onClick={() => setImportOpen((open) => !open)}
           aria-expanded={importOpen}
-          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+          className="flex h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-4 text-left transition-colors duration-150 hover:bg-space-raised"
         >
-          <span className="text-xs font-semibold text-silver-900">
+          <span className="text-[13px] font-medium text-silver-900">
             Use a screenshot or your own DESIGN.md
             {value.designMd && (
-              <span className="ml-2 font-normal text-blue-300">
+              <span className="ml-2 font-mono text-[11px] font-normal text-blue-500">
                 {fromScreenshot
                   ? "From a screenshot"
                   : `${value.designMd.length.toLocaleString()} characters`}
@@ -623,12 +634,12 @@ export function DesignPicker({
             )}
           </span>
           <ChevronDownIcon
-            className={cn("size-3.5 text-silver-600 transition-transform", importOpen && "rotate-180")}
+            className={cn("size-4 text-silver-600 transition-transform duration-150", importOpen && "rotate-180")}
           />
         </button>
         {importOpen && (
-          <div className="space-y-2 border-t border-silver-400/20 p-3">
-            <p className="text-[11px] leading-relaxed text-silver-600">
+          <div className="space-y-3 border-t border-line p-4">
+            <p className="text-[12.5px] leading-relaxed text-silver-500">
               Give tau a screenshot of something you want this to look like, and
               it reads the colours, shapes, type and layout from it. Or paste
               or upload a design file of your own. Anything you choose above
@@ -636,20 +647,20 @@ export function DesignPicker({
             </p>
             {readImage.isPending && (
               <p role="status" className="flex items-center gap-2 text-xs text-silver-900">
-                <LoaderCircleIcon className="size-3.5 animate-spin" />
+                <LoaderCircleIcon className="size-3.5 animate-spin text-blue-500 motion-reduce:animate-none" />
                 Reading the design from your screenshot…
               </p>
             )}
             {fromScreenshot && !readImage.isPending && (
-              <div className="flex gap-3 rounded-md border border-silver-400/20 bg-space-overlay/40 p-2.5">
+              <div className="flex gap-3 rounded-md border border-line bg-space-void p-3">
                 {shot && (
                   <img
                     src={shot.url}
                     alt="The screenshot the design was read from"
-                    className="h-20 w-28 shrink-0 rounded border border-silver-400/20 object-cover object-top"
+                    className="h-20 w-28 shrink-0 rounded-xs border border-line object-cover object-top"
                   />
                 )}
-                <div className="min-w-0 space-y-1.5 text-[11px] leading-relaxed">
+                <div className="min-w-0 space-y-1.5 text-xs leading-relaxed">
                   {shot ? (
                     <>
                       <p className="flex items-center gap-1.5 font-semibold text-silver-900">
@@ -658,7 +669,7 @@ export function DesignPicker({
                             <span
                               key={i}
                               title={hex}
-                              className="size-3 rounded-full border border-silver-400/40"
+                              className="size-3 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]"
                               style={{ backgroundColor: hex }}
                             />
                           ),
@@ -667,7 +678,7 @@ export function DesignPicker({
                       </p>
                       {shot.read.summary && <p className="text-silver-900">{shot.read.summary}</p>}
                       {!shot.read.isInterface && (
-                        <p className="text-amber-200">
+                        <p className="text-orange-400">
                           This does not look like a screenshot of an app or a page, so only its
                           colours were taken.
                         </p>
@@ -695,21 +706,22 @@ export function DesignPicker({
               spellCheck={false}
               placeholder={"---\ncolors:\n  primary: \"#0b5fff\"\n---\n# My design\n…"}
               className={cn(
-                "scrollbar-inset w-full resize-y rounded-md border border-silver-400/30 bg-space-surface p-2 font-mono text-[11px] text-silver-900 outline-none placeholder:text-silver-600/60 focus-visible:border-blue-500/60",
+                fieldClass,
+                "scrollbar-inset resize-y p-3 font-mono text-xs",
                 // A design file runs to hundreds of lines: give it room to be read.
                 value.designMd && "h-72",
               )}
             />
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 disabled={readImage.isPending}
                 onClick={() => imageInput.current?.click()}
-                className="flex items-center gap-1.5 rounded-[7px] border border-blue-500/40 bg-blue-500/15 px-2.5 py-1 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-500/25 disabled:cursor-default disabled:opacity-50"
               >
-                <ImageUpIcon className="size-3" />
+                <ImageUpIcon />
                 {fromScreenshot ? "Use another screenshot" : "Use a screenshot"}
-              </button>
+              </Button>
               <input
                 ref={imageInput}
                 type="file"
@@ -720,24 +732,24 @@ export function DesignPicker({
                   e.target.value = "";
                 }}
               />
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => fileInput.current?.click()}
-                className="flex items-center gap-1.5 rounded-[7px] border border-silver-400/30 px-2.5 py-1 text-xs font-medium text-silver-600 transition-colors hover:bg-space-overlay hover:text-silver-900"
               >
-                <FileUpIcon className="size-3" /> Upload a DESIGN.md
-              </button>
+                <FileUpIcon /> Upload a DESIGN.md
+              </Button>
               {value.designMd && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     set({ designMd: undefined, reference: undefined });
                     setShot(null);
                   }}
-                  className="flex items-center gap-1 rounded-[7px] px-2 py-1 text-xs font-medium text-silver-600 transition-colors hover:bg-space-overlay hover:text-silver-900"
                 >
-                  <XIcon className="size-3" /> Remove
-                </button>
+                  <XIcon /> Remove
+                </Button>
               )}
               <input
                 ref={fileInput}

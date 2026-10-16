@@ -37,7 +37,7 @@ export function GithubSettings({ projectId, info, blocked }: {
             value={info.pushMode}
             disabled={blocked || patch.isPending}
             onChange={(e) => patch.mutate({ pushMode: e.target.value as PushMode })}
-            className="mt-2 h-10 w-full rounded-lg border border-silver-200 bg-space-void px-3 text-xs focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 sm:max-w-xs"
+            className="mt-2 h-10 w-full rounded-lg border border-line bg-space-void px-3 text-xs focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 sm:max-w-xs"
           >
             <option value="new_pr">Create a new pull request</option>
             <option value="update_pr">Update the last Tau pull request</option>
@@ -47,7 +47,7 @@ export function GithubSettings({ projectId, info, blocked }: {
           {patch.isError && <p role="alert" className="mt-2 text-xs text-red-400">{errorMessage(patch.error, "Couldn't save preference. Try again.")}</p>}
         </div>
       </section>
-      <section className={cn(githubCardClass, "divide-y divide-silver-200")} aria-label="Repository settings">
+      <section className={cn(githubCardClass, "divide-y divide-line")} aria-label="Repository settings">
         <div className="p-5">
           <h2 className="text-sm font-medium">Repository</h2>
           <p className="mt-1 break-all text-xs text-silver-600">{repo?.fullName ?? "No repository created"}</p>
@@ -64,7 +64,7 @@ export function GithubSettings({ projectId, info, blocked }: {
           </div>
           <Dialog open={confirm === "disconnect" && confirmRepo === (repo?.fullName ?? null)} onOpenChange={(value) => { if (!pending) { setConfirm(value ? "disconnect" : null); setConfirmRepo(repo?.fullName ?? null); disconnect.reset(); } }}>
             <DialogTrigger asChild><button type="button" disabled={blocked || pending} className={githubButtonClass}><GithubMark className="size-3.5" />Disconnect account</button></DialogTrigger>
-            <DialogContent className="border-silver-200 bg-space-surface text-silver-900 motion-reduce:animate-none" showCloseButton={!pending}>
+            <DialogContent className="motion-reduce:animate-none" showCloseButton={!pending}>
               <DialogHeader>
                 <DialogTitle>Disconnect GitHub?</DialogTitle>
                 <DialogDescription className="text-silver-600">This disconnects your GitHub account from all Tau projects. Repositories and their history stay on GitHub. You can reconnect at any time.</DialogDescription>
@@ -89,7 +89,7 @@ export function GithubSettings({ projectId, info, blocked }: {
           </div>
           <Dialog open={confirm === "unlink" && confirmRepo === repo.fullName} onOpenChange={(value) => { if (!pending) { setConfirm(value ? "unlink" : null); setConfirmRepo(repo.fullName); unlink.reset(); } }}>
             <DialogTrigger asChild><button type="button" disabled={blocked || pending} className={cn(githubButtonClass, "text-red-400")}><Unlink2Icon className="size-3.5" />Unlink repository</button></DialogTrigger>
-            <DialogContent className="border-silver-200 bg-space-surface text-silver-900 motion-reduce:animate-none" showCloseButton={!pending}>
+            <DialogContent className="motion-reduce:animate-none" showCloseButton={!pending}>
               <DialogHeader>
                 <DialogTitle>Unlink repository?</DialogTitle>
                 <DialogDescription className="break-words text-silver-600">This detaches {repo.fullName} from the project and resets its push and pull request association. The repository and its history stay on GitHub.</DialogDescription>

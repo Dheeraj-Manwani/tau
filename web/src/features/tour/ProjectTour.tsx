@@ -20,7 +20,7 @@ import {
   type StepType,
 } from "@reactour/tour";
 
-import { cn } from "@/src/lib/utils";
+import { Button } from "@/src/components/ui/button";
 import { tourSelector, type TourStepDef } from "@/src/features/tour/tours";
 import {
   placePopover,
@@ -63,18 +63,15 @@ function TourCard({
       role="dialog"
       aria-labelledby={TITLE_ID}
       aria-describedby={BODY_ID}
-      className="dialog-theme w-72 rounded-xl border border-border bg-background p-6 text-left shadow-2xl"
+      className="w-72 rounded-xl border border-line-strong bg-space-overlay p-5 text-left text-silver-900 shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.04)]"
     >
-      <p className="text-[11px] font-medium text-silver-600" aria-live="polite">
-        {currentStep + 1} of {steps.length}
+      <p className="font-mono text-[11px] text-silver-500" aria-live="polite">
+        {currentStep + 1} / {steps.length}
       </p>
-      <h2
-        id={TITLE_ID}
-        className="mt-1 font-heading text-sm font-medium text-silver-900"
-      >
+      <h2 id={TITLE_ID} className="mt-1.5 text-[15px] font-semibold">
         {def.title}
       </h2>
-      <p id={BODY_ID} className="mt-1.5 text-xs leading-relaxed text-silver-600">
+      <p id={BODY_ID} className="mt-1.5 text-[13px] leading-relaxed text-silver-600">
         {def.body}
       </p>
 
@@ -82,27 +79,27 @@ function TourCard({
         {isLast ? (
           <span />
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="link"
+            className="text-xs text-silver-500 hover:text-silver-900"
             onClick={() => finish("skipped")}
-            className="rounded-md px-1.5 py-1 text-xs text-silver-600 outline-none transition-colors hover:text-silver-900 focus-visible:ring-2 focus-visible:ring-brand/60"
           >
             Skip tour
-          </button>
+          </Button>
         )}
 
         <div className="flex gap-1.5">
           {!isFirst && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setCurrentStep((s) => Math.max(0, s - 1))}
-              className="rounded-lg border border-silver-400/30 px-3 py-1.5 text-xs font-medium text-silver-700 outline-none transition-colors hover:border-silver-400/60 hover:text-silver-900 focus-visible:ring-2 focus-visible:ring-brand/60"
             >
               Back
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            size="sm"
             // Focus lands here on every step, so Enter walks the whole tour.
             autoFocus
             key={currentStep}
@@ -111,13 +108,9 @@ function TourCard({
                 ? finish("completed")
                 : setCurrentStep((s) => Math.min(steps.length - 1, s + 1))
             }
-            className={cn(
-              "rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-primary-foreground outline-none transition-colors hover:bg-brand/90",
-              "focus-visible:ring-2 focus-visible:ring-brand/60 focus-visible:ring-offset-2 focus-visible:ring-offset-space-surface",
-            )}
           >
             {isLast ? "Done" : "Next"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -212,6 +205,16 @@ export default function ProjectTour({
           }),
           maskWrapper: (base) => ({ ...base, color: "#000", opacity: 0.6 }),
           maskArea: (base) => ({ ...base, rx: 10 }),
+          // The cut-out gets the strong hairline, so the spotlit control reads
+          // as framed rather than floating.
+          highlightedArea: (base) => ({
+            ...base,
+            display: "block",
+            rx: 10,
+            stroke: "#34343a",
+            strokeWidth: 1,
+            pointerEvents: "none",
+          }),
         }}
       >
         <CloseWatcher outcome={outcome} onEnd={onEnd} />

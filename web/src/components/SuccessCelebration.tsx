@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
 import { Confetti, type ConfettiRef } from "./ui/confetti";
 import { SUCCESS_CELEBRATION_EVENT } from "@/src/lib/confetti";
-import { useSettings } from "@/src/hooks/useSettings";
+import { useReduceMotion } from "@/src/hooks/useReduceMotion";
 
 export function SuccessCelebration() {
   const ref = useRef<ConfettiRef>(null);
-  const { reduceMotion } = useSettings();
+  // The OS setting counts too, not only Settings › Reduce motion.
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
     const celebrate = () => {
       if (reduceMotion) return;

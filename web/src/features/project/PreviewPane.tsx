@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -7,8 +7,7 @@ import {
   CreditCardIcon,
   ImageIcon,
   LayersIcon,
-  ListChecksIcon,
-  MonitorSmartphoneIcon,
+  LoaderCircleIcon,
   PaletteIcon,
   PencilIcon,
   PlayIcon,
@@ -18,25 +17,20 @@ import {
   TriangleAlertIcon,
   WrenchIcon,
   XIcon,
-  HeartIcon,
-  KeyRoundIcon,
-  LightbulbIcon,
-  PaperclipIcon,
-  SparklesIcon,
-  DownloadIcon,
-  GaugeIcon,
-  MessagesSquareIcon,
-  TypeIcon,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
 import { useFeedbackStore } from "@/src/features/feedback/useFeedbackStore";
-import { DataSpinner } from "@/src/components/ui/data-spinner";
-import { BuildLoaderCard } from "@/src/features/project/BuildLoaderCard";
+import { PreviewLoader } from "@/src/components/motion/PreviewLoader";
+import { buildPhase, type BuildPhase } from "@/src/features/project/buildPhase";
+import { currentTurn } from "@/src/features/project/chatLoaderState";
 import { PreviewStoppedCard } from "@/src/features/project/PreviewStoppedCard";
 import { PreviewFailedCard } from "@/src/features/project/PreviewFailedCard";
-import { GithubMark } from "@/src/components/ui/github-mark";
+import { PreviewStateCard } from "@/src/features/project/PreviewStateCard";
+import { Button } from "@/src/components/ui/button";
+import { Kbd } from "@/src/components/ui/kbd";
+import { fieldClass } from "@/src/components/ui/styles";
 import { VisualStylePanel } from "@/src/features/project/VisualStylePanel";
 import { VisualImagePanel } from "@/src/features/project/VisualImagePanel";
 import { VisualThemePanel } from "@/src/features/project/VisualThemePanel";
@@ -73,7 +67,6 @@ import {
   wasInterruptedForCredits,
 } from "@/src/features/project/creditResume";
 import {
-  activityPhrase,
   getEmptyPreviewState,
   type EmptyPreviewAction,
   type EmptyPreviewInput,
@@ -92,98 +85,66 @@ const BUILD_TIPS = [
   {
     title: "Help shape tau",
     copy: "Share feedback or a suggestion to help shape what we build next.",
-    icon: HeartIcon,
-    iconClass: "text-amber-400",
   },
   {
     title: "Keep your work on GitHub",
     copy: "Use the GitHub button in the top bar to connect your project and save your code there whenever you want.",
-    icon: GithubMark,
-    iconClass: "text-[var(--silver-900)]",
   },
   {
     title: "Check every screen size",
     copy: "Switch between desktop, tablet, and mobile in the top bar to make sure your layout works everywhere.",
-    icon: MonitorSmartphoneIcon,
-    iconClass: "text-sky-400",
   },
   {
     title: "Your code stays editable",
     copy: "Open the Code tab at any time to inspect files or make a quick change yourself while tau works.",
-    icon: CodeIcon,
-    iconClass: "text-violet-400",
   },
   {
     title: "Edit visually",
     copy: "Use the pointer tool on a live preview to select an element, then change its text, style, or image.",
-    icon: SquareMousePointerIcon,
-    iconClass: "text-pink-400",
   },
   {
     title: "Build in small steps",
     copy: "After the first version, ask for focused changes one at a time for faster, more predictable results.",
-    icon: ListChecksIcon,
-    iconClass: "text-emerald-400",
   },
   {
     title: "Pick a look",
     copy: "Choose a style for your app, or restyle it later from the project settings without rewriting your prompt.",
-    icon: PaletteIcon,
-    iconClass: "text-fuchsia-400",
   },
   {
     title: "Show, don't tell",
     copy: "Attach a screenshot or image to your message and tau can use it as a reference for the look.",
-    icon: PaperclipIcon,
-    iconClass: "text-cyan-400",
   },
   {
     title: "Set rules once",
     copy: "Write standing instructions in your build defaults and tau follows them in every project.",
-    icon: SparklesIcon,
-    iconClass: "text-yellow-300",
   },
   {
     title: "Be specific",
     copy: "Say who the app is for and what it should do. A clear brief beats a long one.",
-    icon: LightbulbIcon,
-    iconClass: "text-amber-300",
   },
   {
     title: "Bring your own words",
     copy: "Paste your real copy, prices or menu items so the first version is not full of placeholder text.",
-    icon: TypeIcon,
-    iconClass: "text-lime-400",
   },
   {
     title: "Ask for pictures",
     copy: "Ask for a hero image or photos. tau can search for them, and some styles can generate artwork.",
-    icon: ImageIcon,
-    iconClass: "text-rose-400",
   },
   {
     title: "Keep keys out of prompts",
     copy: "If your app needs an API key, tau asks for it in the chat and stores it as a secret. Never paste keys into a message.",
-    icon: KeyRoundIcon,
-    iconClass: "text-orange-400",
   },
   {
     title: "Long chats are fine",
     copy: "Older messages are summarised automatically, and you can clear or summarise the chat yourself at any time.",
-    icon: MessagesSquareIcon,
-    iconClass: "text-indigo-400",
   },
   {
     title: "Match effort to the job",
     copy: "Higher effort is slower and more careful. Use lower effort for quick tweaks and higher for a whole new app.",
-    icon: GaugeIcon,
-    iconClass: "text-teal-400",
   },
   {
     title: "Take your files with you",
     copy: "Download your project's files whenever you like, or keep them on GitHub.",
-    icon: DownloadIcon,
-    iconClass: "text-blue-400",
   },
 ] as const;
 
@@ -210,15 +171,14 @@ function tipOrder(avoid: readonly number[] = []): number[] {
 function PreviewPlaceholder({
   state,
   onAction,
-  onPlay,
 }: {
   state: EmptyPreviewState;
   onAction: (action: EmptyPreviewAction) => void;
-  onPlay: () => void;
 }) {
   const [tipIndex, setTipIndex] = useState(0);
   const [order, setOrder] = useState(() => tipOrder());
   const reduceMotion = useReducedMotion();
+  const phase = useBuildPhase();
 
   useEffect(() => {
     if (!state.animated || reduceMotion) return;
@@ -228,93 +188,89 @@ function PreviewPlaceholder({
     return () => window.clearInterval(timer);
   }, [state.animated, reduceMotion]);
 
-  const shuffleTips = () => {
+  const nextTip = () => {
+    if (tipIndex + 1 < order.length) {
+      setTipIndex(tipIndex + 1);
+      return;
+    }
+    // Round the end with fresh tips, not the same five again.
     setOrder((current) => tipOrder(current));
-    // Land on a tip, not back on the feedback card the user just saw.
     setTipIndex(1);
-  };
-
-  const selectTip = (index: number) => {
-    setTipIndex((index + order.length) % order.length);
   };
 
   if (state.loading) {
     return (
-      <div className="flex h-full items-center justify-center bg-black">
-        <DataSpinner label={state.title} />
-      </div>
+      <PreviewStateCard role="status" description={state.description ?? state.title} />
     );
   }
 
   if (!state.animated) {
+    const ActionIcon =
+      state.action === "add_credits"
+        ? CreditCardIcon
+        : state.action === "stop"
+          ? SquareIcon
+          : PlayIcon;
     return (
-      <div className="flex h-full items-center justify-center bg-black p-6">
-        <div className="flex max-w-sm flex-col items-center text-center">
-          <span
-            className={cn(
-              "flex size-12 items-center justify-center rounded-full bg-[var(--space-overlay)]",
-              state.tone === "warning"
-                ? "text-amber-400"
-                : state.tone === "error"
-                  ? "text-red-400"
-                  : "text-[var(--silver-600)]",
-            )}
-          >
-            {state.tone === "neutral" ? (
-              <PowerOffIcon className="size-5" />
-            ) : (
-              <TriangleAlertIcon className="size-5" />
-            )}
-          </span>
-          <h2 className="mt-4 text-sm font-semibold text-[var(--silver-900)]">
-            {state.title}
-          </h2>
-          {state.description && (
-            <p className="mt-1.5 text-xs leading-relaxed text-[var(--silver-600)]">
-              {state.description}
-            </p>
-          )}
-          {state.action && state.actionLabel && (
-            <button
-              type="button"
+      <PreviewStateCard
+        icon={state.tone === "neutral" ? PowerOffIcon : TriangleAlertIcon}
+        tone={state.tone}
+        title={state.title}
+        description={state.description}
+        actions={
+          state.action &&
+          state.actionLabel && (
+            // A stop is not the thing to do here, only an escape hatch.
+            <Button
+              variant={state.action === "stop" ? "secondary" : "primary"}
               onClick={() => onAction(state.action!)}
-              className="mt-4 flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--blue-500)] px-3 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90"
             >
-              {state.action === "add_credits" ? (
-                <CreditCardIcon className="size-3.5" />
-              ) : state.action === "stop" ? (
-                <SquareIcon className="size-3.5 fill-current" />
-              ) : (
-                <PlayIcon className="size-3.5 fill-current" />
-              )}
+              <ActionIcon className={state.action === "add_credits" ? undefined : "fill-current"} />
               {state.actionLabel}
-            </button>
-          )}
-        </div>
-      </div>
+            </Button>
+          )
+        }
+      />
     );
   }
 
-  const tip = BUILD_TIPS[order[tipIndex]!]!;
-  const liveActivity = activityPhrase(state.title);
+  const tipNumber = order[tipIndex]!;
+  const tip = BUILD_TIPS[tipNumber]!;
 
   return (
-    <BuildLoaderCard
-      liveActivity={liveActivity}
-      tip={tip}
+    <PreviewLoader
+      phase={phase}
+      tip={{ title: tip.title, copy: tip.copy, feedback: tipNumber === 0 }}
       tipIndex={tipIndex}
       tipCount={order.length}
-      onSelectTip={selectTip}
-      onShuffle={shuffleTips}
-      onPlay={onPlay}
+      onNextTip={nextTip}
       onFeedback={() =>
         useFeedbackStore
           .getState()
           .open("preview", useProjectStore.getState().projectId ?? undefined)
       }
-      reduceMotion={reduceMotion}
     />
   );
+}
+
+/**
+ * The building loader's phase for the current run. It only moves forward: a
+ * narrated step between two checks must not send the loader back a phase.
+ */
+function useBuildPhase(): BuildPhase {
+  const messages = useProjectStore((s) => s.chatMessages);
+  const writingPath = useProjectStore((s) => s.writingPath);
+  const plan = useProjectStore((s) => s.currentPlan);
+  const runStartedAt = useProjectStore((s) => s.runStartedAt);
+  const actions = useMemo(
+    () => currentTurn(messages).flatMap((m) => (m.role === "ai" ? (m.actions ?? []) : [])),
+    [messages],
+  );
+  const reported = buildPhase({ actions, writingPath, plan });
+  const [peak, setPeak] = useState({ run: runStartedAt, phase: reported });
+  const phase = (peak.run === runStartedAt ? Math.max(peak.phase, reported) : reported) as BuildPhase;
+  if (peak.run !== runStartedAt || peak.phase !== phase) setPeak({ run: runStartedAt, phase });
+  return phase;
 }
 
 /** Shown when the live sandbox has gone down: lets the user reboot it from the
@@ -723,28 +679,25 @@ function PreviewErrorModal({ error }: { error: PreviewBuildError }) {
   }, [dismiss]);
 
   return (
-    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
+    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 p-4 sm:p-6">
       <motion.div
-        initial={{ opacity: 0, y: 8, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
         role="alertdialog"
         aria-label="Preview build error"
-        className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--silver-200)] bg-[var(--space-surface)] shadow-2xl"
+        className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-line-strong bg-space-overlay shadow-[0_24px_80px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.04)]"
       >
-        <div className="flex items-start gap-3 px-4 pt-4">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-500">
-            <TriangleAlertIcon className="size-4" />
-          </span>
+        <div className="flex items-start gap-4 px-6 pt-6">
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-semibold text-[var(--silver-900)]">
+            <h2 className="display-heading display-s text-silver-900">
               Your app didn&apos;t build
             </h2>
-            <p className="pt-0.5 text-xs text-[var(--silver-600)]">
+            <p className="pt-2 text-[13px] leading-relaxed text-silver-600">
               {where ? (
                 <>
                   Something in{" "}
-                  <span className="font-mono text-[var(--silver-900)]">
+                  <span className="font-mono text-silver-900">
                     {where}
                   </span>{" "}
                   stops it compiling, so the preview can&apos;t run.
@@ -754,55 +707,45 @@ function PreviewErrorModal({ error }: { error: PreviewBuildError }) {
               )}
             </p>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => dismiss(true)}
-            title="Dismiss"
-            className="shrink-0 rounded-[var(--radius-md)] p-1 text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
+            aria-label="Dismiss"
+            className="-mt-1 -mr-1"
           >
-            <XIcon className="size-4" />
-          </button>
+            <XIcon />
+          </Button>
         </div>
 
         {/* Verbatim and scrollable. It is not what most people here will read,
             but hiding it entirely would make this the one screen in the product
             that knows something and won't say what. */}
-        <pre className="mx-4 mt-3 min-h-0 flex-1 overflow-auto rounded-[var(--radius-md)] border border-[var(--silver-200)] bg-[var(--space-void)] px-3 py-2 font-mono text-[10px] leading-relaxed whitespace-pre text-[var(--silver-600)]">
+        <pre className="scrollbar-thin mx-6 mt-4 min-h-0 flex-1 overflow-auto rounded-md border border-line bg-space-void px-3.5 py-3 font-mono text-[11px] leading-relaxed whitespace-pre text-silver-600">
           {error.message}
           {error.frame ? `\n\n${error.frame}` : ""}
         </pre>
 
-        <div className="flex items-center gap-2 px-4 py-3">
-          <span className="text-[11px] text-[var(--silver-600)]">
-            tau gets the full error, not just this summary.
-          </span>
-          <div className="ml-auto flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => dismiss(true)}
-              className="rounded-[var(--radius-md)] px-2.5 py-1.5 text-xs font-medium text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
-            >
-              Dismiss
-            </button>
-            <button
-              type="button"
-              onClick={fix}
-              disabled={!canSend}
-              title={
-                canSend
-                  ? "Send this error to tau"
-                  : "tau is already working on something"
-              }
-              className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-brand px-3.5 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40 disabled:hover:bg-brand"
-            >
-              {isSending ? (
-                <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <WrenchIcon className="size-3.5" />
-              )}
-              Fix with tau
-            </button>
-          </div>
+        <p className="px-6 pt-2 text-xs text-silver-500">
+          tau gets the full error, not just this summary. Your files are safe.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-2.5 border-t border-line px-6 py-4">
+          <Button variant="secondary" onClick={() => dismiss(true)}>
+            Dismiss
+          </Button>
+          <Button
+            onClick={fix}
+            disabled={!canSend}
+            loading={isSending}
+            title={
+              canSend
+                ? "Send this error to tau"
+                : "tau is already working on something"
+            }
+          >
+            {!isSending && <WrenchIcon />}
+            Ask tau to fix
+          </Button>
         </div>
       </motion.div>
     </div>
@@ -821,34 +764,25 @@ function PreviewErrorBanner({ error }: { error: PreviewBuildError }) {
   const { fix, where, canSend, isSending } = useFixWithTau(error);
 
   return (
-    <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-full border border-red-500/40 bg-[var(--space-surface)]/95 py-1 pl-3 pr-1 text-xs shadow-lg backdrop-blur">
-      <TriangleAlertIcon className="size-3.5 shrink-0 text-red-500" />
+    <div className="pointer-events-auto flex max-w-full items-center gap-2.5 rounded-lg border border-red-400/32 bg-space-overlay py-1.5 pr-1.5 pl-3 text-[13px] shadow-[0_16px_48px_rgba(0,0,0,0.65)]">
+      <TriangleAlertIcon className="size-4 shrink-0 text-red-400" />
       <button
         type="button"
         onClick={() => dismiss(false)}
         title="Show the error"
-        className="min-w-0 truncate text-[var(--silver-900)] hover:underline"
+        className="min-w-0 cursor-pointer truncate text-silver-900 hover:underline"
       >
         Didn&apos;t build
         {where && (
-          <span className="ml-1 font-mono text-[var(--silver-600)]">
+          <span className="ml-1.5 font-mono text-xs text-silver-500">
             {where}
           </span>
         )}
       </button>
-      <button
-        type="button"
-        onClick={fix}
-        disabled={!canSend}
-        className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand px-2.5 py-1 font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40 disabled:hover:bg-brand"
-      >
-        {isSending ? (
-          <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        ) : (
-          <WrenchIcon className="size-3.5" />
-        )}
-        Fix with tau
-      </button>
+      <Button size="sm" onClick={fix} disabled={!canSend} loading={isSending}>
+        {!isSending && <WrenchIcon />}
+        Ask tau to fix
+      </Button>
     </div>
   );
 }
@@ -867,21 +801,13 @@ function VisualEditBanner() {
   const setEnabled = useProjectStore((s) => s.setVisualEditEnabled);
 
   return (
-    <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-[var(--blue-500)]/40 bg-[var(--space-surface)]/95 py-1 pl-3 pr-1 text-xs shadow-lg backdrop-blur">
-      <SquareMousePointerIcon className="size-3.5 shrink-0 text-[var(--blue-500)]" />
-      <span className="text-[var(--silver-900)]">
-        Click an element to edit it
-      </span>
-      <kbd className="hidden rounded border border-[var(--silver-200)] px-1 py-px font-mono text-[10px] text-[var(--silver-600)] sm:inline">
-        Esc
-      </kbd>
-      <button
-        type="button"
-        onClick={() => setEnabled(false)}
-        className="rounded-full bg-[var(--space-overlay)] px-2.5 py-1 font-medium text-[var(--silver-900)] transition-colors hover:bg-[var(--blue-500)] hover:text-white"
-      >
+    <div className="pointer-events-auto flex items-center gap-2.5 rounded-lg border border-blue-500/34 bg-space-overlay py-1.5 pr-1.5 pl-3 text-[13px] shadow-[0_16px_48px_rgba(0,0,0,0.65)]">
+      <SquareMousePointerIcon className="size-4 shrink-0 text-blue-500" />
+      <span className="text-silver-900">Click an element to edit it</span>
+      <Kbd className="hidden sm:inline-flex">Esc</Kbd>
+      <Button variant="secondary" size="sm" onClick={() => setEnabled(false)}>
         Done
-      </button>
+      </Button>
     </div>
   );
 }
@@ -1015,7 +941,7 @@ function ElementPrompt({ selection }: { selection: VisualSelection }) {
   };
 
   return (
-    <div className="flex items-end gap-1.5">
+    <div className="flex items-end gap-2">
       <textarea
         ref={inputRef}
         rows={1}
@@ -1040,17 +966,19 @@ function ElementPrompt({ selection }: { selection: VisualSelection }) {
           e.stopPropagation();
         }}
         aria-label="Ask tau about this element"
-        className="min-h-7 min-w-0 flex-1 resize-none rounded-[var(--radius-md)] border border-[var(--silver-200)] bg-[var(--space-void)] px-2 py-1.5 text-xs leading-snug text-[var(--silver-900)] outline-none placeholder:text-[var(--silver-600)] focus:border-[var(--blue-500)] disabled:opacity-50"
+        className={cn(fieldClass, "min-h-9 resize-none px-3 py-2 leading-snug")}
       />
-      <button
-        type="button"
+      <Button
+        size="icon"
+        variant={draft.trim() ? "primary" : "secondary"}
         onClick={submit}
         disabled={!draft.trim() || !canSend}
+        aria-label="Ask tau"
         title="Ask tau"
-        className="flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-brand text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40 disabled:hover:bg-brand"
+        className="size-9"
       >
-        <ArrowUpIcon className="size-3.5" />
-      </button>
+        <ArrowUpIcon />
+      </Button>
     </div>
   );
 }
@@ -1166,19 +1094,15 @@ function TextEditor({
         }}
         onBlur={commit}
         aria-label="Element text"
-        className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--silver-200)] bg-[var(--space-void)] px-2 py-1 text-xs text-[var(--silver-900)] outline-none focus:border-[var(--blue-500)] disabled:opacity-50"
+        className={cn(fieldClass, "h-7 rounded-sm px-2.5 text-xs")}
       />
       {visualEdit.isPending ? (
-        <span className="size-3.5 shrink-0 animate-spin rounded-full border-2 border-[var(--silver-600)] border-t-transparent" />
+        <LoaderCircleIcon className="size-4 shrink-0 animate-spin text-blue-500 motion-reduce:animate-none" />
       ) : (
         dirty && (
-          <button
-            type="button"
-            onClick={commit}
-            className="shrink-0 rounded-[var(--radius-md)] bg-brand px-2 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand/90"
-          >
+          <Button size="sm" onClick={commit}>
             Save
-          </button>
+          </Button>
         )
       )}
     </div>
@@ -1222,12 +1146,12 @@ function VisualInspector({
   const known = Boolean(files[path]);
 
   return (
-    <div className="absolute inset-x-0 bottom-0 bg-[var(--space-surface)]">
+    <div className="absolute inset-x-0 bottom-0 border-t border-line-strong bg-space-overlay text-silver-900 shadow-[0_-16px_48px_rgba(0,0,0,0.5)]">
       {/* One source line, many rendered nodes: say so plainly rather than
           letting the user discover it by changing six cards at once. */}
       {selection.siblingCount > 1 && (
-        <div className="flex items-center gap-1.5 border-t border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600">
-          <LayersIcon className="size-3 shrink-0" />
+        <div className="flex items-center gap-2 border-b border-orange-400/34 bg-orange-400/11 px-4 py-2 text-xs text-silver-900">
+          <LayersIcon className="size-3.5 shrink-0 text-orange-400" />
           This element is rendered {selection.siblingCount} times from one place
           in the code: a change here applies to all {selection.siblingCount}.
         </div>
@@ -1241,9 +1165,9 @@ function VisualInspector({
           {panel === "image" && (
             <VisualImagePanel selection={selection} onReselect={onReselect} />
           )}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--silver-200)] px-3 py-1.5 text-xs">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-line px-4 py-2 text-xs">
             <span
-              className="shrink-0 text-[11px] text-[var(--silver-600)]"
+              className="lab shrink-0"
               title="Changed instantly, with no credits used"
             >
               Edit directly · free
@@ -1254,7 +1178,7 @@ function VisualInspector({
             ) : (
               selection.className && (
                 <span
-                  className="max-w-[40%] truncate font-mono text-[var(--silver-600)]"
+                  className="max-w-[40%] truncate font-mono text-[11px] text-silver-500"
                   title={selection.className}
                 >
                   {selection.className}
@@ -1264,74 +1188,63 @@ function VisualInspector({
 
             <div className="ml-auto flex items-center gap-1">
               {isImage && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() =>
                     setPanel((p) => (p === "image" ? null : "image"))
                   }
                   aria-pressed={panel === "image"}
                   title="Replace this image"
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
-                    panel === "image"
-                      ? "text-[var(--blue-500)]"
-                      : "text-[var(--silver-900)]",
-                  )}
+                  className="aria-pressed:bg-space-raised aria-pressed:text-silver-900 aria-pressed:[&_svg]:text-blue-500"
                 >
-                  <ImageIcon className="size-3.5" />
+                  <ImageIcon />
                   Image
-                </button>
+                </Button>
               )}
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() =>
                   setPanel((p) => (p === "styles" ? null : "styles"))
                 }
                 aria-pressed={panel === "styles"}
                 title="Style this element"
-                className={cn(
-                  "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
-                  panel === "styles"
-                    ? "text-[var(--blue-500)]"
-                    : "text-[var(--silver-900)]",
-                )}
+                className="aria-pressed:bg-space-raised aria-pressed:text-silver-900 aria-pressed:[&_svg]:text-blue-500"
               >
-                <PaletteIcon className="size-3.5" />
+                <PaletteIcon />
                 Style
-              </button>
+              </Button>
             </div>
           </div>
         </>
       )}
 
-      <div className="flex flex-col gap-1.5 border-t border-[var(--silver-200)] px-3 py-2 text-xs">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="font-mono font-semibold text-[var(--silver-900)]">
+      <div className="flex flex-col gap-2.5 px-4 py-3 text-xs">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-mono text-xs font-medium text-silver-900">
             &lt;{selection.tagName}&gt;
           </span>
-
-          <span className="font-mono text-[var(--silver-600)]">
+          <span aria-hidden="true" className="text-silver-500">·</span>
+          <span className="min-w-0 truncate font-mono text-[11px] text-silver-500">
             {selection.loc}
           </span>
 
           <div className="ml-auto flex items-center gap-1">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setManualOpen(!manualOpen)}
               aria-pressed={manualOpen}
               title="Edit this element yourself: free and instant"
-              className={cn(
-                "flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium transition-colors hover:bg-[var(--space-overlay)]",
-                manualOpen
-                  ? "text-[var(--blue-500)]"
-                  : "text-[var(--silver-900)]",
-              )}
+              className="aria-pressed:bg-space-raised aria-pressed:text-silver-900 aria-pressed:[&_svg]:text-blue-500"
             >
-              <PencilIcon className="size-3.5" />
+              <PencilIcon />
               Edit
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               disabled={!known}
               onClick={() => {
                 openFile(path);
@@ -1340,19 +1253,19 @@ function VisualInspector({
               title={
                 known ? `Open ${path}` : `${path} isn't in the file tree yet`
               }
-              className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-2 py-1 font-medium text-[var(--silver-900)] transition-colors hover:bg-[var(--space-overlay)] disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
             >
-              <CodeIcon className="size-3.5" />
+              <CodeIcon />
               Open in code
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={() => setSelection(null)}
+              aria-label="Clear selection"
               title="Clear selection"
-              className="rounded-[var(--radius-md)] p-1 text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
             >
-              <XIcon className="size-3.5" />
-            </button>
+              <XIcon />
+            </Button>
           </div>
         </div>
 
@@ -1465,11 +1378,11 @@ export function PreviewPane({
   };
 
   return (
-    <div className="flex h-full items-center justify-center overflow-auto bg-[var(--space-surface)] p-2">
+    <div className="flex h-full items-center justify-center overflow-auto bg-space-void p-2">
       <motion.div
         animate={{ maxWidth: DEVICE_WIDTH[device] }}
-        transition={{ type: "spring", stiffness: 200, damping: 26 }}
-        className="relative h-full w-full overflow-hidden rounded-xl border border-[var(--silver-200)] bg-black shadow-xl shadow-black/20"
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="relative h-full w-full overflow-hidden rounded-lg border border-line bg-space-void"
       >
         {surface !== "frame" && surface !== "empty" ? (
           <PreviewStopped
@@ -1493,33 +1406,30 @@ export function PreviewPane({
                 recovery.onLoad();
               }}
               className={cn(
-                "h-full w-full border-0 bg-black transition-opacity duration-200",
+                "h-full w-full border-0 bg-space-void transition-opacity duration-150",
                 previewLoaded ? "visible opacity-100" : "invisible opacity-0",
               )}
-              style={{ colorScheme: "dark", backgroundColor: "black" }}
+              style={{ colorScheme: "dark", backgroundColor: "var(--space-void)" }}
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
             />
             {!previewLoaded && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black">
-                {previewImageUrl && (
-                  <>
-                    <img src={previewImageUrl} alt="" aria-hidden className="absolute inset-0 size-full scale-110 object-cover object-top opacity-45 blur-md" />
-                    <div className="absolute inset-0 bg-black/80" />
-                  </>
-                )}
-                {recovery.phase === "failed" && (
-                  <div aria-hidden="true" className="rain-streaks" />
-                )}
+              <div className="absolute inset-0 z-20">
                 {recovery.phase === "failed" ? (
                   <PreviewFailedCard
                     appError={recovery.appError}
+                    excerpt={recovery.runtimeError?.errors[0]?.message}
                     onFix={startupFix.fix}
                     onReload={reloadPreview}
                     canFix={startupFix.canSend}
                     isSending={startupFix.isSending}
+                    coverImageUrl={previewImageUrl}
                   />
                 ) : (
-                  <div className="relative"><DataSpinner label={recovery.attempt ? "Reconnecting preview" : "Loading preview"} /></div>
+                  <PreviewStateCard
+                    role="status"
+                    coverImageUrl={previewImageUrl}
+                    description={recovery.attempt ? "Reconnecting preview…" : "Loading preview…"}
+                  />
                 )}
               </div>
             )}
@@ -1551,11 +1461,7 @@ export function PreviewPane({
             )}
           </>
         ) : (
-          <PreviewPlaceholder
-            state={emptyState}
-            onAction={handleEmptyAction}
-            onPlay={() => setGamesOpen(true)}
-          />
+          <PreviewPlaceholder state={emptyState} onAction={handleEmptyAction} />
         )}
       </motion.div>
       {/* Out here, not in the placeholder that opens it: it has to outlive the

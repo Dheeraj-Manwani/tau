@@ -1,4 +1,4 @@
-import PeekRating from "@/src/components/ui/PeekRating";
+import { Rating } from "@/src/components/ui/rating";
 
 export function FeedbackStars({ value, onChange, disabled }: {
   value: number;
@@ -6,32 +6,9 @@ export function FeedbackStars({ value, onChange, disabled }: {
   disabled: boolean;
 }) {
   return (
-    <fieldset disabled={disabled} className="border-0 p-0">
+    <fieldset disabled={disabled} className="border-0 p-0 disabled:opacity-40">
       <legend className="sr-only">Your rating (required)</legend>
-      <div className="flex justify-center py-1">
-        <PeekRating
-          value={value}
-          onChange={onChange}
-          count={5}
-          shape="star"
-          labels={["Poor", "Fair", "Good", "Great", "Superb"]}
-          activeColor="#f5b400"
-          idleColor="#52525b"
-          tipColor="#27272a"
-          tipTextColor="#f5f5f5"
-          size={40}
-          lift={8}
-          magnify={1.15}
-          riseDuration={320}
-          popScale={1.3}
-          showTip
-          reserveTipSpace={false}
-          allowClear
-          required
-          disabled={disabled}
-          ariaLabel="Your rating"
-        />
-      </div>
+      <Rating value={value} onChange={onChange} label="Your rating" className="gap-1" />
     </fieldset>
   );
 }

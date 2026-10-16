@@ -1,40 +1,24 @@
 import { useNavigate } from "react-router-dom";
-import { CheckCircleIcon } from "lucide-react";
+import { CheckIcon, ZapIcon } from "lucide-react";
 
 import { useUpgradeModalStore } from "./useUpgradeModalStore";
+import { UpgradeProButton } from "./UpgradeProButton";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/src/components/ui/dialog";
+import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
-import { MaxShimmerLabel } from "@/src/components/ui/max-shimmer-label";
 import { APP_BILLING } from "@/src/lib/routes";
-import { PRO_PRICE_INR } from "@/src/lib/pricing";
+import { PRO_FEATURES, PRO_PRICE_INR } from "@/src/lib/pricing";
 
-const PRO_FEATURES = [
-  "5,000 credits per month",
-  "No tau badge on your previews and sites",
-  "Generate logos for your deployed apps with AI",
-  "Credits reset monthly",
-  "Priority support",
-];
-
-/** Renders feature text, swapping the word "Max" for its shimmering label. */
-function renderFeatureText(text: string) {
-  return text
-    .split(/(Max)/)
-    .map((part, i) =>
-      part === "Max" ? (
-        <MaxShimmerLabel key={i} className="font-semibold" />
-      ) : (
-        part
-      ),
-    );
-}
-
-/** Global "upgrade to PRO" modal: open it from anywhere via useUpgradeModalStore. */
+/**
+ * Global "upgrade to Pro" modal: open it from anywhere via
+ * useUpgradeModalStore. The Pro card from Billing, with the one orange button.
+ */
 export function UpgradeModal() {
   const open = useUpgradeModalStore((s) => s.open);
   const title = useUpgradeModalStore((s) => s.title);
@@ -43,41 +27,46 @@ export function UpgradeModal() {
 
   const handleUpgrade = () => {
     close();
-    navigate(APP_BILLING);
+    navigate(`${APP_BILLING}#pro-plan`);
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && close()}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
 
-        <div className="rounded-xl border border-border bg-muted/30 p-4">
-          <span className="mb-3 inline-block rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-medium text-brand">
-            PRO
-          </span>
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-3">
+            <Badge tone="pro">
+              <ZapIcon />
+              PRO
+            </Badge>
+            <span className="font-mono text-xs text-silver-500">Cancel anytime</span>
+          </div>
+          <div className="flex items-baseline gap-2.5">
+            <span className="display-heading text-[48px]">
               ₹{PRO_PRICE_INR.toLocaleString("en-IN")}
             </span>
-            <span className="text-sm text-muted-foreground">/month</span>
+            <span className="font-mono text-xs text-silver-500">/ month</span>
           </div>
-          <ul className="mt-4 space-y-2">
+          <ul className="flex flex-col gap-[11px] text-[13.5px]">
             {PRO_FEATURES.map((f) => (
-              <li key={f} className="flex items-start gap-2 text-sm">
-                <CheckCircleIcon className="mt-0.5 size-4 shrink-0 text-brand" />
-                <span className="text-foreground/80">
-                  {renderFeatureText(f)}
-                </span>
+              <li key={f} className="flex items-center gap-2.5">
+                <CheckIcon className="size-4 shrink-0 text-green-400" />
+                {f}
               </li>
             ))}
           </ul>
         </div>
 
-        <Button className="h-11 w-full" onClick={handleUpgrade}>
-          Upgrade to PRO
-        </Button>
+        <DialogFooter>
+          <Button variant="ghost" onClick={close}>
+            Not now
+          </Button>
+          <UpgradeProButton onClick={handleUpgrade} />
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

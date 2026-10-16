@@ -8,3 +8,5 @@ graphify-out/
 .graphify_*
 AGENTS.md
 DESIGN.md
+DESIGN-HANDOFF.md
+boards/

@@ -4,12 +4,12 @@ import {
   initialsOf,
   type Identity,
 } from "@/src/features/account/identity";
-import { cn } from "@/src/lib/utils";
 
 /**
  * The one avatar used everywhere: the profile picture when there is one,
- * otherwise the classic: white initials on black, with a hairline ring so it
- * doesn't vanish into the near-black page.
+ * otherwise mono initials on the raised surface (boards/Surfaces.dc.html).
+ * Sizes: 24 in chat and lists, 32 in the top bar (default), 40 in a menu
+ * header.
  */
 export function UserAvatar({
   user,
@@ -24,12 +24,7 @@ export function UserAvatar({
   return (
     <Avatar className={className}>
       {src && <AvatarImage src={src} alt="" className="object-cover" />}
-      <AvatarFallback
-        className={cn(
-          "bg-black font-semibold text-white ring-1 ring-silver-400/40 ring-inset",
-          fallbackClassName,
-        )}
-      >
+      <AvatarFallback className={fallbackClassName}>
         {initialsOf(user)}
       </AvatarFallback>
     </Avatar>

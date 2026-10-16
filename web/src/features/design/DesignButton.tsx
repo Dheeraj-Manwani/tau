@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from "@/src/components/ui/dialog";
 import { Button } from "@/src/components/ui/button";
-import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { cn } from "@/src/lib/utils";
 import {
   countChoices,
@@ -19,7 +18,7 @@ import {
   withoutImport,
   type DesignConfig,
 } from "@/src/features/design/api";
-import { DesignPicker } from "@/src/features/design/DesignPicker";
+import { DesignPicker, PickerSkeleton } from "@/src/features/design/DesignPicker";
 
 /**
  * The composer's control for an app's look: a button that says what has been
@@ -72,11 +71,11 @@ export function DesignButton({
         onClick={() => setOpen(true)}
         aria-label={`Choose how the app looks. Currently: ${label}`}
         data-tour="design"
+        // The STYLE chip (boards/Home.dc.html): mono caps, one strong edge,
+        // neutral whether or not a look is chosen; the label says which.
         className={cn(
-          "flex items-center gap-1.5 rounded-[9px] border px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-          chosen > 0
-            ? "border-blue-500/40 bg-blue-500/15 text-blue-300 hover:bg-blue-500/25"
-            : "border-silver-400/30 text-silver-600 hover:bg-space-overlay hover:text-silver-900",
+          "flex h-7 cursor-pointer items-center gap-1.5 rounded-sm border border-line-strong px-2.5 font-mono text-[11px] font-medium tracking-[0.06em] uppercase transition-colors duration-150 outline-none hover:bg-space-raised hover:text-silver-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-40",
+          chosen > 0 ? "text-silver-900" : "text-silver-600",
         )}
       >
         {value.accent ? (
@@ -87,12 +86,12 @@ export function DesignButton({
         ) : (
           <PaletteIcon className="size-3.5 shrink-0" />
         )}
-        <span className="text-silver-600">Style</span>
+        <span className="text-silver-500">Style</span>
         <span className="max-w-28 truncate">{label}</span>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="gap-5 sm:max-w-3xl">
+        <DialogContent className="gap-5 sm:max-w-[min(960px,calc(100%-2rem))]">
           <DialogHeader>
             <DialogTitle>How should it look?</DialogTitle>
             <DialogDescription>
@@ -105,12 +104,13 @@ export function DesignButton({
           {catalog.data ? (
             <DesignPicker catalog={catalog.data} value={value} onChange={onChange} />
           ) : (
-            <DataSpinner label="Loading styles" />
+            <PickerSkeleton />
           )}
 
           <DialogFooter>
             <Button
               variant="ghost"
+              className="sm:mr-auto"
               disabled={chosen === 0}
               onClick={() => onChange({})}
             >

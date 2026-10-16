@@ -50,7 +50,7 @@ export function ReauthPrompt({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-12 items-center justify-center rounded-lg border bg-muted/30 p-3">
+      <div className="flex min-h-12 items-center justify-center rounded-lg border border-line bg-space-void p-3">
         <DataSpinner label="Loading verification method" />
       </div>
     );
@@ -70,13 +70,13 @@ export function ReauthPrompt({
   };
 
   return (
-    <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+    <div className="space-y-2.5 rounded-lg border border-line bg-space-void p-3.5">
       <div className="flex items-center gap-1.5">
-        <ShieldCheckIcon className="size-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium">Confirm it's you to {action}</span>
+        <ShieldCheckIcon className="size-4 text-silver-600" />
+        <span className="text-[13px] font-medium">Confirm it's you to {action}</span>
       </div>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs leading-normal text-silver-500">
         {isCode
           ? sentTo
             ? `We emailed a 6-digit code to ${sentTo}. It expires in 10 minutes.`
@@ -96,21 +96,21 @@ export function ReauthPrompt({
           onKeyDown={(e) => {
             if (e.key === "Enter" && value.trim() !== "") submit();
           }}
-          className={`h-9 ${isCode ? "font-mono tracking-widest" : ""}`}
+          className={isCode ? "font-mono tracking-widest" : undefined}
         />
         <Button
-          size="sm"
-          disabled={value.trim() === "" || reauth.isPending}
+          disabled={value.trim() === ""}
+          loading={reauth.isPending}
           onClick={submit}
         >
           {reauth.isPending ? "Checking…" : "Confirm"}
         </Button>
-        <Button variant="ghost" size="sm" onClick={onCancel}>
+        <Button variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
       </div>
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
     </div>
   );
 }

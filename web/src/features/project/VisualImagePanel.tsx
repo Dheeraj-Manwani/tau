@@ -3,6 +3,8 @@ import toast from "react-hot-toast";
 import { DownloadIcon, ImageIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
+import { Button } from "@/src/components/ui/button";
+import { fieldClass } from "@/src/components/ui/styles";
 import { ApiError } from "@/src/lib/api-client";
 import {
   useImportVisualAsset,
@@ -168,7 +170,7 @@ export function VisualImagePanel({
   return (
     <div
       className={cn(
-        "max-h-64 space-y-2 overflow-y-auto border-t border-[var(--silver-200)] bg-[var(--space-surface)] px-3 py-2",
+        "scrollbar-thin max-h-64 space-y-2.5 overflow-y-auto border-b border-line px-4 py-3",
         busy && "opacity-60",
       )}
     >
@@ -187,30 +189,27 @@ export function VisualImagePanel({
             e.stopPropagation();
           }}
           aria-label="Image URL"
-          className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--silver-200)] bg-[var(--space-void)] px-2 py-1 text-xs text-[var(--silver-900)] outline-none focus:border-[var(--blue-500)] disabled:opacity-50"
+          className={cn(fieldClass, "h-8 rounded-sm px-2.5 text-xs")}
         />
-        <button
-          type="button"
+        <Button
+          size="sm"
+          className="h-8"
           disabled={busy || !url.trim()}
+          loading={importAsset.isPending}
           onClick={importAndApply}
-          className="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] bg-brand px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40"
         >
-          {importAsset.isPending ? (
-            <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          ) : (
-            <DownloadIcon className="size-3" />
-          )}
+          {!importAsset.isPending && <DownloadIcon />}
           Use
-        </button>
+        </Button>
       </div>
-      <p className="text-[11px] text-[var(--silver-600)]">
+      <p className="text-xs text-silver-500">
         The image is copied into your project, so it keeps working after the link
         goes away.
       </p>
 
       {projectImages.length > 0 && (
         <div>
-          <p className="pb-1 text-[11px] text-[var(--silver-600)]">
+          <p className="lab pb-2">
             Already in this project
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -225,10 +224,10 @@ export function VisualImagePanel({
                   title={path}
                   aria-pressed={isCurrent}
                   className={cn(
-                    "flex items-center gap-1 rounded-[var(--radius-md)] border px-1.5 py-0.5 text-[11px] transition-colors disabled:cursor-default",
+                    "flex h-6 cursor-pointer items-center gap-1.5 rounded-xs border px-2 font-mono text-[11px] transition-colors duration-150 disabled:cursor-default",
                     isCurrent
-                      ? "border-[var(--blue-500)] text-[var(--silver-900)]"
-                      : "border-[var(--silver-200)] text-[var(--silver-600)] hover:text-[var(--silver-900)]",
+                      ? "border-blue-500 bg-blue-500/12 text-silver-900"
+                      : "border-line-strong bg-space-surface text-silver-600 hover:border-line-hover hover:text-silver-900",
                   )}
                 >
                   <ImageIcon className="size-3 shrink-0" />

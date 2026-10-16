@@ -4,9 +4,9 @@ import { javascript } from "@codemirror/lang-javascript";
 import { css as cssLang } from "@codemirror/lang-css";
 import { json as jsonLang } from "@codemirror/lang-json";
 import { html as htmlLang } from "@codemirror/lang-html";
-import { oneDark } from "@codemirror/theme-one-dark";
 import { getIcon } from "material-file-icons";
 import {
+  FolderTreeIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsRightIcon,
@@ -33,6 +33,8 @@ import {
 } from "@/src/components/ui/context-menu";
 
 import { cn } from "@/src/lib/utils";
+import { Alert } from "@/src/components/ui/alert";
+import { Skeleton } from "@/src/components/ui/skeleton";
 import { File, Folder, Tree } from "@/src/components/ui/file-tree";
 import {
   isFileDirty,
@@ -42,6 +44,11 @@ import {
 import { downloadProjectZip, useProjectFile } from "@/src/features/project/api";
 import { useFileSave } from "@/src/features/project/useFileSave";
 import { ResizeHandle } from "@/src/features/project/ResizeHandle";
+import { useMediaQuery } from "@/src/hooks/useMediaQuery";
+import { tauCodeTheme } from "@/src/features/project/codeTheme";
+import { Button } from "@/src/components/ui/button";
+import { SearchInput } from "@/src/components/ui/input";
+import { Kbd } from "@/src/components/ui/kbd";
 
 /** Material (VS Code) file icon for a filename, sized to fit inline. */
 function MaterialIcon({
@@ -164,6 +171,7 @@ function renderNodes(
   nodes: TreeNode[],
   activeFileId: string,
   writingPath: string | null,
+  dirtyPaths: ReadonlySet<string>,
   openFile: (id: string) => void,
 ): React.ReactNode {
   return nodes.map((node) =>
@@ -173,18 +181,29 @@ function renderNodes(
         value={node.path}
         handleSelect={openFile}
         isSelect={activeFileId === node.path}
-        fileIcon={<MaterialIcon name={node.name} className="size-4" />}
+        fileIcon={<MaterialIcon name={node.name} className="size-4 opacity-75 saturate-50" />}
       >
-        <span className="flex items-center gap-1.5">
-          {node.name}
-          {writingPath === node.path && (
-            <LoaderCircleIcon className="size-3 shrink-0 animate-spin opacity-60" />
+        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+          <span className="truncate">{node.name}</span>
+          {writingPath === node.path ? (
+            <LoaderCircleIcon
+              aria-label="tau is writing this file"
+              className="ml-auto size-3 shrink-0 animate-spin text-blue-500 motion-reduce:animate-none"
+            />
+          ) : (
+            dirtyPaths.has(node.path) && (
+              <span
+                aria-label="Unsaved changes"
+                title="Unsaved changes"
+                className="ml-auto size-1.5 shrink-0 rounded-full bg-blue-500"
+              />
+            )
           )}
         </span>
       </File>
     ) : (
       <Folder key={node.path} value={node.path} element={node.name}>
-        {renderNodes(node.children, activeFileId, writingPath, openFile)}
+        {renderNodes(node.children, activeFileId, writingPath, dirtyPaths, openFile)}
       </Folder>
     ),
   );
@@ -192,7 +211,7 @@ function renderNodes(
 
 // ── Tabs ────────────────────────────────────────────────────────────────────
 
-function TabBar() {
+function TabBar({ onShowFiles }: { onShowFiles?: () => void }) {
   const files = useProjectStore((s) => s.files);
   const openFiles = useProjectStore((s) => s.openFiles);
   const activeFileId = useProjectStore((s) => s.activeFileId);
@@ -201,6 +220,7 @@ function TabBar() {
   const closeOtherFiles = useProjectStore((s) => s.closeOtherFiles);
   const closeFilesToRight = useProjectStore((s) => s.closeFilesToRight);
   const closeAllFiles = useProjectStore((s) => s.closeAllFiles);
+  const writingPath = useProjectStore((s) => s.writingPath);
 
   const stripRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
@@ -228,10 +248,18 @@ function TabBar() {
     stripRef.current?.scrollBy({ left: dir * 160, behavior: "smooth" });
 
   const arrowClass =
-    "flex shrink-0 items-center justify-center px-1 text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)]";
+    "flex w-7 shrink-0 cursor-pointer items-center justify-center text-silver-600 transition-colors duration-150 hover:text-silver-900";
 
   return (
-    <div className="flex shrink-0 items-stretch border-b border-[var(--silver-200)] bg-[var(--space-surface)]">
+    <div className="flex h-10 shrink-0 items-stretch border-b border-line bg-space-void">
+      {onShowFiles && (
+        <div className="flex shrink-0 items-center border-r border-line px-1.5">
+          <Button variant="ghost" size="sm" onClick={onShowFiles}>
+            <FolderTreeIcon />
+            Files
+          </Button>
+        </div>
+      )}
       {canLeft && (
         <button
           type="button"
@@ -252,7 +280,9 @@ function TabBar() {
             stripRef.current.scrollLeft += e.deltaY;
           }
         }}
-        className="scrollbar-none flex min-w-0 flex-1 items-end gap-px overflow-x-auto px-1 pt-1"
+        role="tablist"
+        aria-label="Open files"
+        className="scrollbar-none flex min-w-0 flex-1 items-stretch overflow-x-auto px-1"
       >
         {openFiles.map((id, index) => {
           if (!files[id]) return null;
@@ -263,26 +293,31 @@ function TabBar() {
             <ContextMenu key={id}>
               <ContextMenuTrigger asChild>
                 <div
+                  role="tab"
+                  aria-selected={isActive}
                   onClick={() => setActiveFile(id)}
                   className={cn(
-                    "group/tab flex shrink-0 cursor-pointer items-center gap-2 border px-3 py-1.5 text-xs",
+                    "group/tab relative flex shrink-0 cursor-pointer items-center gap-2 px-3 font-mono text-xs transition-colors duration-150 after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full",
                     isActive
-                      ? "border-[var(--silver-200)] bg-[var(--space-overlay)] text-[var(--silver-900)]"
-                      : "border-transparent text-[var(--silver-600)] hover:text-[var(--silver-900)]",
+                      ? "text-silver-900 after:bg-blue-500"
+                      : "text-silver-600 hover:text-silver-900",
                   )}
-                  style={{
-                    borderTopLeftRadius: "var(--radius)",
-                    borderTopRightRadius: "var(--radius)",
-                  }}
                 >
-                  <MaterialIcon name={name} className="size-3.5" />
+                  <MaterialIcon name={name} className="size-3.5 opacity-75 saturate-50" />
                   <span className="whitespace-nowrap">{name}</span>
-                  {isFileDirty(files[id]) && (
-                    <span
-                      aria-label="Unsaved changes"
-                      title="Unsaved changes"
-                      className="size-1.5 shrink-0 rounded-full bg-[var(--silver-600)] group-hover/tab:hidden"
+                  {writingPath === id ? (
+                    <LoaderCircleIcon
+                      aria-label="tau is writing this file"
+                      className="size-3 shrink-0 animate-spin text-blue-500 motion-reduce:animate-none"
                     />
+                  ) : (
+                    isFileDirty(files[id]) && (
+                      <span
+                        aria-label="Unsaved changes"
+                        title="Unsaved changes"
+                        className="size-1.5 shrink-0 rounded-full bg-blue-500 group-hover/tab:hidden"
+                      />
+                    )
                   )}
                   <button
                     type="button"
@@ -292,7 +327,7 @@ function TabBar() {
                       closeFile(id);
                     }}
                     className={cn(
-                      "flex size-4 items-center justify-center rounded-[var(--radius-sm)] opacity-0 transition-opacity group-hover/tab:opacity-100 hover:bg-[var(--space-void)]",
+                      "flex size-5 cursor-pointer items-center justify-center rounded-[5px] text-silver-500 opacity-0 transition-[opacity,background-color,color] group-hover/tab:opacity-100 hover:bg-space-raised hover:text-silver-900 focus-visible:opacity-100",
                       isFileDirty(files[id]) && "group-hover/tab:opacity-100",
                     )}
                   >
@@ -355,23 +390,16 @@ function EditorStatus({
   file: ProjectFileState;
   isBuilding: boolean;
 }) {
-  if (isBuilding) {
-    return (
-      <span className="text-[var(--silver-600)]">
-        Editing is paused while tau is building
-      </span>
-    );
-  }
+  if (isBuilding) return <span>Read only while tau is building</span>;
   if (file.saveError) {
-    return <span className="text-[var(--danger, #f87171)]">{file.saveError}</span>;
+    return <span role="alert" className="text-red-400">{file.saveError}</span>;
   }
-  if (file.saving) return <span className="text-[var(--silver-600)]">Saving…</span>;
-  if (isFileDirty(file))
-    return <span className="text-[var(--silver-600)]">Unsaved changes</span>;
-  return <span className="text-[var(--silver-600)]">Saved</span>;
+  if (file.saving) return <span>Saving…</span>;
+  if (isFileDirty(file)) return <span className="text-silver-900">Unsaved changes</span>;
+  return <span>Saved</span>;
 }
 
-function CodeEditor() {
+function CodeEditor({ onShowFiles }: { onShowFiles?: () => void }) {
   const files = useProjectStore((s) => s.files);
   const activeFileId = useProjectStore((s) => s.activeFileId);
   const projectId = useProjectStore((s) => s.projectId);
@@ -453,14 +481,12 @@ function CodeEditor() {
 
   if (!file) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 bg-[var(--space-void)]">
-        <span
-          className="logo-mark size-8 opacity-50 "
-          role="img"
-          aria-label="tau"
-        />
-        <span className="text-sm text-(--silver-600)">
-          Select a file to view its contents
+      <div className="flex h-full flex-col items-center justify-center gap-3 bg-space-void p-6 text-center">
+        <span className="grid size-11 place-items-center rounded-lg border border-line-strong bg-space-surface">
+          <span aria-hidden className="logo-mark size-5 [filter:none]" />
+        </span>
+        <span className="text-[13px] text-silver-500">
+          Pick a file on the left to read or edit it.
         </span>
       </div>
     );
@@ -470,43 +496,40 @@ function CodeEditor() {
   // editor: render a preview from the presigned URL the api hands back instead.
   if (isBinaryPath(activeFileId)) {
     return (
-      <div className="flex h-full flex-col bg-[var(--space-void)]">
-        <TabBar />
+      <div className="flex h-full flex-col bg-space-void">
+        <TabBar onShowFiles={onShowFiles} />
         <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-6">
           {isLoading ? (
-            <LoaderCircleIcon className="size-5 animate-spin text-[var(--silver-600)]" />
+            <Skeleton className="size-40 rounded-lg" />
           ) : isError || !fetched || !fetched.binary ? (
-            <span className="text-sm text-[var(--silver-600)]">
-              Could not load asset.
+            <span className="text-[13px] text-silver-500">
+              Couldn&rsquo;t load this file.
             </span>
           ) : IMAGE_EXTS.has(extOf(activeFileId)) ? (
             <img
               src={fetched.url}
               alt={basename(activeFileId)}
-              className="max-h-full max-w-full rounded-md object-contain shadow-lg"
+              className="max-h-full max-w-full rounded-lg border border-line object-contain"
               // Checkerboard so transparent PNGs read as transparent, not black.
               style={{
                 backgroundImage:
-                  "linear-gradient(45deg,#2a2f3a 25%,transparent 25%),linear-gradient(-45deg,#2a2f3a 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2a2f3a 75%),linear-gradient(-45deg,transparent 75%,#2a2f3a 75%)",
+                  "linear-gradient(45deg,#1c1c20 25%,transparent 25%),linear-gradient(-45deg,#1c1c20 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1c1c20 75%),linear-gradient(-45deg,transparent 75%,#1c1c20 75%)",
                 backgroundSize: "16px 16px",
                 backgroundPosition: "0 0,0 8px,8px -8px,-8px 0",
               }}
             />
           ) : (
-            <div className="flex flex-col items-center gap-3 text-sm text-[var(--silver-600)]">
+            <div className="flex flex-col items-center gap-3 font-mono text-xs text-silver-600">
               <MaterialIcon
                 name={basename(activeFileId)}
                 className="size-10"
               />
               <span>{basename(activeFileId)}</span>
-              <a
-                href={fetched.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[var(--blue-500)] hover:underline"
-              >
-                Open asset
-              </a>
+              <Button variant="secondary" size="sm" asChild>
+                <a href={fetched.url} target="_blank" rel="noreferrer">
+                  Open file
+                </a>
+              </Button>
             </div>
           )}
         </div>
@@ -520,24 +543,31 @@ function CodeEditor() {
   const value = file.draft ?? file.content ?? fetchedText ?? "";
 
   return (
-    <div className="flex h-full flex-col bg-[var(--space-void)]">
-      <TabBar />
+    <div className="flex h-full flex-col bg-space-void">
+      <TabBar onShowFiles={onShowFiles} />
       {needsLoad && isLoading ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-[var(--space-void)]">
-          <LoaderCircleIcon className="size-5 animate-spin text-[var(--silver-600)]" />
+        <div className="flex min-h-0 flex-1 flex-col gap-2.5 p-4 pl-12" aria-label="Loading file" role="status">
+          {[72, 54, 88, 40, 66, 58].map((w, i) => (
+            <Skeleton key={i} className="h-3 rounded-xs" style={{ width: `${w}%` }} />
+          ))}
         </div>
       ) : needsLoad && isError ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-[var(--space-void)] text-sm text-[var(--silver-600)]">
-          Could not load file contents.
+        <div className="flex min-h-0 flex-1 items-center justify-center text-[13px] text-silver-500">
+          Couldn&rsquo;t load this file.
         </div>
       ) : (
         <>
+          {isBuilding && (
+            <Alert tone="info" icon={LoaderCircleIcon} className="m-2 mb-0 py-2.5 [&>svg]:animate-spin motion-reduce:[&>svg]:animate-none">
+              tau is writing your files. Editing is paused until it finishes.
+            </Alert>
+          )}
           <div className="scrollbar-thin min-h-0 flex-1 overflow-auto">
             <CodeMirror
               // Remount on file switch so undo history doesn't leak across files.
               key={activeFileId}
               value={value}
-              theme={oneDark}
+              theme={tauCodeTheme}
               extensions={extensions}
               editable={!isBuilding}
               onChange={handleChange}
@@ -545,20 +575,20 @@ function CodeEditor() {
               basicSetup={{ foldGutter: false, highlightActiveLine: !isBuilding }}
               style={{ fontSize: "13px", fontFamily: "var(--mono)" }}
               height="100%"
-              className="h-full [&_.cm-editor]:h-full [&_.cm-gutters]:border-none"
+              className="h-full [&_.cm-editor]:h-full [&_.cm-editor.cm-focused]:outline-none"
             />
           </div>
-          <div className="flex shrink-0 items-center justify-between border-t border-[var(--silver-200)] bg-[var(--space-surface)] px-3 py-1 text-[11px]">
-            <EditorStatus file={file} isBuilding={isBuilding} />
+          <div className="flex h-10 shrink-0 items-center justify-between gap-3 border-t border-line bg-space-void px-3 font-mono text-[11px] text-silver-500">
+            <span className="flex min-w-0 items-center gap-2 truncate">
+              <span className="truncate">{file.path}</span>
+              <span aria-hidden>·</span>
+              <EditorStatus file={file} isBuilding={isBuilding} />
+            </span>
             {!isBuilding && isFileDirty(file) && !file.saving && (
-              <button
-                type="button"
-                onClick={() => flush(file.path)}
-                className="text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)]"
-              >
+              <Button size="sm" onClick={() => flush(file.path)}>
                 Save
-                <span className="ml-1 opacity-60">⌘S</span>
-              </button>
+                <Kbd className="border-blue-900/30 bg-transparent text-blue-900">⌘S</Kbd>
+              </Button>
             )}
           </div>
         </>
@@ -582,6 +612,16 @@ export function CodePane() {
   const [collapseVersion, setCollapseVersion] = useState(0);
   const [downloading, setDownloading] = useState(false);
   const downloadPending = useRef(false);
+  // A phone has no room for both: show the tree or the open file, not a
+  // 150px editor beside a 240px tree.
+  const narrow = useMediaQuery("(max-width: 639px)");
+  const [browsing, setBrowsing] = useState(false);
+  const showTree = !narrow || !activeFileId || browsing;
+  const showEditor = !narrow || (Boolean(activeFileId) && !browsing);
+  const pickFile = (id: string) => {
+    openFile(id);
+    setBrowsing(false);
+  };
 
   const download = async () => {
     if (!projectId || downloadPending.current) return;
@@ -604,6 +644,10 @@ export function CodePane() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const paths = useMemo(() => Object.keys(files), [files]);
+  const dirtyPaths = useMemo(
+    () => new Set(paths.filter((path) => isFileDirty(files[path]!))),
+    [paths, files],
+  );
   const tree = useMemo(() => buildTree(paths.filter((path) =>
     (showHidden || !path.split("/").some((part) => part.startsWith("."))) &&
     path.toLowerCase().includes(search.trim().toLowerCase()),
@@ -624,64 +668,72 @@ export function CodePane() {
 
   return (
     <div ref={containerRef} className="flex h-full w-full overflow-hidden">
-      <div
-        style={{ width: codeTreeWidth }}
-        className="flex shrink-0 flex-col overflow-hidden bg-[var(--space-surface)] py-2 text-[var(--silver-900)]"
-      >
-        <div className="mb-2 flex shrink-0 items-center gap-1 px-2">
-          <input
-            aria-label="Search files"
-            placeholder="Search files"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="h-8 min-w-0 flex-1 rounded-md border border-[var(--silver-200)] bg-[var(--space-overlay)] px-2 text-xs outline-none focus:border-[var(--silver-600)]"
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" aria-label="File options" className="flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-[var(--space-overlay)]">
-                {downloading ? <LoaderCircleIcon className="size-4 animate-spin" /> : <EllipsisVerticalIcon className="size-4" />}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem disabled title="File creation is not available yet"><FilePlusIcon />New file</DropdownMenuItem>
-              <DropdownMenuItem disabled title="Folder creation is not available yet"><FolderPlusIcon />New folder</DropdownMenuItem>
-              <DropdownMenuItem disabled title="Folder upload is not available yet"><FolderUpIcon />Upload folder</DropdownMenuItem>
-              <DropdownMenuItem disabled={!projectId || paths.length === 0 || downloading || isBuilding} onSelect={() => void download()}>
-                <DownloadIcon />{downloading ? "Downloading…" : "Download as zip"}
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setShowHidden((value) => !value)}>
-                {showHidden ? <EyeOffIcon /> : <EyeIcon />}{showHidden ? "Hide hidden files" : "Show hidden files"}
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => { setSearch(""); setCollapseVersion((value) => value + 1); }}><ChevronsDownUpIcon />Collapse all</DropdownMenuItem>
-              <DropdownMenuItem onSelect={closeAllFiles}><XIcon />Close files</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <div className="min-h-0 flex-1">
-        {paths.length === 0 ? (
-          <div className="px-3 py-2 text-xs text-[var(--silver-600)]">
-            Files will appear here as tau builds your app.
+      {showTree && (
+        <div
+          style={narrow ? undefined : { width: codeTreeWidth }}
+          className={cn(
+            "flex shrink-0 flex-col overflow-hidden bg-space-surface py-2 text-silver-900",
+            narrow && "w-full",
+          )}
+        >
+          <div className="mb-2 flex shrink-0 items-center gap-1 px-2">
+            <SearchInput
+              aria-label="Search files"
+              placeholder="Search files"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="flex-1 [&_input]:h-8 [&_input]:text-xs"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="File options">
+                  {downloading ? <LoaderCircleIcon className="animate-spin text-blue-500 motion-reduce:animate-none" /> : <EllipsisVerticalIcon />}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem disabled title="File creation is not available yet"><FilePlusIcon />New file</DropdownMenuItem>
+                <DropdownMenuItem disabled title="Folder creation is not available yet"><FolderPlusIcon />New folder</DropdownMenuItem>
+                <DropdownMenuItem disabled title="Folder upload is not available yet"><FolderUpIcon />Upload folder</DropdownMenuItem>
+                <DropdownMenuItem disabled={!projectId || paths.length === 0 || downloading || isBuilding} onSelect={() => void download()}>
+                  <DownloadIcon />{downloading ? "Downloading…" : "Download as zip"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setShowHidden((value) => !value)}>
+                  {showHidden ? <EyeOffIcon /> : <EyeIcon />}{showHidden ? "Hide hidden files" : "Show hidden files"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { setSearch(""); setCollapseVersion((value) => value + 1); }}><ChevronsDownUpIcon />Collapse all</DropdownMenuItem>
+                <DropdownMenuItem onSelect={closeAllFiles}><XIcon />Close files</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        ) : tree.length === 0 ? (
-          <div className="px-3 py-2 text-xs text-[var(--silver-600)]">No matching files.</div>
-        ) : (
-          <Tree
-            key={treeKey}
-            className="scrollbar-thin"
-            initialSelectedId={activeFileId}
-            initialExpandedItems={search.trim() ? expanded : []}
-          >
-            {renderNodes(tree, activeFileId, writingPath, openFile)}
-          </Tree>
-        )}
+          <div className="min-h-0 flex-1">
+          {paths.length === 0 ? (
+            <div className="px-3 py-2 text-xs leading-normal text-silver-500">
+              Files will appear here as tau builds your app.
+            </div>
+          ) : tree.length === 0 ? (
+            <div className="px-3 py-2 text-xs text-silver-500">No file matches &ldquo;{search.trim()}&rdquo;.</div>
+          ) : (
+            <Tree
+              key={treeKey}
+              className="scrollbar-thin"
+              initialSelectedId={activeFileId}
+              initialExpandedItems={search.trim() ? expanded : []}
+            >
+              {renderNodes(tree, activeFileId, writingPath, dirtyPaths, pickFile)}
+            </Tree>
+          )}
+          </div>
         </div>
-      </div>
 
-      <ResizeHandle onDrag={handleDrag} />
+      )}
 
-      <div className="min-w-0 flex-1">
-        <CodeEditor />
-      </div>
+      {!narrow && <ResizeHandle onDrag={handleDrag} />}
+
+      {showEditor && (
+        <div className="min-w-0 flex-1">
+          <CodeEditor onShowFiles={narrow ? () => setBrowsing(true) : undefined} />
+        </div>
+      )}
     </div>
   );
 }

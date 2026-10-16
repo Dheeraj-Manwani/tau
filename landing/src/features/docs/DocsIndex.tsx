@@ -29,7 +29,7 @@ export function DocsIndex() {
 
   return (
     <div className="pb-16">
-      <h1 className="text-3xl font-semibold tracking-tight text-silver-900">
+      <h1 className="display-m text-silver-900">
         Documentation
       </h1>
       <p className="mt-3 max-w-2xl text-silver-600">
@@ -40,11 +40,11 @@ export function DocsIndex() {
         <button
           type="button"
           onClick={openSearch}
-          className="flex items-center gap-2 rounded-lg border border-silver-200 px-3 py-2 text-sm text-silver-600 transition-colors hover:border-silver-400 hover:text-silver-900"
+          className="flex items-center gap-2 rounded-lg border border-silver-200 px-3 py-2 text-sm text-silver-600 transition-colors hover:border-line-hover hover:text-silver-900"
         >
           <SearchIcon className="size-3.5" />
           Search the docs
-          <kbd className="rounded border border-silver-200 px-1 font-mono text-[0.6rem]">
+          <kbd className="rounded border border-silver-200 px-1 font-mono text-[11px]">
             ⌘K
           </kbd>
         </button>
@@ -75,7 +75,7 @@ export function DocsIndex() {
           {NAV_TREE.map((section) => (
             <div
               key={section.slug}
-              className="rounded-2xl border border-silver-200 bg-space-surface p-5 transition-colors hover:border-silver-400"
+              className="rounded-lg border border-line bg-space-surface p-5 transition-colors hover:border-line-hover"
             >
               <h2 className="text-sm font-semibold text-silver-900">
                 {section.title}

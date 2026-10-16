@@ -1,56 +1,86 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { LoaderCircleIcon } from "lucide-react";
 import { Slot } from "radix-ui";
 
 import { cn } from "@/src/lib/utils";
 
+/**
+ * boards/Controls.dc.html §01. Blue fill means "this is the thing to do":
+ * one `primary` per screen. Everything else is `secondary` (overlay fill,
+ * strong edge) or `ghost`. `destructive` starts a loss (outline only);
+ * `destructive-solid` lives only inside a confirm modal; `upgrade` is the one
+ * orange button, for the free plan only.
+ *
+ * Hover moves one step, pressed steps back, 150ms. Disabled is 40% with no
+ * hover; a disabled primary stays blue so the waiting action is still clear.
+ */
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center gap-2 border border-transparent font-medium whitespace-nowrap transition-[background-color,border-color,color] duration-150 outline-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40 aria-invalid:border-red-400 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
-        outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        primary:
+          "bg-blue-500 font-semibold text-blue-900 hover:bg-blue-hi active:bg-blue-lo",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "border-line-strong bg-space-overlay text-silver-900 hover:border-line-hover hover:bg-space-raised active:bg-space-overlay aria-expanded:border-line-hover aria-expanded:bg-space-raised",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "text-silver-600 hover:bg-space-raised hover:text-silver-900 active:bg-space-overlay aria-expanded:bg-space-raised aria-expanded:text-silver-900",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        link: "text-primary underline-offset-4 hover:underline",
+          "border-red-400/32 text-red-400 hover:bg-red-400/10 active:bg-red-400/5",
+        "destructive-solid":
+          "bg-red-400 font-semibold text-[#1a0505] hover:bg-[#fb8a8a] active:bg-red-400",
+        upgrade:
+          "bg-orange-400 font-semibold text-orange-ink hover:bg-orange-hi active:bg-orange-400",
+        link: "h-auto border-0 p-0 text-blue-500 underline-offset-3 hover:text-blue-hi hover:underline",
+        /** @deprecated Use `primary`. */
+        default:
+          "bg-blue-500 font-semibold text-blue-900 hover:bg-blue-hi active:bg-blue-lo",
+        /** @deprecated Use `secondary`. */
+        outline:
+          "border-line-strong bg-space-overlay text-silver-900 hover:border-line-hover hover:bg-space-raised active:bg-space-overlay aria-expanded:border-line-hover aria-expanded:bg-space-raised",
       },
       size: {
-        default:
-          "h-10 gap-2 px-4 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-11 gap-2 px-4 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        icon: "size-8",
-        "icon-xs":
-          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm":
-          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
-        "icon-lg": "size-9",
+        default: "h-9 rounded-md px-3.5 text-[13px]",
+        sm: "h-7 gap-1.5 rounded-sm px-2.5 text-xs [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-11 rounded-lg px-5 text-sm",
+        icon: "size-8 rounded-sm",
+        "icon-sm": "size-7 rounded-sm [&_svg:not([class*='size-'])]:size-3.5",
+        /** @deprecated Nothing goes under 28px; same as `sm`. */
+        xs: "h-7 gap-1.5 rounded-sm px-2.5 text-xs [&_svg:not([class*='size-'])]:size-3.5",
+        /** @deprecated Same as `icon-sm`. */
+        "icon-xs": "size-7 rounded-sm [&_svg:not([class*='size-'])]:size-3.5",
+        /** @deprecated Same as `icon`. */
+        "icon-lg": "size-8 rounded-sm",
       },
     },
+    compoundVariants: [
+      { variant: "link", className: "h-auto px-0" },
+    ],
     defaultVariants: {
-      variant: "default",
+      variant: "primary",
       size: "default",
     },
   },
 );
 
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
+type ButtonProps = React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
-  }) {
+    /** Shows a spinner before the label and disables the button. */
+    loading?: boolean;
+  };
+
+function Button({
+  className,
+  variant = "primary",
+  size = "default",
+  asChild = false,
+  loading = false,
+  disabled,
+  children,
+  ...props
+}: ButtonProps) {
   const Comp = asChild ? Slot.Root : "button";
 
   return (
@@ -58,9 +88,23 @@ function Button({
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      aria-busy={loading || undefined}
+      disabled={asChild ? undefined : disabled || loading}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
+    >
+      {loading && !asChild ? (
+        <>
+          <LoaderCircleIcon
+            aria-hidden="true"
+            className="animate-spin motion-reduce:animate-none"
+          />
+          {children}
+        </>
+      ) : (
+        children
+      )}
+    </Comp>
   );
 }
 

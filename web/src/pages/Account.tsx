@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeftIcon, UserRoundIcon } from "lucide-react";
+import { ArrowLeftIcon } from "lucide-react";
 
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { useMe } from "@/src/features/auth/queries";
 import { ProfileCard } from "@/src/features/account/ProfileCard";
 import { ActivityCard } from "@/src/features/account/ActivityGraph";
 import { AccountDetailsCard } from "@/src/features/account/AccountDetailsCard";
-import { DataSpinner } from "@/src/components/ui/data-spinner";
+import { Skeleton } from "@/src/components/ui/skeleton";
 import { PageContainer } from "@/src/components/PageContainer";
 
 export default function Account() {
@@ -20,30 +20,28 @@ export default function Account() {
       <button
         type="button"
         onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        className="eyebrow mb-6 flex cursor-pointer items-center gap-2 transition-colors hover:text-blue-hi"
       >
-        <ArrowLeftIcon className="size-3.5" />
+        <ArrowLeftIcon className="size-3" />
         Back
       </button>
 
-      <div className="mb-6 flex items-center gap-2">
-        <UserRoundIcon />
-        <h1 className="text-xl font-semibold">Account</h1>
-      </div>
+      <h1 className="display-l mb-6">Account</h1>
 
       {user ? (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <ProfileCard user={user} />
           <ActivityCard />
           <AccountDetailsCard user={user} />
         </div>
       ) : (
-        <div className="flex h-40 items-center justify-center">
-          <DataSpinner label="Loading your account" />
+        <div className="space-y-5" aria-busy="true" aria-label="Loading your account">
+          <Skeleton className="h-32 w-full rounded-lg" />
+          <Skeleton className="h-56 w-full rounded-lg" />
         </div>
       )}
 
-      <p className="mt-8 text-center text-xs text-muted-foreground">
+      <p className="mt-8 text-center text-xs text-silver-500">
         tau only keeps a name and a picture, both optional. Your activity is
         yours alone: nobody else can see this page.
       </p>

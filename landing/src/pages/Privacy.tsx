@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { LegalPage, LegalSection } from "@/src/features/legal/LegalLayout";
 
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 
@@ -14,29 +14,18 @@ export default function PrivacyPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16 text-sm text-foreground/90">
-      <Link
-        to="/"
-        className="mb-8 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-      >
-        ← Back to tau
-      </Link>
+    <LegalPage title="Privacy Policy" updated={EFFECTIVE_DATE}>
 
-      <h1 className="mb-2 text-2xl font-semibold">Privacy Policy</h1>
-      <p className="mb-10 text-xs text-muted-foreground">
-        Effective date: {EFFECTIVE_DATE}
-      </p>
-
-      <Section title="1. Who we are">
+      <LegalSection title="1. Who we are">
         <p>
           Tau ("<b>we</b>", "<b>us</b>", or "<b>our</b>") is an AI-powered web
           application builder. This Privacy Policy explains how we collect, use,
           and share information when you use our services at{" "}
           <span className="font-mono text-xs">tauai.pro</span>.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="2. Information we collect">
+      <LegalSection title="2. Information we collect">
         <ul className="list-disc space-y-1 pl-5">
           <li>
             <b>Account data</b>: email address and hashed password when you
@@ -57,9 +46,9 @@ export default function PrivacyPage() {
             reports collected automatically.
           </li>
         </ul>
-      </Section>
+      </LegalSection>
 
-      <Section title="3. How we use your information">
+      <LegalSection title="3. How we use your information">
         <ul className="list-disc space-y-1 pl-5">
           <li>Provide, operate, and improve the tau service.</li>
           <li>Authenticate your account and secure access.</li>
@@ -77,16 +66,16 @@ export default function PrivacyPage() {
           We do <b>not</b> sell or rent your personal data to third parties, and
           we do not use your prompts or generated code to train AI models.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="4. Third-party services">
+      <LegalSection title="4. Third-party services">
         <p>
           We share limited data with the following sub-processors to deliver the
           service:
         </p>
         <table className="mt-3 w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-border text-left text-muted-foreground">
+            <tr className="border-b border-line text-left font-mono text-[11px] tracking-[0.08em] text-silver-500 uppercase">
               <th className="pb-2 pr-4 font-medium">Processor</th>
               <th className="pb-2 pr-4 font-medium">Purpose</th>
               <th className="pb-2 font-medium">Data shared</th>
@@ -101,16 +90,16 @@ export default function PrivacyPage() {
               ["Neon / PostgreSQL", "Database", "All account & billing data"],
             ].map(([p, pu, d]) => (
               <tr key={p}>
-                <td className="py-2 pr-4 font-medium">{p}</td>
+                <td className="py-2 pr-4 font-medium text-silver-900">{p}</td>
                 <td className="py-2 pr-4 text-muted-foreground">{pu}</td>
                 <td className="py-2 text-muted-foreground">{d}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </Section>
+      </LegalSection>
 
-      <Section title="5. Data retention">
+      <LegalSection title="5. Data retention">
         <p>
           We retain your account data for as long as your account is active.
           Generated project files are retained to allow you to access your work.
@@ -123,80 +112,63 @@ export default function PrivacyPage() {
           emailing{" "}
           <a
             href={`mailto:${CONTACT_EMAIL}`}
-            className="text-indigo-400 hover:underline"
+            className="text-blue-500 hover:text-blue-hi hover:underline"
           >
             {CONTACT_EMAIL}
           </a>
           . We will complete deletion within 30 days.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="6. Cookies">
+      <LegalSection title="6. Cookies">
         <p>
           We use a single HTTP-only session cookie to keep you signed in. We do
           not use third-party advertising cookies or tracking pixels.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="7. Security">
+      <LegalSection title="7. Security">
         <p>
           All data is transmitted over HTTPS. Passwords are hashed with bcrypt
           and are never stored in plain text. Payment card data is tokenised by
           Razorpay and never reaches our servers.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="8. Your rights">
+      <LegalSection title="8. Your rights">
         <p>
           You may access, correct, or delete your personal data at any time. To
           exercise these rights, email us at{" "}
           <a
             href={`mailto:${CONTACT_EMAIL}`}
-            className="text-indigo-400 hover:underline"
+            className="text-blue-500 hover:text-blue-hi hover:underline"
           >
             {CONTACT_EMAIL}
           </a>
           . We respond within 14 business days.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="9. Changes to this policy">
+      <LegalSection title="9. Changes to this policy">
         <p>
           We may update this Privacy Policy from time to time. We will notify
           registered users by email at least 7 days before material changes take
           effect.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="10. Contact us">
+      <LegalSection title="10. Contact us">
         <p>
           Questions? Email{" "}
           <a
             href={`mailto:${CONTACT_EMAIL}`}
-            className="text-indigo-400 hover:underline"
+            className="text-blue-500 hover:text-blue-hi hover:underline"
           >
             {CONTACT_EMAIL}
           </a>
           .
         </p>
-      </Section>
-    </div>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="mb-8">
-      <h2 className="mb-3 text-base font-semibold">{title}</h2>
-      <div className="space-y-2 leading-relaxed text-foreground/80">
-        {children}
-      </div>
-    </section>
+      </LegalSection>
+    </LegalPage>
   );
 }

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useLocation, useOutlet } from "react-router-dom";
 
 import { UserMenu } from "@/src/components/UserMenu";
@@ -6,10 +7,10 @@ import { UpgradeModal } from "@/src/features/billing/UpgradeModal";
 import { SettingsModal } from "@/src/features/settings/SettingsModal";
 import { MotionIntroDialog } from "@/src/features/settings/MotionIntroDialog";
 import { FeedbackModal } from "@/src/features/feedback/FeedbackModal";
+import { usePreferences } from "@/src/features/settings/preferences";
 import { SupportTauModal } from "@/src/features/support/SupportTauModal";
 import { SiteFooter } from "@/src/components/SiteFooter";
 import { APP_ACCOUNT, APP_BILLING, APP_HOME } from "@/src/lib/routes";
-import { cn } from "@/src/lib/utils";
 
 /**
  * The authenticated product shell on app.tauai.pro. Extracted from the
@@ -26,25 +27,26 @@ export function AppShell() {
   // flourish for pages someone lingers on, not one mid-checkout.
   const isBilling = pathname === APP_BILLING;
   const isAccount = pathname === APP_ACCOUNT;
+  const reduceMotion = usePreferences().reduceMotion ?? false;
+
+  // Settings › Reduce motion stops the CSS loops in index.css the same way
+  // the OS setting does.
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-reduce-motion", reduceMotion);
+  }, [reduceMotion]);
 
   return (
-    <div className="flex h-[100svh] flex-col">
+    // Arrives once, after the splash: a 150ms fade, not a jump.
+    <div className="page-fade flex h-[100svh] flex-col">
       {!isProject && (
         <header className="pointer-events-none absolute inset-x-0 top-0 z-50">
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+          <div className="mx-auto flex h-20 w-full max-w-[1100px] items-center justify-between px-6">
             <Link
               to={APP_HOME}
               aria-label="tau home"
               className="pointer-events-auto flex items-center gap-2"
             >
-              <span
-                className={cn("logo-mark size-6", isHome && "logo-mark--white")}
-                role="img"
-                aria-label="tau"
-              />
-              {/* <span className="display-heading text-base text-silver-900">
-                Tau
-              </span> */}
+              <span className="logo-mark size-7" role="img" aria-label="tau" />
             </Link>
             <div className="pointer-events-auto flex items-center gap-3">
               <UserMenu />

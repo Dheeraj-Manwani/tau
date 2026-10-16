@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from "@/src/components/ui/dialog";
 import { Button } from "@/src/components/ui/button";
-import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { ApiError } from "@/src/lib/api-client";
 import {
   compactConfig,
@@ -21,7 +20,7 @@ import {
   type DesignSummary,
   type RestyleResponse,
 } from "@/src/features/design/api";
-import { DesignPicker } from "@/src/features/design/DesignPicker";
+import { DesignPicker, PickerSkeleton } from "@/src/features/design/DesignPicker";
 import { useSettings } from "@/src/hooks/useSettings";
 
 /**
@@ -91,13 +90,14 @@ function RestyleForm({
           exactAccent={exactAccent}
         />
       ) : (
-        <DataSpinner label="Loading styles" />
+        <PickerSkeleton />
       )}
 
       <DialogFooter>
         {savedDefault && !sameDesign(draft, savedDefault) && (
           <Button
             variant="ghost"
+            className="sm:mr-auto"
             onClick={() => setDraft(savedDefault)}
             disabled={restyle.isPending}
             title="Fill in the look your new projects start from. Nothing changes until you apply."
@@ -105,10 +105,10 @@ function RestyleForm({
             Use my default look
           </Button>
         )}
-        <Button variant="ghost" onClick={onClose} disabled={restyle.isPending}>
+        <Button variant="secondary" onClick={onClose} disabled={restyle.isPending}>
           Cancel
         </Button>
-        <Button onClick={apply} disabled={!config || restyle.isPending}>
+        <Button onClick={apply} disabled={!config} loading={restyle.isPending}>
           {restyle.isPending ? "Applying…" : "Apply"}
         </Button>
       </DialogFooter>
@@ -135,7 +135,7 @@ export function RestyleDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-5 sm:max-w-3xl">
+      <DialogContent className="gap-5 sm:max-w-[min(960px,calc(100%-2rem))]">
         {open && (
           <RestyleForm
             projectId={projectId}

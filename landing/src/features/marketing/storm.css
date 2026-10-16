@@ -1,17 +1,12 @@
 @import url("https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap");
 
+/* The marketing shell uses the same neutral surfaces as the product
+   (index.css). It used to remap them to navy and slate here. */
 .storm-shell {
-  --space-void: #03050d;
-  --space-surface: #040817;
-  --space-overlay: #0d1530;
-  --silver-600: #94a3b8;
-  --silver-400: #64748b;
-  --silver-200: rgba(96, 165, 250, 0.2);
-  --sans: Geist, system-ui, sans-serif;
   --nav-height: 80px;
-  background: #03050d;
-  font-family: Geist, system-ui, sans-serif;
-  color: #fafafa;
+  background: var(--space-void);
+  font-family: var(--sans);
+  color: var(--silver-900);
 }
 #main {
   padding-top: var(--nav-height);
@@ -50,7 +45,7 @@
   margin: 16px 0 0;
 }
 .storm-landing h2 span {
-  color: #93c5fd;
+  color: var(--blue-500);
 }
 .storm-landing h3 {
   font-size: 28px;
@@ -58,7 +53,7 @@
   margin: 0;
 }
 .storm-landing p {
-  color: #94a3b8;
+  color: var(--silver-600);
   font-size: 16px;
   line-height: 1.65;
 }
@@ -79,7 +74,7 @@
 }
 .storm-band {
   padding-block: 130px;
-  border-top: 1px solid rgba(96, 165, 250, 0.15);
+  border-top: 1px solid var(--line);
   scroll-margin-top: 90px;
 }
 .storm-nav {
@@ -96,10 +91,10 @@
     backdrop-filter 0.3s ease;
 }
 .storm-nav.scrolled {
-  background: rgba(4, 8, 23, 0.72);
+  background: rgb(9 9 11 / 0.72);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(96, 165, 250, 0.15);
+  border-bottom: 1px solid var(--line);
 }
 .storm-nav-inner {
   display: flex;
@@ -112,7 +107,7 @@
   display: flex;
   gap: 10px;
   align-items: center;
-  color: #fafafa;
+  color: var(--silver-900);
   font-size: 28px;
   letter-spacing: 0.08em;
 }
@@ -131,26 +126,37 @@
 .storm-nav-links {
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #94a3b8;
+  color: var(--silver-600);
 }
 .storm-nav a:hover {
-  color: #bfdbfe;
+  color: var(--silver-900);
 }
+.storm-nav-actions .nav-login {
+  color: var(--silver-600);
+}
+/* The nav's one primary (boards/Controls.dc.html): blue, ink text, no glow. */
 .storm-nav-actions .start-building {
-  padding: 11px 18px;
-  border-radius: 8px;
-  background: #60a5fa;
-  color: #040d1f;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: var(--blue-500);
+  color: var(--blue-900);
   font-weight: 600;
-  box-shadow: 0 0 24px #60a5fa55;
+  transition: background-color 0.15s ease;
+}
+.storm-nav-actions .start-building:hover {
+  background: var(--blue-hi);
+  color: var(--blue-900);
 }
 .mobile-nav-toggle {
+  display: none;
+}
+.nav-sheet-only {
   display: none;
 }
 .storm-hero {
   position: relative;
   overflow: hidden;
-  background: #02030a;
+  background: var(--space-void);
 }
 .storm-canvas {
   position: absolute;
@@ -171,15 +177,15 @@
   align-items: center;
   gap: 10px;
   padding: 5px 14px 5px 5px;
-  border: 1px solid #60a5fa55;
+  border: 1px solid var(--line-strong);
   border-radius: 99px;
-  color: #cbd5e1;
-  background: #04081699;
+  color: var(--silver-600);
+  background: var(--space-surface);
 }
 .gateway-badge b,
 .beta-tag {
-  background: #ff7a2e;
-  color: #160700;
+  background: var(--blue-500);
+  color: var(--blue-900);
   padding: 5px 9px;
   border-radius: 99px;
 }
@@ -205,7 +211,7 @@
 }
 .hero-copy p {
   font-size: 18px;
-  color: #cbd5e1;
+  color: var(--silver-600);
   margin: 0 0 22px;
 }
 .forecast {
@@ -219,17 +225,26 @@
   margin-top: 24px;
   font-size: 14px;
 }
+/* A secondary button (boards/Controls.dc.html): overlay, strong edge, r10. */
 .outline-link {
   display: inline-block;
   padding: 11px 16px;
-  border: 1px solid #60a5fa66;
-  border-radius: 8px;
-  color: #fafafa;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--space-overlay);
+  color: var(--silver-900);
   font-size: 14px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+.outline-link:hover {
+  border-color: var(--line-hover);
+  background: var(--space-raised);
 }
 .storm-composer {
   border: 1px solid rgba(250, 250, 250, 0.14);
-  background: #020203;
+  background: var(--space-void);
   border-radius: 14px;
   padding: 22px 18px 16px 26px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
@@ -241,7 +256,7 @@
 }
 .storm-composer:hover {
   border-color: rgba(250, 250, 250, 0.32);
-  background: #060608;
+  background: var(--space-surface);
   transform: translateY(-2px);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
 }
@@ -265,14 +280,14 @@
   padding: 0;
   background: transparent;
   border: 0;
-  color: #fafafa;
+  color: var(--silver-900);
   resize: vertical;
   font-size: 24px;
   line-height: 1.45;
   min-height: 70px;
 }
 .storm-composer textarea::placeholder {
-  color: #64748b;
+  color: var(--silver-500);
 }
 .storm-composer textarea:focus,
 .storm-composer textarea:focus-visible {
@@ -284,7 +299,7 @@
   margin: 0;
   padding: 0;
   pointer-events: none;
-  color: #64748b;
+  color: var(--silver-500);
   font-size: 24px;
   line-height: 1.45;
   white-space: pre-wrap;
@@ -302,7 +317,7 @@
 }
 .composer-label,
 .effort-controls > .mono {
-  color: #64748b;
+  color: var(--silver-500);
 }
 .effort-controls {
   display: flex;
@@ -320,7 +335,7 @@
   padding: 9px 15px;
   border-radius: 7px;
   font-size: 17px;
-  color: #64748b;
+  color: var(--silver-500);
   cursor: pointer;
   transition:
     color 0.15s ease,
@@ -328,7 +343,7 @@
     transform 0.15s ease;
 }
 .effort-group button:hover {
-  color: #e2e8f0;
+  color: var(--silver-900);
   background: rgba(250, 250, 250, 0.06);
 }
 .effort-group button:active {
@@ -344,8 +359,8 @@
   box-shadow: 0 0 18px #93c5fd88;
 }
 .strike {
-  background: #fafafa;
-  color: #03050d;
+  background: var(--silver-900);
+  color: var(--space-void);
   padding: 13px 24px;
   border-radius: 8px;
   font-size: 15px;
@@ -366,7 +381,7 @@
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  color: #64748b;
+  color: var(--silver-500);
   margin-top: 22px;
 }
 .scroll-cue {
@@ -374,7 +389,7 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: #64748b;
+  color: var(--silver-500);
   margin-top: 70px;
   font-size: 10px;
 }
@@ -386,7 +401,7 @@
   position: relative;
   padding: 28px 0;
   border-block: 1px solid rgba(96, 165, 250, 0.25);
-  background: #040818;
+  background: var(--space-surface);
   overflow: hidden;
   transition: padding-bottom 0.25s ease;
 }
@@ -426,7 +441,7 @@
   -webkit-text-stroke: 1.2px rgba(147, 197, 253, 0.75);
 }
 .marquee-solid {
-  color: #fafafa;
+  color: var(--silver-900);
 }
 .marquee-item {
   position: relative;
@@ -509,7 +524,7 @@
 .marquee-actions button:first-child {
   background: transparent;
   border: 1px solid rgba(250, 250, 250, 0.25);
-  color: #e2e8f0;
+  color: var(--silver-900);
 }
 .marquee-actions button:first-child:hover {
   border-color: rgba(250, 250, 250, 0.5);
@@ -530,10 +545,10 @@
   pointer-events: none;
   background: linear-gradient(
     90deg,
-    #040818,
+    var(--space-surface),
     transparent 12%,
     transparent 88%,
-    #040818
+    var(--space-surface)
   );
 }
 .steps-grid {
@@ -575,7 +590,7 @@
   height: 92px;
   display: grid;
   place-items: center;
-  background: #03050d;
+  background: var(--space-void);
   border: 1.5px solid #60a5fa;
   border-radius: 50%;
   box-shadow:
@@ -602,22 +617,22 @@
   box-sizing: border-box;
   padding: 14px;
   border-radius: 10px;
-  background: #040817;
-  border: 1px solid #60a5fa33;
+  background: var(--space-surface);
+  border: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   gap: 8px;
   font-family: "Geist Mono", Consolas, monospace;
   font-size: 11px;
   line-height: 1.4;
-  color: #94a3b8;
+  color: var(--silver-600);
 }
 .step-composer-text {
   flex: 1;
   font-family: Geist, sans-serif;
   font-size: 13px;
   line-height: 1.45;
-  color: #e2e8f0;
+  color: var(--silver-900);
 }
 .step-caret {
   display: inline-block;
@@ -643,7 +658,7 @@
 }
 .step-pills span {
   padding: 4px 6px;
-  color: #64748b;
+  color: var(--silver-500);
 }
 .step-pills .is-active {
   border-radius: 4px;
@@ -653,41 +668,41 @@
 .step-strike-mini {
   padding: 5px 9px;
   border-radius: 5px;
-  background: #fafafa;
-  color: #03050d;
+  background: var(--silver-900);
+  color: var(--space-void);
   font:
     600 11px Geist,
     sans-serif;
   animation: step-pulse-glow 2.6s ease-in-out infinite;
 }
 .step-plan-head {
-  color: #64748b;
+  color: var(--silver-500);
   letter-spacing: 0.1em;
 }
 .step-plan-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #cbd5e1;
+  color: var(--silver-600);
 }
 .step-plan-row.is-active {
-  color: #fafafa;
+  color: var(--silver-900);
 }
 .step-plan-row.is-empty {
   color: #475569;
 }
 .step-plan-row .check {
-  color: #4ade80;
+  color: var(--green-400);
 }
 .step-shimmer-logo,
 .step-shimmer-text {
   background-image: linear-gradient(
     90deg,
-    #64748b 0%,
-    #64748b 35%,
-    #e2e8f0 50%,
-    #64748b 65%,
-    #64748b 100%
+    var(--silver-500) 0%,
+    var(--silver-500) 35%,
+    var(--silver-900) 50%,
+    var(--silver-500) 65%,
+    var(--silver-500) 100%
   );
   background-size: 160px 100%;
   background-repeat: repeat;
@@ -713,7 +728,7 @@
   mask: url(/logo.png) no-repeat center / contain;
 }
 .step-build-row span:first-child {
-  color: #64748b;
+  color: var(--silver-500);
 }
 .step-build-run {
   color: #93c5fd;
@@ -761,15 +776,15 @@
   width: 6px;
   height: 6px;
   border-radius: 9px;
-  background: #1e293b;
+  background: var(--line-strong);
 }
 .step-browser-bar .url {
   margin-left: 6px;
   flex: 1;
   padding: 3px 8px;
   border-radius: 4px;
-  background: #0a1228;
-  color: #94a3b8;
+  background: var(--space-overlay);
+  color: var(--silver-600);
 }
 .step-live-area {
   position: relative;
@@ -822,7 +837,7 @@
   font-size: 8px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--silver-500);
 }
 .step-board-card {
   height: 13px;
@@ -837,7 +852,7 @@
   padding: 3px 7px;
   border-radius: 4px;
   background: rgba(74, 222, 128, 0.14);
-  color: #4ade80;
+  color: var(--green-400);
   font-family: "Geist Mono", Consolas, monospace;
   animation:
     step-live-pulse 1.6s ease-in-out infinite,
@@ -856,21 +871,22 @@
 .tier-card {
   text-align: left;
   padding: 28px;
-  border: 1px solid #60a5fa44;
-  border-radius: 14px;
-  background: #040817;
-  cursor: pointer;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--space-surface);
+  transition: border-color 0.15s ease;
+}
+.tier-card h3 {
+  font-size: 56px;
 }
 .tier-card.selected {
   border-color: #93c5fd;
   box-shadow: 0 0 35px #60a5fa22;
 }
 .tier-card.max-tier {
-  background:
-    radial-gradient(ellipse at top right, #183b7755, transparent), #040817;
+  /* One surface, no navy wash: the sheen (index.css .conic-sheen) is the
+     only thing that marks PRO out, as on the app's Billing page. */
+  background: var(--space-surface);
 }
 .tier-top {
   display: flex;
@@ -881,7 +897,7 @@
   font-size: 64px;
 }
 .tier-top .mono {
-  color: #64748b;
+  color: var(--silver-500);
 }
 .effort-meter {
   display: flex;
@@ -891,15 +907,11 @@
 .effort-meter span {
   flex: 1;
   height: 9px;
-  background: #60a5fa1f;
+  background: var(--space-raised);
   border-radius: 2px;
 }
 .effort-meter .lit {
-  background: #60a5fa;
-  box-shadow: 0 0 10px #60a5fa55;
-}
-.max-tier .effort-meter .lit {
-  background: #dbeafe;
+  background: var(--blue-500);
 }
 .tier-stats {
   display: grid;
@@ -913,11 +925,11 @@
   line-height: 1;
 }
 .tier-stats .mono {
-  color: #64748b;
-  font-size: 10px;
+  color: var(--silver-500);
+  font-size: 11px;
 }
 .tier-bottom {
-  border-top: 1px solid #60a5fa33;
+  border-top: 1px solid var(--line);
   padding-top: 20px;
   display: flex;
   justify-content: space-between;
@@ -925,7 +937,7 @@
   font-size: 13px;
 }
 .tier-bottom b {
-  color: #93c5fd;
+  color: var(--blue-500);
   white-space: nowrap;
 }
 .workspace-layout {
@@ -941,7 +953,7 @@
   grid-template-columns: 38% minmax(0, 1fr);
   border: 1px solid #60a5fa4d;
   border-radius: 14px;
-  background: #040817;
+  background: var(--space-surface);
   overflow: hidden;
   box-shadow: 0 30px 80px #0008;
 }
@@ -1093,13 +1105,13 @@
   flex-direction: column;
   gap: 14px;
   padding: 20px;
-  border-right: 1px solid #60a5fa33;
+  border-right: 1px solid var(--line);
   font-size: 13px;
 }
 .chat-bubble {
   padding: 12px 14px;
   border-radius: 10px;
-  background: #0d1530;
+  background: var(--space-overlay);
   line-height: 1.5;
   align-self: flex-end;
 }
@@ -1107,8 +1119,8 @@
   white-space: pre-wrap;
   font-size: 11px;
   line-height: 1.8;
-  color: #94a3b8;
-  border: 1px solid #60a5fa33;
+  color: var(--silver-600);
+  border: 1px solid var(--line);
   padding: 12px;
   border-radius: 8px;
 }
@@ -1116,7 +1128,7 @@
   border: 1px solid #60a5fa44;
   border-radius: 8px;
   padding: 12px;
-  color: #64748b;
+  color: var(--silver-500);
   margin-top: auto;
   font-size: 12px;
 }
@@ -1129,14 +1141,14 @@
   display: flex;
   gap: 4px;
   padding: 12px;
-  border-bottom: 1px solid #60a5fa33;
+  border-bottom: 1px solid var(--line);
 }
 .workspace-tabs button {
   padding: 8px 12px;
   font-size: 12px;
   border-radius: 6px;
   cursor: pointer;
-  color: #94a3b8;
+  color: var(--silver-600);
 }
 .workspace-tabs .active {
   background: #60a5fa;
@@ -1213,7 +1225,7 @@
 }
 .tour-list small {
   display: block;
-  color: #94a3b8;
+  color: var(--silver-600);
   font-size: 12px;
   line-height: 1.5;
   margin-top: 4px;
@@ -1260,7 +1272,7 @@
   border: 1px solid #60a5fa55;
   padding: 22px;
   border-radius: 12px;
-  background: #040817;
+  background: var(--space-surface);
 }
 .ship-output h3 {
   display: flex;
@@ -1271,16 +1283,16 @@
   font:
     500 10px "Geist Mono",
     monospace;
-  color: #4ade80;
+  color: var(--green-400);
 }
 .ship-output pre {
-  color: #94a3b8;
+  color: var(--silver-600);
   font-size: 12px;
   line-height: 1.8;
   margin-top: 18px;
 }
 .secret-note {
-  color: #ff9a5c;
+  color: var(--orange-400);
   margin-top: 35px;
   font-size: 10px;
 }
@@ -1292,14 +1304,14 @@
 .gateway-code {
   border: 1px solid #60a5fa4d;
   border-radius: 14px;
-  background: #040817;
+  background: var(--space-surface);
   overflow: hidden;
   box-shadow: 0 0 50px #3b82f622;
 }
 .gateway-code > .mono {
   padding: 16px 18px;
-  border-bottom: 1px solid #60a5fa33;
-  color: #64748b;
+  border-bottom: 1px solid var(--line);
+  color: var(--silver-500);
   display: flex;
   justify-content: space-between;
 }
@@ -1320,11 +1332,11 @@
   border-radius: 40px;
   border: 1.5px solid #93c5fd88;
   box-shadow:
-    0 0 0 6px #070d20,
+    0 0 0 6px var(--space-overlay),
     0 0 60px #60a5fa33;
   transform: rotate(5deg);
   padding: 28px 20px;
-  background: #040817;
+  background: var(--space-surface);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1332,11 +1344,11 @@
 .phone-demo > .mono {
   display: flex;
   justify-content: space-between;
-  color: #64748b;
+  color: var(--silver-500);
 }
 .phone-demo p {
   font-size: 12px;
-  border: 1px solid #60a5fa33;
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 12px;
   margin: 0;
@@ -1351,7 +1363,7 @@
   place-items: center;
   border: 1px solid #60a5fa22;
   border-radius: 8px;
-  color: #64748b;
+  color: var(--silver-500);
   background: repeating-linear-gradient(
     135deg,
     #60a5fa0a 0 8px,
@@ -1361,7 +1373,7 @@
 .storm-cta {
   position: relative;
   overflow: hidden;
-  background: #02030a;
+  background: var(--space-void);
 }
 .storm-cta > .storm-container {
   position: relative;
@@ -1376,6 +1388,28 @@
 }
 .storm-cta p {
   margin-top: 24px;
+}
+/* The closing band: Display L-scale type over rain, then one primary. */
+.cta-band {
+  border-top: 1px solid var(--line);
+}
+.cta-band h2 {
+  font-size: clamp(48px, 7vw, 104px);
+  line-height: 0.92;
+  margin: 18px 0 0;
+}
+.cta-band h2 span {
+  color: var(--blue-500);
+}
+.cta-band .section-copy {
+  max-width: 560px;
+}
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
 }
 .xray-heading {
   display: flex;
@@ -1499,7 +1533,7 @@
 .xray-code {
   position: absolute;
   inset: 0;
-  background: #040817;
+  background: var(--space-surface);
   clip-path: circle(120px at var(--lens-x) var(--lens-y));
   pointer-events: none;
 }
@@ -1578,22 +1612,22 @@
 }
 .storm-shell footer {
   margin-top: 0;
-  background: #020308;
-  border-top-color: rgba(96, 165, 250, 0.15);
+  background: var(--space-void);
+  border-top-color: var(--line);
 }
 .storm-shell footer h2 {
   font-family: "Geist Mono", monospace;
-  color: #64748b;
+  color: var(--silver-500);
 }
 .storm-shell footer a,
-.storm-shell footer p {
-  color: #94a3b8;
+.storm-shell footer p:not(.text-hollow) {
+  color: var(--silver-600);
 }
 .storm-shell footer a:hover {
-  color: #bfdbfe;
+  color: var(--silver-900);
 }
 .storm-shell :is(a, button, textarea):focus-visible {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid var(--blue-500);
   outline-offset: 4px;
 }
 /* Rigged tubelight: holds lit, flickers 2-3 times, then sits dark for a
@@ -1752,20 +1786,50 @@
     display: none;
   }
   .mobile-nav-toggle {
-    display: block;
-    font-size: 20px;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    color: var(--silver-600);
     cursor: pointer;
   }
+  .mobile-nav-toggle:hover {
+    background: var(--space-raised);
+    color: var(--silver-900);
+  }
+  .mobile-nav-toggle svg {
+    width: 20px;
+    height: 20px;
+  }
   .storm-nav-links.open {
+    /* A menu sheet on overlay (boards/Overlays.dc.html menus): one strong
+       edge, the system's one shadow, rows you can hit with a thumb. */
     display: flex;
     position: absolute;
     top: 68px;
     left: 0;
     right: 0;
-    padding: 24px;
-    background: #040817;
-    flex-wrap: wrap;
-    border-bottom: 1px solid #60a5fa44;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 8px 16px 16px;
+    background: var(--space-overlay);
+    border-bottom: 1px solid var(--line-strong);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
+  }
+  .storm-nav-links.open a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 10px;
+    border-radius: 8px;
+  }
+  .storm-nav-links.open a:hover {
+    background: var(--space-raised);
+  }
+  .storm-nav-links.open .nav-sheet-only {
+    display: flex;
   }
   .hero-grid {
     grid-template-columns: 1fr;
@@ -1927,25 +1991,6 @@
     transition: none !important;
     scroll-behavior: auto !important;
   }
-}
-
-/* Reusable bold display type, for pages (404, pricing) that want the storm
-   hero's type voice without opting into `.storm-landing`'s hero-scale
-   clamp()s and global overrides. */
-.display-heading {
-  font-family: "Big Shoulders Display", Impact, sans-serif;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0;
-  line-height: 0.95;
-}
-
-/* Hollow outline text (e.g. a footer watermark) - mirrors web/'s own
-   `.text-hollow`, so the giant "Describe it. Build it." line at the bottom
-   of every page reads identically on both sites. */
-.text-hollow {
-  color: transparent;
-  -webkit-text-stroke: 1.5px var(--silver-200);
 }
 
 /* 404: "4"s are hollow outlines, the "0" is a lit tube that flickers with the

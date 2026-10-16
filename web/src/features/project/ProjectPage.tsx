@@ -10,6 +10,8 @@ import {
 } from "react-resizable-panels";
 
 import { cn } from "@/src/lib/utils";
+import { Alert } from "@/src/components/ui/alert";
+import { Button } from "@/src/components/ui/button";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { api, ApiError, isTerminalRequestError } from "@/src/lib/api-client";
@@ -27,9 +29,11 @@ import {
 } from "@/src/features/project/revealSession";
 import { useReadyNotification } from "@/src/features/project/useReadyNotification";
 import { useAgentFavicon } from "@/src/features/project/useAgentFavicon";
+import { useFirstBuildFlash } from "@/src/features/project/useFirstBuildFlash";
 import { resolveProjectLayout } from "@/src/features/project/projectLayout";
 import { useProjectTours } from "@/src/features/tour/useProjectTours";
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
+import { useMediaQuery } from "@/src/hooks/useMediaQuery";
 
 // Only fetched once a tour is actually due: most visits never need it.
 const ProjectTour = lazy(() => import("@/src/features/tour/ProjectTour"));
@@ -250,6 +254,7 @@ export default function ProjectPage() {
     pendingQuestion,
     userCancelledJobId,
   });
+  useFirstBuildFlash();
   useAgentFavicon({
     status,
     pendingQuestion: pendingQuestion != null,
@@ -258,6 +263,9 @@ export default function ProjectPage() {
   });
 
   const chatPanelRef = useRef<PanelImperativeHandle | null>(null);
+  // Below 768px two panes don't fit: show one at a time. Collapse chat to
+  // see the workspace; "Open chat" in its top bar brings the chat back.
+  const narrow = useMediaQuery("(max-width: 767px)");
 
   // Sync the store's isChatOpen into the panel (for the collapse button in ChatPanel).
   useEffect(() => {
@@ -275,11 +283,17 @@ export default function ProjectPage() {
         ? "This project is no longer available."
         : "We couldn’t load this project. Please try again.";
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-        <p role="alert" className="text-sm text-[var(--silver-700)]">{message}</p>
-        <div className="flex gap-4 text-sm text-[var(--blue-500)]">
-          <Link to={APP_HOME}>Back to projects</Link>
-          <button type="button" onClick={() => void retryLoad()}>Try again</button>
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="flex w-full max-w-md flex-col gap-4">
+          <Alert tone="danger">{message}</Alert>
+          <div className="flex justify-end gap-2.5">
+            <Button variant="ghost" asChild>
+              <Link to={APP_HOME}>Back to projects</Link>
+            </Button>
+            <Button variant="secondary" onClick={() => void retryLoad()}>
+              Try again
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -295,8 +309,10 @@ export default function ProjectPage() {
 
   if (centered) {
     return (
-      <div className="flex h-full w-full justify-center">
-        <div className="h-full w-full max-w-2xl">
+      // Chat only until the first build lands (boards/Workspace-ChatOnly.dc.html):
+      // one 672px column, no preview, code or tools yet.
+      <div className="flex h-full w-full justify-center px-4 sm:px-6">
+        <div className="h-full w-full max-w-[672px]">
           <ChatPanel
             showCollapse={false}
             readyNotification={readyNotification}
@@ -304,6 +320,19 @@ export default function ProjectPage() {
         </div>
         {tour}
       </div>
+    );
+  }
+
+  if (narrow) {
+    return (
+      <>
+        {isChatOpen ? (
+          <ChatPanel readyNotification={readyNotification} />
+        ) : (
+          <RightPanel />
+        )}
+        {tour}
+      </>
     );
   }
 
@@ -328,8 +357,8 @@ export default function ProjectPage() {
         <Separator
           className={cn(
             "group relative w-px shrink-0 cursor-col-resize",
-            "bg-[var(--silver-200)] transition-colors",
-            "hover:bg-[var(--blue-500)]",
+            "bg-line transition-colors duration-150",
+            "hover:bg-blue-500 data-[separator=active]:bg-blue-500",
           )}
         >
           {/* Wide invisible grab zone so the 1px line is easy to grab. */}

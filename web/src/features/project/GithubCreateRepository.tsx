@@ -30,7 +30,7 @@ export function GithubCreateRepository({ projectId, disabled = false }: {
           <PlusIcon className="size-3.5" />Create repository
         </button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto border-silver-200 bg-space-surface text-silver-900 sm:max-w-lg motion-reduce:animate-none"
+      <DialogContent className="sm:max-w-lg motion-reduce:animate-none"
         showCloseButton={!create.isPending}
         onEscapeKeyDown={(e) => { if (create.isPending) e.preventDefault(); }}
         onInteractOutside={(e) => { if (create.isPending) e.preventDefault(); }}>
@@ -49,15 +49,15 @@ export function GithubCreateRepository({ projectId, disabled = false }: {
             <label className="block text-xs font-medium">Repository name
               <input required maxLength={100} value={name} disabled={create.isPending} autoCapitalize="none" autoCorrect="off" spellCheck={false}
                 onChange={(e) => { setName(e.target.value); create.reset(); }} placeholder="my-project" aria-describedby="github-repo-name-hint"
-                className="mt-2 h-10 w-full rounded-lg border border-silver-200 bg-space-void px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring" />
+                className="mt-2 h-10 w-full rounded-lg border border-line bg-space-void px-3 text-sm focus-visible:outline-2 focus-visible:outline-blue-500" />
             </label>
             <p id="github-repo-name-hint" className="text-[11px] leading-relaxed text-silver-600">Use letters, numbers, periods, hyphens, or underscores. Choose a name you haven’t used on GitHub.</p>
             <label className="block text-xs font-medium">Description <span className="font-normal text-silver-600">(optional)</span>
               <textarea maxLength={350} value={description} disabled={create.isPending} onChange={(e) => setDescription(e.target.value)}
                 placeholder="What are you building?" rows={3}
-                className="mt-2 w-full resize-none rounded-lg border border-silver-200 bg-space-void p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring" />
+                className="mt-2 w-full resize-none rounded-lg border border-line bg-space-void p-3 text-sm focus-visible:outline-2 focus-visible:outline-blue-500" />
             </label>
-            <div className="space-y-3 rounded-lg border border-silver-200 bg-space-overlay p-4 text-xs">
+            <div className="space-y-3 rounded-lg border border-line bg-space-overlay p-4 text-xs">
               <div className="flex items-start gap-2.5"><LockIcon className="mt-0.5 size-4 shrink-0 text-silver-600" /><div><p className="font-medium">Private repository</p><p className="mt-1 leading-relaxed text-silver-600">Only you and people you invite can access it. You can change visibility in Settings later.</p></div></div>
               <div className="flex items-start gap-2.5"><GitBranchIcon className="mt-0.5 size-4 shrink-0 text-silver-600" /><p className="leading-relaxed text-silver-600">After creating, review your project’s changes and push code or open a pull request.</p></div>
             </div>

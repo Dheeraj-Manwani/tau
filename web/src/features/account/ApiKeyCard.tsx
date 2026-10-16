@@ -83,7 +83,7 @@ export function ApiKeyCard() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-20 items-center justify-center rounded-xl border bg-card p-5">
+      <div className="flex min-h-20 items-center justify-center rounded-lg border border-line bg-space-surface p-5">
         <DataSpinner label="Loading API key" />
       </div>
     );
@@ -91,10 +91,10 @@ export function ApiKeyCard() {
 
   if (!data?.exists) {
     return (
-      <div className="rounded-xl border bg-card p-5">
+      <div className="rounded-lg border border-line bg-space-surface p-5">
         <div className="flex items-center gap-2">
           <KeyRoundIcon className="size-4 text-muted-foreground" />
-          <h2 className="text-sm font-medium">API key</h2>
+          <h2 className="text-[15px] font-semibold">API key</h2>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
           Lets apps tau builds for you call an AI model, billed to the credits
@@ -125,11 +125,11 @@ export function ApiKeyCard() {
   const rotating = data.status === "ROTATING";
 
   return (
-    <div className="rounded-xl border bg-card p-5">
+    <div className="rounded-lg border border-line bg-space-surface p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <KeyRoundIcon className="size-4 text-muted-foreground" />
-          <h2 className="text-sm font-medium">API key</h2>
+          <h2 className="text-[15px] font-semibold">API key</h2>
         </div>
         <span className="text-xs text-muted-foreground">
           Used {fmtDate(data.lastUsedAt)}
@@ -137,7 +137,7 @@ export function ApiKeyCard() {
       </div>
 
       <div className="mt-3 flex items-center gap-2">
-        <code className="flex-1 truncate rounded-md bg-muted px-3 py-2 font-mono text-xs">
+        <code className="block flex-1 truncate rounded-md border border-line bg-space-void px-3 py-2 font-mono text-xs text-silver-600">
           {shown ?? `${data.prefix}${"•".repeat(24)}`}
         </code>
         {shown ? (
@@ -167,7 +167,7 @@ export function ApiKeyCard() {
       )}
 
       {rotating && data.revokeAfter && (
-        <p className="mt-2 text-xs text-amber-500">
+        <p className="mt-2 text-xs text-orange-400">
           This key was replaced and stops working on {fmtDate(data.revokeAfter)}.
           Redeploy any live apps with the new key before then.
         </p>
@@ -219,7 +219,7 @@ export function ApiKeyCard() {
       <div className="mt-4 border-t pt-4">
         {confirmRotate ? (
           <div className="space-y-2">
-            <p className="text-xs text-amber-500">
+            <p className="text-xs text-orange-400">
               Rotating issues a new key and retires this one in 24 hours. Every
               app you have deployed will stop working unless you redeploy it with
               the new key first.

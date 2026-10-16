@@ -91,7 +91,7 @@ function Heading({
         <a
           href={`#${id}`}
           aria-label={`Link to ${textOf(children)}`}
-          className="ml-2 inline-block align-middle text-silver-400 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+          className="ml-2 inline-block align-middle text-silver-500 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
         >
           <LinkIcon className="size-3.5" />
         </a>
@@ -117,19 +117,19 @@ const COMPONENTS: Components = {
     </Heading>
   ),
   p: ({ children }) => (
-    <p className="mt-4 leading-7 text-silver-600">{children}</p>
+    <p className="mt-4 text-[15px] leading-[1.7] text-silver-600">{children}</p>
   ),
   ul: ({ children }) => (
-    <ul className="mt-4 list-disc space-y-2 pl-5 text-silver-600 marker:text-silver-400">
+    <ul className="mt-4 list-disc space-y-2 pl-5 text-[15px] text-silver-600 marker:text-silver-500">
       {children}
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="mt-4 list-decimal space-y-2 pl-5 text-silver-600 marker:text-silver-400">
+    <ol className="mt-4 list-decimal space-y-2 pl-5 text-[15px] text-silver-600 marker:text-silver-500">
       {children}
     </ol>
   ),
-  li: ({ children }) => <li className="leading-7">{children}</li>,
+  li: ({ children }) => <li className="leading-[1.7]">{children}</li>,
   strong: ({ children }) => (
     <strong className="font-semibold text-silver-900">{children}</strong>
   ),
@@ -202,10 +202,14 @@ const COMPONENTS: Components = {
 
   code: ({ className, children, ...props }) => {
     const language = /language-(\w+)/.exec(className ?? "")?.[1];
-    const isBlock = "data-block" in props || Boolean(language);
+    // A fence without a language has no class, but its text always ends in a
+    // newline; inline code never does. Without this, a plain fence rendered
+    // as an inline chip inside an empty block.
+    const isBlock =
+      "data-block" in props || Boolean(language) || String(children).endsWith("\n");
     if (!isBlock) {
       return (
-        <code className="rounded bg-space-surface px-1.5 py-0.5 font-mono text-[0.85em] text-blue-300">
+        <code className="rounded-xs border border-line bg-space-surface px-1.5 py-0.5 font-mono text-[0.85em] text-silver-900">
           {children}
         </code>
       );

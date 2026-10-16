@@ -92,7 +92,7 @@ export function DocsPage() {
           </ol>
         </nav>
 
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-silver-900">
+        <h1 className="display-m mt-3 text-silver-900">
           {title || <span className="opacity-0">Loading</span>}
         </h1>
 
@@ -101,7 +101,7 @@ export function DocsPage() {
         )}
 
         {doc && (
-          <p className="mt-4 flex flex-wrap items-center gap-3 font-mono text-xs text-silver-400">
+          <p className="mt-4 flex flex-wrap items-center gap-3 font-mono text-xs text-silver-500">
             {doc.frontmatter.updated && (
               <span>Updated {doc.frontmatter.updated}</span>
             )}
@@ -127,7 +127,7 @@ export function DocsPage() {
             {previous ? (
               <Link
                 to={previous.path}
-                className="group rounded-xl border border-silver-200 p-4 transition-colors hover:border-silver-400"
+                className="group rounded-lg border border-line p-4 transition-colors hover:border-line-strong"
               >
                 <span className="flex items-center gap-1.5 text-xs text-silver-600">
                   <ArrowLeftIcon className="size-3" />
@@ -143,7 +143,7 @@ export function DocsPage() {
             {next && (
               <Link
                 to={next.path}
-                className="group rounded-xl border border-silver-200 p-4 text-right transition-colors hover:border-silver-400 sm:col-start-2"
+                className="group rounded-lg border border-line p-4 text-right transition-colors hover:border-line-strong sm:col-start-2"
               >
                 <span className="flex items-center justify-end gap-1.5 text-xs text-silver-600">
                   Next

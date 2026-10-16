@@ -68,7 +68,7 @@ export function DocsShell() {
               <span className="logo-mark size-5" role="img" aria-hidden="true" />
               <span className="text-sm font-semibold text-silver-900">tau</span>
             </Link>
-            <span className="text-silver-400" aria-hidden="true">
+            <span className="text-silver-500" aria-hidden="true">
               /
             </span>
             <Link
@@ -83,11 +83,11 @@ export function DocsShell() {
             <button
               type="button"
               onClick={openSearch}
-              className="flex items-center gap-2 rounded-lg border border-silver-200 px-2.5 py-1.5 text-xs text-silver-600 transition-colors hover:border-silver-400 hover:text-silver-900"
+              className="flex items-center gap-2 rounded-lg border border-silver-200 px-2.5 py-1.5 text-xs text-silver-600 transition-colors hover:border-line-hover hover:text-silver-900"
             >
               <SearchIcon className="size-3.5" />
               <span className="hidden sm:inline">Search</span>
-              <kbd className="hidden rounded border border-silver-200 px-1 font-mono text-[0.6rem] sm:inline">
+              <kbd className="hidden rounded border border-silver-200 px-1 font-mono text-[11px] sm:inline">
                 ⌘K
               </kbd>
             </button>

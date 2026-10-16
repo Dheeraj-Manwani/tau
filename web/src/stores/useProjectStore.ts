@@ -1045,6 +1045,14 @@ interface ProjectState {
   isAiTyping: boolean;
   /** The in-progress assistant bubble currently being streamed into. */
   streamingId: string | null;
+  /** The tool tau is running right now, for the chat loader's live action
+   *  line. Set on its request, cleared by its result or the next text. */
+  liveAction: ActionItem | null;
+  /** When this browser saw the current (or last) chat run start, for the
+   *  loader's elapsed timer. Null after a reload: the start isn't known. */
+  runStartedAt: number | null;
+  /** When that run ended here, for "Done in 42s". */
+  runEndedAt: number | null;
   /** Action items accumulating during the active job stream; attached to the final ai message on done. */
   pendingActions: ActionItem[];
   /** Whether older messages exist beyond the current window (pagination). */
@@ -1249,6 +1257,9 @@ const FRESH = {
   chatMessages: [] as Message[],
   isAiTyping: false,
   streamingId: null,
+  liveAction: null as ActionItem | null,
+  runStartedAt: null as number | null,
+  runEndedAt: null as number | null,
   pendingActions: [] as ActionItem[],
   hasMoreMessages: false,
   oldestSequence: null as number | null,
@@ -1383,6 +1394,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         isStalled: false,
         streamingId: null,
         writingPath: null,
+        liveAction: null,
+        runEndedAt:
+          s.runStartedAt !== null && !detail.activeJobId
+            ? (s.runEndedAt ?? Date.now())
+            : s.runEndedAt,
         pendingActions: [],
         contextUsage: detail.contextUsage,
       };
@@ -1476,6 +1492,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         previewRestoring: s.previewUrl != null && queryClient.getQueryData<{ alive: boolean }>(["project", s.projectId, "preview-status", s.previewUrl])?.alive === false,
         previewRestoreFailed: false,
         activity: "Thinking",
+        liveAction: null,
+        runStartedAt: Date.now(),
+        runEndedAt: null,
         currentPlan: null,
         lastEventAt: Date.now(),
         isStalled: false,
@@ -1765,6 +1784,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
         return {
           isAiTyping: true,
           streamingId,
+          liveAction: null,
           chatMessages: chatMessages.map((m) =>
             m.id === streamingId
               ? { ...m, content: m.content + event.content }
@@ -1849,6 +1869,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
         return {
           ...fin,
           isAiTyping: false,
+          liveAction: null,
           chatMessages: [...fin.chatMessages, questionBubble],
           pendingQuestion: {
             id: event.questionId,
@@ -2015,6 +2036,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           return {
             ...fin,
             isAiTyping: true,
+            liveAction: action,
             chatMessages: msgs.map((m, i) =>
               i === targetIdx
                 ? { ...m, actions: [...(m.actions ?? []), action] }
@@ -2032,6 +2054,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
         return {
           ...fin,
           isAiTyping: true,
+          liveAction: action,
           chatMessages: [...msgs, placeholder],
         };
       });
@@ -2136,6 +2159,7 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
       // Only dispatch_* and web_search actions carry a toolCallId, so this is
       // a no-op for every other tool's result.
       set((s) => ({
+        liveAction: null,
         chatMessages: attachDispatchResult(
           s.chatMessages,
           event.toolCallId,
@@ -2270,6 +2294,8 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           terminalOutcome: { kind: "done" },
           activity: null,
           writingPath: null,
+          liveAction: null,
+          runEndedAt: Date.now(),
           currentJobId: null,
           previewRestoring: false,
           previewRestoreFailed: s.previewRestoring || s.previewRestoreFailed,
@@ -2293,6 +2319,8 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           terminalOutcome: { kind: "cancelled" },
           activity: null,
           writingPath: null,
+          liveAction: null,
+          runEndedAt: Date.now(),
           currentJobId: null,
           previewRestoring: false,
           previewRestoreFailed: false,
@@ -2320,6 +2348,8 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
           terminalOutcome: { kind: "error", message },
           activity: null,
           writingPath: null,
+          liveAction: null,
+          runEndedAt: Date.now(),
           currentJobId: null,
           previewRestoring: false,
           previewRestoreFailed: s.previewRestoring || s.previewRestoreFailed,
@@ -2350,6 +2380,8 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
         },
         activity: null,
         writingPath: null,
+        liveAction: null,
+        runEndedAt: Date.now(),
         currentJobId: null,
         previewRestoring: false,
         previewRestoreFailed: s.previewRestoring || s.previewRestoreFailed,

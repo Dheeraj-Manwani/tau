@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangleIcon, InfoIcon, LightbulbIcon } from "lucide-react";
+import { InfoIcon, LightbulbIcon, TriangleAlertIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
 import type { CalloutKind } from "./calloutKind";
@@ -10,29 +10,33 @@ import type { CalloutKind } from "./calloutKind";
  * Authors already type this syntax out of habit, and it renders as a plain
  * blockquote anywhere else: on GitHub, in an editor preview: so the source
  * stays readable outside our renderer.
+ *
+ * Drawn as the app's Alert (boards/Surfaces.dc.html §01): a tinted block with
+ * an icon and a matching edge, the text staying white so it passes contrast,
+ * and never a coloured left border.
  */
 
 const STYLES: Record<
   CalloutKind,
-  { icon: typeof InfoIcon; label: string; border: string; text: string }
+  { icon: typeof InfoIcon; label: string; box: string; icon_: string }
 > = {
   NOTE: {
     icon: InfoIcon,
     label: "Note",
-    border: "border-blue-500/40",
-    text: "text-blue-300",
+    box: "border-blue-500/34 bg-blue-500/12",
+    icon_: "text-blue-500",
   },
   TIP: {
     icon: LightbulbIcon,
     label: "Tip",
-    border: "border-flux/40",
-    text: "text-flux",
+    box: "border-green-400/32 bg-green-400/11",
+    icon_: "text-green-400",
   },
   WARNING: {
-    icon: AlertTriangleIcon,
+    icon: TriangleAlertIcon,
     label: "Warning",
-    border: "border-amber-400/40",
-    text: "text-amber-400",
+    box: "border-orange-400/34 bg-orange-400/11",
+    icon_: "text-orange-400",
   },
 };
 
@@ -48,21 +52,12 @@ export function Callout({
 
   return (
     <div
-      className={cn(
-        "my-6 rounded-xl border bg-space-surface/60 p-4",
-        style.border,
-      )}
+      role={kind === "WARNING" ? "alert" : "note"}
+      className={cn("my-6 flex items-start gap-3 rounded-lg border px-4 py-3.5", style.box)}
     >
-      <p
-        className={cn(
-          "mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em]",
-          style.text,
-        )}
-      >
-        <Icon className="size-3.5" />
-        {style.label}
-      </p>
-      <div className="text-sm text-silver-600 [&>p]:mb-2 [&>p:last-child]:mb-0">
+      <Icon aria-hidden="true" className={cn("mt-1 size-4 shrink-0", style.icon_)} />
+      <div className="min-w-0 flex-1 text-sm leading-[1.6] text-silver-900 [&>p]:mb-2 [&>p:last-child]:mb-0">
+        <p className="font-semibold">{style.label}</p>
         {children}
       </div>
     </div>

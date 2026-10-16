@@ -1,19 +1,26 @@
-import { MailCheckIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MailIcon, RotateCwIcon } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { Button } from "@/src/components/ui/button";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { ApiError } from "@/src/lib/api-client";
+import { AuthLayout, AuthTile } from "@/src/features/auth/AuthLayout";
 import { useMe } from "@/src/features/auth/queries";
 import {
   useLogout,
   useResendVerification,
 } from "@/src/features/auth/mutations";
+import { formatElapsed } from "@/src/features/project/chatLoaderState";
+
+/** How long Resend waits after a send, so one click is one email. */
+const RESEND_COOLDOWN_S = 60;
 
 /**
  * Holding screen for authenticated users who haven't verified their email. They
  * can't reach the platform until they confirm via the email link (which lands on
- * /verify-email and redirects home). From here they can resend or log out.
+ * /verify-email and redirects home). From here they can resend, or log out to
+ * use a different address.
  */
 function VerifyPending() {
   useDocumentMeta({ title: "Verify email", noIndex: true });
@@ -21,10 +28,19 @@ function VerifyPending() {
   const { data: user } = useMe();
   const resend = useResendVerification();
   const logout = useLogout();
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = window.setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldown]);
 
   const onResend = async () => {
     try {
       await resend.mutateAsync();
+      toast.success("Verification email sent");
+      setCooldown(RESEND_COOLDOWN_S);
     } catch (err) {
       toast.error(
         err instanceof ApiError ? err.message : "Couldn't send the email",
@@ -33,43 +49,56 @@ function VerifyPending() {
   };
 
   return (
-    <div className="flex min-h-[100svh] flex-col items-center justify-center px-6 text-center">
-      <div className="w-full max-w-sm">
-        <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-blue-500/10 text-blue-500">
-          <MailCheckIcon className="size-6" />
-        </div>
-
-        <h1 className="text-2xl font-semibold text-foreground">
-          Verify your email
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+    <AuthLayout
+      icon={
+        <AuthTile>
+          <MailIcon />
+        </AuthTile>
+      }
+      title="Check your email"
+      subtitle={
+        <>
           We sent a verification link to{" "}
           {user ? (
-            <span className="font-medium text-foreground">{user.email}</span>
+            <span className="font-medium text-silver-900">{user.email}</span>
           ) : (
             "your email"
           )}
-          . Confirm it to enter the platform.
-        </p>
-
+          . Open it to start building.
+        </>
+      }
+    >
+      <div className="flex flex-col gap-2">
         <Button
-          variant="outline"
-          className="mt-8 h-11 w-full"
+          variant="secondary"
+          size="lg"
+          className="w-full"
           onClick={onResend}
-          disabled={resend.isPending}
+          loading={resend.isPending}
+          disabled={cooldown > 0}
         >
-          Resend email
+          {!resend.isPending && <RotateCwIcon />}
+          {cooldown > 0 ? (
+            <>
+              Resend in <span className="font-mono tabular-nums">{formatElapsed(cooldown)}</span>
+            </>
+          ) : (
+            "Resend email"
+          )}
         </Button>
-
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          className="w-full"
           onClick={() => logout.mutate()}
-          className="mt-6 text-sm text-silver-600 hover:text-silver-900"
+          disabled={logout.isPending}
         >
-          Log out
-        </button>
+          Use a different email
+        </Button>
       </div>
-    </div>
+      <p className="mt-5 text-center text-xs leading-relaxed text-silver-500">
+        Nothing yet? Check your spam folder, or resend in a minute.
+      </p>
+    </AuthLayout>
   );
 }
 

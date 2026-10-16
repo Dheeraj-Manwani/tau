@@ -64,7 +64,7 @@ export function AiGateway() {
       <ScrollReveal className="text-center">
         <p className="flex items-center justify-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-blue-500">
           AI for the apps you build
-          <span className="rounded-full border border-silver-400 px-2 py-0.5 text-[0.6rem] tracking-normal text-silver-600">
+          <span className="rounded-full border border-silver-400 px-2 py-0.5 text-[11px] tracking-normal text-silver-600">
             Beta
           </span>
         </p>
@@ -95,10 +95,10 @@ export function AiGateway() {
           {/* The key card: masked until you ask, and asking needs re-auth. */}
           <div className="rounded-2xl border border-silver-200 bg-space-surface p-5">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-silver-400">
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-silver-500">
                 Your app's AI key
               </p>
-              <span className="flex items-center gap-1 rounded-full border border-silver-400 px-2 py-0.5 text-[0.6rem] text-silver-600">
+              <span className="flex items-center gap-1 rounded-full border border-silver-400 px-2 py-0.5 text-[11px] text-silver-600">
                 <LockIcon className="size-2.5" />
                 Confirm to reveal
               </span>

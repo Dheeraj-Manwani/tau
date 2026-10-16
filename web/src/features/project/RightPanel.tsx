@@ -1,7 +1,5 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import { motion } from "motion/react";
-import { Popover } from "radix-ui";
 import {
   ChevronDownIcon,
   CodeIcon,
@@ -19,6 +17,11 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
+import { Button } from "@/src/components/ui/button";
+import { Input, InputGroup } from "@/src/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/src/components/ui/popover";
+import { Segmented, SegmentedItem } from "@/src/components/ui/segmented";
+import { Skeleton } from "@/src/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
@@ -62,6 +65,8 @@ const DEVICES: {
   { id: "desktop", icon: MonitorIcon, label: "Desktop" },
 ];
 
+/** PREVIEW / CODE / TOOLS: a view switch, so a raised neutral chip with a blue
+ *  icon, never the blue fill it used to be (boards/Controls.dc.html §03). */
 function TabToggle() {
   const [params, setParams] = useSearchParams();
   const activeTab = useProjectStore((s) => s.activeTab);
@@ -69,46 +74,28 @@ function TabToggle() {
   const isWriting = useProjectStore((s) => s.writingPath !== null);
 
   return (
-    <div
+    <Segmented
+      value={activeTab}
+      onValueChange={(id) => {
+        const next = new URLSearchParams(params);
+        next.set("tab", id);
+        setParams(next);
+        setActiveTab(id as Tab);
+      }}
+      aria-label="Workspace view"
       data-tour="view-tabs"
-      className="flex shrink-0 gap-1 rounded-[9px] border border-silver-400/30 bg-space-surface p-1"
     >
       {TABS.map(({ id, icon: Icon }) => (
-        <button
-          key={id}
-          type="button"
-          onClick={() => {
-            const next = new URLSearchParams(params);
-            next.set("tab", id);
-            setParams(next);
-            setActiveTab(id);
-          }}
-          aria-pressed={activeTab === id}
-          className={cn(
-            "relative flex h-8 items-center rounded-[7px] px-3 text-xs font-semibold tracking-wide uppercase transition-colors",
-            activeTab === id
-              ? "text-white"
-              : "text-silver-600 hover:text-silver-900",
+        <SegmentedItem key={id} value={id} className="uppercase">
+          {id === "code" && isWriting ? (
+            <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
+          ) : (
+            <Icon />
           )}
-        >
-          {activeTab === id && (
-            <motion.span
-              layoutId="tab-pill"
-              className="absolute inset-0 rounded-[7px] bg-blue-500 shadow-sm"
-              transition={{ type: "spring", stiffness: 400, damping: 32 }}
-            />
-          )}
-          <span className="relative z-10 flex items-center gap-1.5">
-            {id === "code" && isWriting ? (
-              <LoaderCircleIcon className="size-3.5 animate-spin" />
-            ) : (
-              <Icon className="size-3.5" />
-            )}
-            {id}
-          </span>
-        </button>
+          {id}
+        </SegmentedItem>
       ))}
-    </div>
+    </Segmented>
   );
 }
 
@@ -117,29 +104,57 @@ function DeviceSwitcher() {
   const setPreviewDevice = useProjectStore((s) => s.setPreviewDevice);
 
   return (
-    <div
+    <Segmented
+      size="sm"
+      iconOnly
+      value={previewDevice}
+      onValueChange={(id) => setPreviewDevice(id as PreviewDevice)}
+      aria-label="Preview device"
       data-tour="device-switcher"
-      className="flex shrink-0 gap-1 rounded-[9px] border border-[var(--silver-200)] bg-[var(--space-surface)] p-1"
     >
       {DEVICES.map(({ id, icon: Icon, label }) => (
-        <motion.button
-          key={id}
-          type="button"
-          whileTap={{ scale: 0.92 }}
-          onClick={() => setPreviewDevice(id)}
-          aria-label={label}
-          aria-pressed={previewDevice === id}
-          className={cn(
-            "flex size-8 items-center justify-center rounded-[7px] transition-colors",
-            previewDevice === id
-              ? "bg-[var(--space-overlay)] text-[var(--silver-900)]"
-              : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
-          )}
-        >
+        <SegmentedItem key={id} value={id} aria-label={label} className="w-7">
           <Icon className="size-3.5" />
-        </motion.button>
+        </SegmentedItem>
       ))}
-    </div>
+    </Segmented>
+  );
+}
+
+/** A ghost icon button with a tooltip, for the preview toolbar. */
+function ToolbarIcon({
+  label,
+  onClick,
+  disabled,
+  pressed,
+  children,
+  ...rest
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  pressed?: boolean;
+  children: ReactNode;
+  "data-tour"?: string;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={label}
+          aria-pressed={pressed}
+          disabled={disabled}
+          onClick={onClick}
+          className={cn(pressed && "bg-space-raised text-silver-900 [&_svg]:text-blue-500")}
+          {...rest}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -164,24 +179,21 @@ function VisualEditToggle() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <motion.button
-          type="button"
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.96 }}
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => setEnabled(!enabled)}
           aria-label="Select an element"
           data-tour="select-element"
           aria-pressed={enabled}
           className={cn(
-            "flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] border px-2.5 text-xs font-semibold tracking-wide uppercase transition-colors",
-            enabled
-              ? "border-blue-500/50 bg-blue-500/15 text-blue-300"
-              : "border-silver-400/30 text-silver-600 hover:text-silver-900",
+            "shrink-0",
+            enabled && "border-line-hover bg-space-raised [&_svg]:text-blue-500",
           )}
         >
-          <SquareMousePointerIcon className="size-3.5" />
+          <SquareMousePointerIcon />
           Edit
-        </motion.button>
+        </Button>
       </TooltipTrigger>
       <TooltipContent>
         {enabled ? "Stop selecting" : "Select an element to ask about it"}
@@ -206,31 +218,19 @@ function ThemeToggle() {
   if (!previewUrl) return null;
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <motion.button
-          type="button"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.92 }}
-          onClick={() => setOpen(!open)}
-          aria-label="Edit theme"
-          data-tour="theme-editor"
-          aria-pressed={open}
-          className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors",
-            open
-              ? "bg-[var(--space-overlay)] text-[var(--blue-500)]"
-              : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
-          )}
-        >
-          <SwatchBookIcon className="size-4" />
-        </motion.button>
-      </TooltipTrigger>
-      <TooltipContent>{open ? "Close theme" : "Edit theme"}</TooltipContent>
-    </Tooltip>
+    <ToolbarIcon
+      label={open ? "Close theme" : "Edit theme"}
+      pressed={open}
+      onClick={() => setOpen(!open)}
+      data-tour="theme-editor"
+    >
+      <SwatchBookIcon />
+    </ToolbarIcon>
   );
 }
 
+/** The path chip ("/ ⌄") opens the preview-path popover
+ *  (boards/Overlays.dc.html); reload and open-in-tab sit beside it. */
 function PreviewNavigation() {
   const previewUrl = useProjectStore((s) => s.previewUrl);
   const previewPath = useProjectStore((s) => s.previewPath);
@@ -254,104 +254,70 @@ function PreviewNavigation() {
   };
 
   return (
-    <div
-      className="flex min-w-0 items-center gap-1"
-      data-tour="url-bar"
-    >
-      <Popover.Root
+    <div className="flex min-w-0 items-center gap-1" data-tour="url-bar">
+      <Popover
         open={open}
         onOpenChange={(nextOpen) => {
           setOpen(nextOpen);
           setDraft(null);
         }}
       >
-        <Popover.Trigger asChild>
-          <button
-            type="button"
+        <PopoverTrigger asChild>
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={!hasUrl}
             aria-label={`Navigate preview: ${previewPath}`}
             title={fullUrl ?? "No preview yet"}
-            className="flex h-8 min-w-0 max-w-32 items-center gap-1.5 rounded-[8px] border border-[var(--silver-200)] bg-[var(--space-surface)] px-2 font-mono text-xs text-[var(--silver-900)] transition-colors hover:bg-[var(--space-overlay)] focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-40 sm:max-w-48"
+            className="max-w-32 min-w-0 sm:max-w-48"
           >
-            <span className="truncate">{previewPath}</span>
-            <ChevronDownIcon className="size-3 shrink-0 text-[var(--silver-600)]" />
-          </button>
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Content
-            align="start"
-            sideOffset={8}
-            collisionPadding={12}
-            aria-label="Preview navigation"
-            className="z-50 w-80 max-w-[calc(100vw-24px)] rounded-xl border border-[var(--silver-200)] bg-[var(--space-surface)] p-3 text-[var(--silver-900)] shadow-xl"
+            <span className="truncate font-mono">{previewPath}</span>
+            <ChevronDownIcon className="text-silver-600" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          collisionPadding={12}
+          aria-label="Preview navigation"
+          className="w-80 max-w-[calc(100vw-24px)]"
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              commit();
+            }}
+            className="flex flex-col gap-2"
           >
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                commit();
-              }}
-              className="flex flex-col gap-2"
-            >
-              <label htmlFor="preview-path" className="text-xs font-medium">
-                Preview path
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="preview-path"
-                  value={value}
-                  spellCheck={false}
-                  autoComplete="off"
-                  placeholder="/settings"
-                  onChange={(e) => setDraft(e.target.value)}
-                  onFocus={(e) => e.currentTarget.select()}
-                  className="h-9 min-w-0 flex-1 rounded-lg border border-[var(--silver-200)] bg-[var(--space-void)] px-3 font-mono text-xs focus:border-[var(--silver-400)] focus:outline-none focus:ring-2 focus:ring-white/5"
-                />
-                <button
-                  type="submit"
-                  className="rounded-lg bg-[var(--silver-900)] px-3 text-xs font-medium text-[var(--space-void)] focus-visible:outline-2 focus-visible:outline-ring"
-                >
-                  Go
-                </button>
-              </div>
-              <p className="text-xs text-[var(--silver-600)]">
-                Enter a path or paste a URL.
-              </p>
-            </form>
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.button
-            type="button"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ rotate: 180 }}
-            disabled={!hasUrl}
-            onClick={() => hasUrl && reloadPreview()}
-            aria-label="Reload preview"
-            className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <RotateCwIcon className="size-3.5" />
-          </motion.button>
-        </TooltipTrigger>
-        <TooltipContent>Reload preview</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.button
-            type="button"
-            whileHover={{ scale: 1.1 }}
-            disabled={!hasUrl}
-            onClick={() => fullUrl && window.open(fullUrl, "_blank")}
-            aria-label="Open in new tab"
-            className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <ExternalLinkIcon className="size-4" />
-          </motion.button>
-        </TooltipTrigger>
-        <TooltipContent>Open in new tab</TooltipContent>
-      </Tooltip>
+            <label htmlFor="preview-path" className="text-[13px] font-medium">
+              Preview path
+            </label>
+            <InputGroup>
+              <Input
+                id="preview-path"
+                value={value}
+                spellCheck={false}
+                autoComplete="off"
+                placeholder="/settings"
+                onChange={(e) => setDraft(e.target.value)}
+                onFocus={(e) => e.currentTarget.select()}
+                className="font-mono text-xs"
+              />
+              <Button type="submit">Go</Button>
+            </InputGroup>
+            <p className="text-xs text-silver-500">Enter a path or paste a URL.</p>
+          </form>
+        </PopoverContent>
+      </Popover>
+      <ToolbarIcon label="Reload preview" disabled={!hasUrl} onClick={() => hasUrl && reloadPreview()}>
+        <RotateCwIcon />
+      </ToolbarIcon>
+      <ToolbarIcon
+        label="Open in new tab"
+        disabled={!hasUrl}
+        onClick={() => fullUrl && window.open(fullUrl, "_blank")}
+      >
+        <ExternalLinkIcon />
+      </ToolbarIcon>
     </div>
   );
 }
@@ -377,19 +343,14 @@ export function RightPanel() {
   }, [projectId, params, setParams, setActiveTab]);
 
   return (
-    <div className="flex h-full min-w-0 flex-col bg-[var(--space-void)]">
-      <div className="flex min-h-16 shrink-0 flex-wrap items-center gap-3 border-b border-[var(--silver-200)] px-4 ">
+    <div className="flex h-full min-w-0 flex-col bg-space-void">
+      {/* boards/Workspace-*.dc.html: 64px bar, the view switch and preview
+          tools on the left; device, GitHub, Deploy and you on the right. */}
+      <div className="flex min-h-16 shrink-0 flex-wrap items-center gap-x-2.5 gap-y-2 border-b border-line py-3 pr-5 pl-4">
         {!isChatOpen && (
-          <motion.button
-            type="button"
-            onClick={toggleChat}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.92 }}
-            aria-label="Open chat"
-            className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
-          >
-            <PanelLeftOpenIcon className="size-4.5" />
-          </motion.button>
+          <ToolbarIcon label="Open chat" onClick={toggleChat}>
+            <PanelLeftOpenIcon />
+          </ToolbarIcon>
         )}
 
         <TabToggle />
@@ -400,17 +361,17 @@ export function RightPanel() {
         {activeTab === "preview" && <ThemeToggle />}
         {activeTab === "preview" && <DeviceSwitcher />}
 
-        <div className="mx-0.5 h-6 w-px shrink-0 bg-[var(--silver-200)]" />
-
         <div
-          className="flex items-center gap-1"
+          className="flex items-center gap-2.5"
           aria-label="Project sharing and deployment"
           data-tour="ship"
         >
           <GithubPanel />
           <DeployPanel />
         </div>
-        <UserMenu />
+        <span className="ml-1 flex">
+          <UserMenu />
+        </span>
       </div>
 
       <div className="min-h-0 flex-1">
@@ -418,7 +379,7 @@ export function RightPanel() {
             simple tab round-trip navigate the preview again and replay the
             post-load shimmer even though the already-loaded page was usable. */}
         <div
-          className={cn("h-full bg-black", activeTab !== "preview" && "hidden")}
+          className={cn("h-full bg-space-void", activeTab !== "preview" && "hidden")}
           aria-hidden={activeTab !== "preview"}
         >
           <PreviewPane
@@ -430,8 +391,10 @@ export function RightPanel() {
         {activeTab === "code" && (
           <Suspense
             fallback={
-              <div className="flex h-full items-center justify-center bg-[var(--space-void)] text-sm text-[var(--silver-600)]">
-                Loading editor…
+              <div className="flex h-full flex-col gap-3 bg-space-void p-6" aria-label="Loading editor">
+                <Skeleton className="h-3.5 w-1/3" />
+                <Skeleton className="h-3 w-2/3" />
+                <Skeleton className="h-3 w-1/2" />
               </div>
             }
           >

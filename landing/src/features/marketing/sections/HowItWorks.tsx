@@ -298,7 +298,7 @@ export function HowItWorks() {
                     {waypoint.title}
                   </h3>
                   <p className="mt-2 text-sm text-silver-600">{waypoint.copy}</p>
-                  <p className="mt-3 font-mono text-[0.7rem] text-silver-400">
+                  <p className="mt-3 font-mono text-[0.7rem] text-silver-500">
                     {waypoint.detail}
                   </p>
                 </div>

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { APP_BILLING } from "@/src/lib/routes";
 import { PRO_PRICE_INR } from "@/src/features/marketing/data/effortTiers";
+import { LegalPage, LegalSection } from "@/src/features/legal/LegalLayout";
 
 const CONTACT_EMAIL = "iammadfortech@gmail.com";
 const EFFECTIVE_DATE = "October 10, 2026";
@@ -17,31 +18,20 @@ export default function TermsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16 text-sm text-foreground/90">
-      <Link
-        to="/"
-        className="mb-8 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-      >
-        ← Back to tau
-      </Link>
+    <LegalPage title="Terms of Service" updated={EFFECTIVE_DATE}>
 
-      <h1 className="mb-2 text-2xl font-semibold">Terms of Service</h1>
-      <p className="mb-10 text-xs text-muted-foreground">
-        Effective date: {EFFECTIVE_DATE}
-      </p>
-
-      <Section title="1. Acceptance">
+      <LegalSection title="1. Acceptance">
         <p>
           By creating a tau account or using any tau service, you agree to these
           Terms of Service and our{" "}
-          <Link to="/privacy" className="text-indigo-400 hover:underline">
+          <Link to="/privacy" className="text-blue-500 hover:text-blue-hi hover:underline">
             Privacy Policy
           </Link>
           . If you do not agree, do not use tau.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="2. Service description">
+      <LegalSection title="2. Service description">
         <p>
           Tau is an AI-powered web application builder. You describe an
           application in natural language; tau generates code, runs it in a
@@ -49,9 +39,9 @@ export default function TermsPage() {
           keep and deploy. Tau can also publish an app to a public address and
           store files for it, as described in section 7.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="3. Accounts">
+      <LegalSection title="3. Accounts">
         <ul className="list-disc space-y-1 pl-5">
           <li>You must be at least 18 years old to create an account.</li>
           <li>You are responsible for all activity under your account.</li>
@@ -64,10 +54,10 @@ export default function TermsPage() {
             set out in section 9.
           </li>
         </ul>
-      </Section>
+      </LegalSection>
 
-      <Section title="4. Credits &amp; billing">
-        <p className="font-medium">Free tier</p>
+      <LegalSection title="4. Credits &amp; billing">
+        <p className="font-medium text-silver-900">Free tier</p>
         <p>
           Every registered user receives a one-time grant of 300 free credits
           when they sign up. There is no daily or recurring refill of free
@@ -75,7 +65,7 @@ export default function TermsPage() {
           PRO plan.
         </p>
 
-        <p className="mt-4 font-medium">PRO plan</p>
+        <p className="mt-4 font-medium text-silver-900">PRO plan</p>
         <ul className="list-disc space-y-1 pl-5">
           <li>
             <b>Price:</b> {PRO_PRICE} per month (INR, inclusive of applicable
@@ -98,14 +88,14 @@ export default function TermsPage() {
           </li>
         </ul>
 
-        <p className="mt-4 font-medium">Promo codes</p>
+        <p className="mt-4 font-medium text-silver-900">Promo codes</p>
         <p>
           Promotional credits credited via promo codes are non-expiring and
           non-refundable. Each code may be redeemed once per account.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="5. Refund &amp; cancellation policy">
+      <LegalSection title="5. Refund &amp; cancellation policy">
         <p>
           <b>Subscriptions:</b> We do not offer prorated refunds for subscription
           periods that have already begun. If you cancel, you retain access to
@@ -116,7 +106,7 @@ export default function TermsPage() {
           us at{" "}
           <a
             href={`mailto:${CONTACT_EMAIL}`}
-            className="text-indigo-400 hover:underline"
+            className="text-blue-500 hover:text-blue-hi hover:underline"
           >
             {CONTACT_EMAIL}
           </a>{" "}
@@ -135,15 +125,15 @@ export default function TermsPage() {
         </p>
         <p className="mt-2">
           <b>How to cancel:</b> Sign in → go to{" "}
-          <Link to={APP_BILLING} className="text-indigo-400 hover:underline">
+          <Link to={APP_BILLING} className="text-blue-500 hover:text-blue-hi hover:underline">
             Credits &amp; Billing
           </Link>{" "}
           → click "Cancel subscription". Your plan remains active until the
           current period ends.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="6. Acceptable use">
+      <LegalSection title="6. Acceptable use">
         <p>
           You are responsible for everything you build with tau, everything your
           apps do, and everything that is stored or published through them,
@@ -217,9 +207,9 @@ export default function TermsPage() {
           this section. You may not rely on the fact that tau&apos;s tools
           produced or allowed something as permission for it.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="7. Published apps and stored files">
+      <LegalSection title="7. Published apps and stored files">
         <p>
           When you publish an app, or turn on file storage for it, you act as the
           publisher of that app and of everything it serves or stores. Tau only
@@ -268,16 +258,16 @@ export default function TermsPage() {
             replace it from Tools → Storage at once.
           </li>
         </ul>
-      </Section>
+      </LegalSection>
 
-      <Section title="8. Reporting abuse and takedown">
+      <LegalSection title="8. Reporting abuse and takedown">
         <p>
           To report content stored or published through tau, or to tell us about
           an infringement, a phishing page, malware or any other breach of
           section 6, email{" "}
           <a
             href={`mailto:${CONTACT_EMAIL}`}
-            className="text-indigo-400 hover:underline"
+            className="text-blue-500 hover:text-blue-hi hover:underline"
           >
             {CONTACT_EMAIL}
           </a>{" "}
@@ -294,9 +284,9 @@ export default function TermsPage() {
           requires it, we respond to valid notices from courts and authorities
           within the time they set.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="9. Enforcement">
+      <LegalSection title="9. Enforcement">
         <p>
           If we believe, in our reasonable judgement, that you or your app have
           broken these Terms, or that your app puts the service, other users or
@@ -323,9 +313,9 @@ export default function TermsPage() {
           done under your account. We may act on a first offence if it is serious,
           without warning.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="10. Your responsibility to us">
+      <LegalSection title="10. Your responsibility to us">
         <p>
           You agree to indemnify and hold us, our operators and our service
           providers harmless from any claim, loss, penalty, cost or expense
@@ -333,9 +323,9 @@ export default function TermsPage() {
           stored or published through them, your breach of these Terms, or your
           breach of the law or of anyone&apos;s rights.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="11. Intellectual property">
+      <LegalSection title="11. Intellectual property">
         <p>
           <b>Your content:</b> You retain all rights to the prompts you provide
           and the code generated for you. We do not claim ownership of your
@@ -348,9 +338,9 @@ export default function TermsPage() {
           technology remain our intellectual property. You may not copy, scrape,
           or redistribute our UI or product without permission.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="12. Disclaimer &amp; limitation of liability">
+      <LegalSection title="12. Disclaimer &amp; limitation of liability">
         <p>
           The service is provided &quot;as is&quot; and &quot;as available&quot;
           without warranty of any kind. AI-generated code may contain errors or
@@ -367,16 +357,16 @@ export default function TermsPage() {
           indirect, incidental or consequential loss, loss of data, profit or
           goodwill, or for anything done by you, your visitors or third parties.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="13. Governing law">
+      <LegalSection title="13. Governing law">
         <p>
           These Terms are governed by the laws of India. Any disputes shall be
           subject to the exclusive jurisdiction of courts in India.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="14. Changes">
+      <LegalSection title="14. Changes">
         <p>
           We may update these Terms from time to time. We will provide at least
           7 days notice of material changes by email before they take effect,
@@ -384,37 +374,20 @@ export default function TermsPage() {
           abuse or a risk to the service, may take effect immediately. Continued
           use of tau after the effective date constitutes acceptance.
         </p>
-      </Section>
+      </LegalSection>
 
-      <Section title="15. Contact">
+      <LegalSection title="15. Contact">
         <p>
           For questions, billing disputes, cancellation help, and reports of
           abuse or infringement:{" "}
           <a
             href={`mailto:${CONTACT_EMAIL}`}
-            className="text-indigo-400 hover:underline"
+            className="text-blue-500 hover:text-blue-hi hover:underline"
           >
             {CONTACT_EMAIL}
           </a>
         </p>
-      </Section>
-    </div>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="mb-8">
-      <h2 className="mb-3 text-base font-semibold">{title}</h2>
-      <div className="space-y-2 leading-relaxed text-foreground/80">
-        {children}
-      </div>
-    </section>
+      </LegalSection>
+    </LegalPage>
   );
 }

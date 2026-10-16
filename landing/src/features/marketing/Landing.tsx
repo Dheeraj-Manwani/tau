@@ -1,6 +1,8 @@
 import { Fragment, lazy, Suspense, useState } from "react";
 import { Link } from "react-router-dom";
-import { Zap } from "lucide-react";
+import { ArrowUpRightIcon, Zap } from "lucide-react";
+import { RainLayer } from "@/src/components/motion/RainLayer";
+import { Button } from "@/src/components/ui/button";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { appPath } from "@/src/lib/routes";
 import { Hero } from "./sections/StormHero";
@@ -277,9 +279,9 @@ export default function Landing() {
             <h3>03　Secrets stay grounded</h3>
             <p>Credential-shaped files are filtered from exports.</p>
           </div>
-          <Link className="outline-link" to="/docs/ship/github">
-            Explore GitHub export →
-          </Link>
+          <Button asChild variant="secondary" size="lg">
+            <Link to="/docs/ship/github">Explore GitHub export →</Link>
+          </Button>
         </div>
         <div className="ship-diagram">
           <div className="ship-node">τ</div>
@@ -319,19 +321,33 @@ export default function Landing() {
         </div>
       </section>
       <PricingSection />
-      <section className="storm-cta storm-band">
+      {/* The closing band (tier A): rain, Display type and one way in. It was
+          a PNG with an orange button baked into it; this is the same message
+          as real text, so it reads, scales and translates like the rest. */}
+      <section className="storm-cta storm-band cta-band">
+        <RainLayer fill />
         <div className="storm-container">
-          <a
-            href={appPath()}
-            aria-label="Describe the app. Its brain comes with it. Build an AI app."
-            className="block"
-          >
-            <img
-              src="/bottom-cta.png"
-              alt="Describe the app. Its brain comes with it. Build an AI app."
-              className="h-auto w-full"
-            />
-          </a>
+          <div className="eyebrow">// AI GATEWAY</div>
+          <h2>
+            Describe the app.
+            <br />
+            <span>Its brain comes with it.</span>
+          </h2>
+          <p className="section-copy">
+            Ask for an app that thinks, and tau wires the AI in for you: no SDK,
+            no provider account and no key of your own.
+          </p>
+          <div className="cta-actions">
+            <Button asChild size="lg">
+              <a href={appPath()}>
+                Build an AI app
+                <ArrowUpRightIcon />
+              </a>
+            </Button>
+            <Button asChild variant="ghost" size="lg">
+              <Link to="/docs/ai/overview">How the AI gateway works</Link>
+            </Button>
+          </div>
         </div>
       </section>
     </div>

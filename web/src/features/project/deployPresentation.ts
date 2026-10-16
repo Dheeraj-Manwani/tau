@@ -128,12 +128,14 @@ export function deployPresentation(status: DeployStatus) {
   };
 }
 
+/** One meaning per colour (boards/Controls.dc.html status dots): green live,
+ *  orange waiting or unpublished, blue working, red failed, grey offline. */
 export const deployToneClass: Record<DeployTone, string> = {
-  live: "bg-emerald-400",
-  warning: "bg-amber-400",
-  busy: "bg-blue-400",
+  live: "bg-green-400",
+  warning: "bg-orange-400",
+  busy: "bg-blue-500",
   error: "bg-red-400",
-  neutral: "bg-silver-400",
+  neutral: "bg-line-hover",
 };
 
 export interface DeployStep {
@@ -143,12 +145,54 @@ export interface DeployStep {
   state: "done" | "active" | "pending" | "failed" | "review";
 }
 
-/** Only states recorded by the server are shown as completed. Failed rows lose their stage. */
+/** The DeployPipeline's node names (boards/Workspace-Deployments.dc.html). */
+export const pipelineLabels: Record<string, string> = {
+  QUEUED: "Queue",
+  VALIDATING: "Check",
+  BUILDING: "Build",
+  UPLOADING: "Upload",
+  PROVISIONING: "Server",
+  VERIFYING: "Verify",
+  READY: "Live",
+};
+
+/** The pipeline console's line for the stage running now. */
+export function pipelineLine(deployment: DeploymentSummary): string {
+  switch (deployment.status) {
+    case "QUEUED":
+      return "queued · waiting for a worker";
+    case "VALIDATING":
+      return "checking server and database";
+    case "BUILDING":
+      return "building app";
+    case "UPLOADING":
+      return deployment.fileCount > 0
+        ? `uploading ${deployment.fileCount} files`
+        : "uploading files";
+    case "PROVISIONING":
+      return "setting up the server";
+    case "VERIFYING":
+      return "verifying server health";
+    default:
+      return "switching traffic to the new version";
+  }
+}
+
+/**
+ * Only states recorded by the server are shown as completed. A failed row has
+ * lost its stage, so it is a single "stopped" step unless this browser watched
+ * the attempt and saw where it stopped (`failedAt`).
+ */
 export function deploymentSteps(
   deployment: DeploymentSummary,
   needsReview = false,
+  failedAt: DeploymentStatus | null = null,
 ): DeployStep[] {
-  if (deployment.status === "FAILED")
+  const stoppedAt =
+    deployment.status === "FAILED" && failedAt && failedAt !== "FAILED" && failedAt !== "SUPERSEDED"
+      ? failedAt
+      : null;
+  if (deployment.status === "FAILED" && !stoppedAt)
     return [
       {
         id: "stopped",
@@ -157,9 +201,10 @@ export function deploymentSteps(
         state: needsReview ? "review" : "failed",
       },
     ];
+  const at = stoppedAt ?? deployment.status;
   const fullstack =
     deployment.target === "FULLSTACK" ||
-    ["VALIDATING", "PROVISIONING", "VERIFYING"].includes(deployment.status);
+    ["VALIDATING", "PROVISIONING", "VERIFYING"].includes(at);
   const steps: { id: DeploymentStatus; label: string; detail: string }[] = [
     {
       id: "QUEUED",
@@ -215,14 +260,21 @@ export function deploymentSteps(
   ];
   const complete =
     deployment.status === "READY" || deployment.status === "SUPERSEDED";
-  const index = steps.findIndex((step) => step.id === deployment.status);
+  const index = steps.findIndex((step) => step.id === at);
   return steps.map((step, i) => ({
     ...step,
+    ...(stoppedAt && i === index
+      ? { detail: deployment.error ?? "This attempt did not go live." }
+      : {}),
     state:
       complete || (index >= 0 && i < index)
         ? "done"
         : i === index
-          ? "active"
+          ? stoppedAt
+            ? needsReview
+              ? "review"
+              : "failed"
+            : "active"
           : "pending",
   }));
 }

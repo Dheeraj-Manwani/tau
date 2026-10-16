@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PaletteIcon, ScrollTextIcon } from "lucide-react";
+import { ScrollTextIcon } from "lucide-react";
 import toast from "react-hot-toast";
 
 import {
@@ -11,6 +11,8 @@ import {
   DialogTitle,
 } from "@/src/components/ui/dialog";
 import { Button } from "@/src/components/ui/button";
+import { Textarea } from "@/src/components/ui/textarea";
+import { SettingsRow } from "@/src/features/settings/SettingsRow";
 import {
   describeChoice,
   sameDesign,
@@ -25,10 +27,6 @@ import { useCheckInstructions } from "@/src/features/settings/instructionCheck";
 
 /** Mirrors `MAX_USER_INSTRUCTIONS_CHARS` on the server. */
 const MAX_INSTRUCTIONS = 2_000;
-
-const CARD = "rounded-xl border border-border bg-muted/30 p-4";
-const SMALL_BUTTON =
-  "rounded-md border border-silver-400/30 px-2.5 py-1.5 text-xs font-medium text-silver-700 transition-colors hover:border-silver-400/60 hover:text-silver-900 disabled:cursor-not-allowed disabled:opacity-40";
 
 /**
  * What the user wants in everything they build, said once.
@@ -45,53 +43,50 @@ export function StandingInstructionsCard() {
   const conflicts = changed ? undefined : check.data;
 
   return (
-    <div className={`${CARD} space-y-2.5`}>
-      <label htmlFor="standing-instructions" className="flex gap-2.5">
-        <ScrollTextIcon className="mt-0.5 size-4 shrink-0 text-silver-600" />
-        <span className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium text-silver-900">
-            Instructions for tau
-          </span>
-          <span className="text-xs text-silver-600">
-            What tau should keep in mind in everything you build, so you
-            don&rsquo;t have to repeat it. A project can add its own under
-            Edit project.
-          </span>
+    <div className="flex flex-col gap-3 pb-5">
+      <label htmlFor="standing-instructions" className="flex flex-col gap-1.5">
+        <span className="flex items-center gap-2.5 text-sm font-semibold text-silver-900">
+          <ScrollTextIcon className="size-4 shrink-0 text-silver-600" />
+          Instructions for tau
+        </span>
+        <span className="text-[12.5px] leading-[1.55] text-silver-500">
+          What tau should keep in mind in everything you build, so you
+          don&rsquo;t have to repeat it. A project can add its own under Edit
+          project.
         </span>
       </label>
 
-      <textarea
+      <Textarea
         id="standing-instructions"
         value={draft}
         maxLength={MAX_INSTRUCTIONS}
         onChange={(e) => setDraft(e.target.value)}
         placeholder={"e.g. Write interface copy in British English.\nI'm colour-blind: never rely on red and green alone."}
-        rows={4}
-        className="scrollbar-thin w-full resize-y rounded-lg border border-input bg-background p-3 text-sm outline-none transition-shadow focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/25"
+        rows={3}
+        className="scrollbar-thin"
       />
 
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs tabular-nums text-silver-600">
+        <span className="font-mono text-[11px] text-silver-500 tabular-nums">
           {draft.length > MAX_INSTRUCTIONS * 0.8
             ? `${draft.length.toLocaleString()} / ${MAX_INSTRUCTIONS.toLocaleString()}`
             : instructions && !changed
               ? "Saved. tau reads these with every request."
               : ""}
         </span>
-        <span className="flex shrink-0 gap-1.5">
+        <span className="flex shrink-0 gap-2">
           {changed && (
-            <button
-              type="button"
-              className={SMALL_BUTTON}
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setDraft(instructions)}
             >
               Discard
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            size="sm"
             disabled={!changed}
-            className={SMALL_BUTTON}
             onClick={() => {
               setInstructions(draft);
               setDraft(draft.trim());
@@ -103,7 +98,7 @@ export function StandingInstructionsCard() {
             }}
           >
             Save
-          </button>
+          </Button>
         </span>
       </div>
       <InstructionConflicts conflicts={conflicts} />
@@ -131,63 +126,54 @@ export function DefaultLookCard() {
 
   return (
     <>
-      <div
-        className={`${CARD} flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between`}
-      >
-        <span className="flex gap-2.5">
-          <PaletteIcon className="mt-0.5 size-4 shrink-0 text-silver-600" />
-          <span className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium text-silver-900">
-              Default look
+      <SettingsRow
+        title="Default look"
+        help={
+          defaultDesign ? (
+            <span className="flex flex-wrap items-center gap-1.5">
+              {defaultDesign.accent && (
+                <span
+                  className="size-3 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]"
+                  style={{ backgroundColor: defaultDesign.accent }}
+                  title={defaultDesign.accent}
+                />
+              )}
+              {parts.length > 0 ? parts.join(" · ") : defaultDesign.accent}
             </span>
-            {defaultDesign ? (
-              <span className="flex flex-wrap items-center gap-1.5 text-xs text-silver-600">
-                {defaultDesign.accent && (
-                  <span
-                    className="size-3 shrink-0 rounded-full border border-black/20"
-                    style={{ backgroundColor: defaultDesign.accent }}
-                    title={defaultDesign.accent}
-                  />
-                )}
-                {parts.length > 0 ? parts.join(" · ") : defaultDesign.accent}
-              </span>
-            ) : (
-              <span className="text-xs text-silver-600">
-                tau picks a look that suits each thing you build. Choose one
-                here to start every new project from it instead.
-              </span>
+          ) : (
+            "tau picks a look that suits each thing you build. Choose one here to start every new project from it instead."
+          )
+        }
+        control={
+          <>
+            {defaultDesign && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDefaultDesign(null);
+                  toast.success("tau will pick the look for new projects");
+                }}
+              >
+                Clear
+              </Button>
             )}
-          </span>
-        </span>
-
-        <span className="flex shrink-0 gap-1.5">
-          {defaultDesign && (
-            <button
-              type="button"
-              className={SMALL_BUTTON}
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => {
-                setDefaultDesign(null);
-                toast.success("tau will pick the look for new projects");
+                setDraft(defaultDesign ?? {});
+                setOpen(true);
               }}
             >
-              Clear
-            </button>
-          )}
-          <button
-            type="button"
-            className={SMALL_BUTTON}
-            onClick={() => {
-              setDraft(defaultDesign ?? {});
-              setOpen(true);
-            }}
-          >
-            {defaultDesign ? "Change" : "Choose"}
-          </button>
-        </span>
-      </div>
+              {defaultDesign ? "Change" : "Choose"}
+            </Button>
+          </>
+        }
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="gap-5 sm:max-w-3xl">
+        <DialogContent className="gap-5 sm:max-w-[min(960px,calc(100%-2rem))]">
           <DialogHeader>
             <DialogTitle>Your default look</DialogTitle>
             <DialogDescription>
@@ -205,7 +191,7 @@ export function DefaultLookCard() {
           />
 
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>
+            <Button variant="secondary" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button

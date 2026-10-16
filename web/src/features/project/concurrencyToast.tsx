@@ -1,5 +1,7 @@
 import toast from "react-hot-toast";
+import { TriangleAlertIcon } from "lucide-react";
 
+import { Button } from "@/src/components/ui/button";
 import { cancelAllJobs } from "@/src/features/project/api";
 
 /**
@@ -12,14 +14,15 @@ import { cancelAllJobs } from "@/src/features/project/api";
  * stay in one place.
  */
 export function showConcurrentJobLimitToast(): void {
-  toast.error(
+  toast(
     (t) => (
       <div className="flex flex-col gap-2">
         <span>
           Tau is already busy with as many builds as your plan allows.
         </span>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => {
             toast.dismiss(t.id);
             void toast.promise(cancelAllJobs(), {
@@ -31,12 +34,16 @@ export function showConcurrentJobLimitToast(): void {
               error: "Couldn't stop your active builds. Please try again.",
             });
           }}
-          className="self-start rounded-md bg-brand px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand/90"
+          className="self-start"
         >
           Stop all running
-        </button>
+        </Button>
       </div>
     ),
-    { duration: 8000 },
+    {
+      duration: 8000,
+      // Waiting, not failed: orange (plan §4.1).
+      icon: <TriangleAlertIcon className="size-4 shrink-0 text-orange-400" />,
+    },
   );
 }

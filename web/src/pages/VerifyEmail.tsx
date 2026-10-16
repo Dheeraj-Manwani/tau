@@ -1,75 +1,127 @@
-import { useEffect, useRef } from "react";
-import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { Loader2Icon, XCircleIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { MailCheckIcon, MailXIcon, RotateCwIcon } from "lucide-react";
+import toast from "react-hot-toast";
 
+import { TauMark } from "@/src/components/motion/TauMark";
+import { Alert } from "@/src/components/ui/alert";
 import { Button } from "@/src/components/ui/button";
 import { SplashScreen } from "@/src/components/SplashScreen";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { ApiError } from "@/src/lib/api-client";
 import { APP_HOME } from "@/src/lib/routes";
+import { AuthLayout, AuthTile } from "@/src/features/auth/AuthLayout";
 import { useMe } from "@/src/features/auth/queries";
-import { useVerifyEmail } from "@/src/features/auth/mutations";
+import {
+  useResendVerification,
+  useVerifyEmail,
+} from "@/src/features/auth/mutations";
 
 /**
  * Landing page for the link in the verification email
- * (`/verify-email?token=…`). Verifies the token then sends the user home. If the
- * current user is already verified (e.g. a reload), we skip straight home too.
+ * (`/verify-email?token=…`). Three states: verifying, confirmed (Continue)
+ * and failed (resend, or log in to resend). Someone already verified who
+ * reopens the link goes straight home.
  */
 function VerifyEmail() {
   useDocumentMeta({ title: "Verify email", noIndex: true });
 
   const [params] = useSearchParams();
   const token = params.get("token");
-  const navigate = useNavigate();
   const { data: user, isLoading } = useMe();
   const verify = useVerifyEmail();
+  const resend = useResendVerification();
+
+  // The outcome comes from the promise, not the mutation's observer: StrictMode
+  // remounts the effect in dev, which detaches the observer from a mutation
+  // already in flight, and the page would wait on "Verifying" forever.
+  const [outcome, setOutcome] = useState<{ ok: true } | { ok: false; error: unknown } | null>(null);
 
   // StrictMode mounts effects twice in dev; guard so we POST only once.
   const firedRef = useRef(false);
   useEffect(() => {
     if (firedRef.current || !token || user?.emailVerifiedAt) return;
     firedRef.current = true;
-    verify.mutate(token, {
-      onSuccess: () => navigate(APP_HOME, { replace: true }),
-    });
-  }, [token, user, verify, navigate]);
+    verify.mutateAsync(token).then(
+      () => setOutcome({ ok: true }),
+      (error: unknown) => setOutcome({ ok: false, error }),
+    );
+  }, [token, user, verify]);
 
-  // Already verified (reload / verified session) → home.
+  if (outcome?.ok) {
+    return (
+      <AuthLayout
+        icon={
+          <AuthTile>
+            <MailCheckIcon className="text-green-400" />
+          </AuthTile>
+        }
+        title="Email confirmed"
+      >
+        <Alert tone="success" className="mb-5">
+          Your email is verified. You can start building.
+        </Alert>
+        <Button asChild size="lg" className="w-full">
+          <Link to={APP_HOME} replace>
+            Continue
+          </Link>
+        </Button>
+      </AuthLayout>
+    );
+  }
+
+  // Already verified before this visit (a reload, an old link): go home.
   if (user?.emailVerifiedAt) return <Navigate to={APP_HOME} replace />;
 
   // Don't flash an error while we're still resolving auth state.
   if (!token && isLoading) return <SplashScreen />;
 
-  if (!token || verify.isError) {
+  if (!token || outcome?.ok === false) {
+    const failure = outcome && !outcome.ok ? outcome.error : null;
     const message = !token
       ? "This verification link is missing its token."
-      : verify.error instanceof ApiError
-        ? verify.error.message
+      : failure instanceof ApiError
+        ? failure.message
         : "We couldn't verify your email. The link may have expired.";
+    const onResend = () =>
+      resend.mutate(undefined, {
+        onSuccess: () => toast.success("A new link is on its way"),
+        onError: (err) =>
+          toast.error(err instanceof ApiError ? err.message : "Couldn't send the email"),
+      });
     return (
-      <div className="flex min-h-[100svh] flex-col items-center justify-center px-6 text-center">
-        <div className="flex w-full max-w-sm flex-col items-center gap-4">
-          <XCircleIcon className="size-10 text-destructive" />
-          <h1 className="text-2xl font-semibold text-foreground">
-            Verification failed
-          </h1>
-          <p className="text-sm text-muted-foreground">{message}</p>
-          <Button asChild variant="outline" className="mt-2 h-11 w-full">
-            <Link to="/login">Back to sign in</Link>
+      <AuthLayout
+        icon={
+          <AuthTile>
+            <MailXIcon className="text-red-400" />
+          </AuthTile>
+        }
+        title="Link didn't work"
+      >
+        <Alert tone="danger" className="mb-5">
+          {message}
+        </Alert>
+        {user ? (
+          // Signed in on this device: a fresh link is one click away.
+          <Button size="lg" className="w-full" onClick={onResend} loading={resend.isPending} disabled={resend.isSuccess}>
+            {!resend.isPending && <RotateCwIcon />}
+            {resend.isSuccess ? "Sent: check your email" : "Send a new link"}
           </Button>
-        </div>
-      </div>
+        ) : (
+          <Button asChild size="lg" className="w-full">
+            <Link to="/login">Log in to get a new link</Link>
+          </Button>
+        )}
+      </AuthLayout>
     );
   }
 
-  // Verifying (will redirect home on success).
   return (
-    <div className="flex min-h-[100svh] flex-col items-center justify-center px-6 text-center">
-      <div className="flex flex-col items-center gap-3 text-silver-600">
-        <Loader2Icon className="size-6 animate-spin" />
-        <p>Verifying your email…</p>
-      </div>
-    </div>
+    <AuthLayout
+      icon={<TauMark size={40} label="Verifying" />}
+      title="Verifying your email"
+      subtitle="This takes a moment."
+    />
   );
 }
 

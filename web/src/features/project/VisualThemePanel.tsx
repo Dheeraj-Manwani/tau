@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { MoonIcon, SunIcon, SwatchBookIcon, WandSparklesIcon, XIcon } from "lucide-react";
+import { MoonIcon, PaletteIcon, SunIcon, WandSparklesIcon, XIcon } from "lucide-react";
 
+import { Alert } from "@/src/components/ui/alert";
+import { Button } from "@/src/components/ui/button";
+import { Segmented, SegmentedItem } from "@/src/components/ui/segmented";
 import { cn } from "@/src/lib/utils";
 import { ApiError } from "@/src/lib/api-client";
 import {
@@ -126,13 +129,9 @@ function SwatchTile({
     <label
       title={`${name}: ${value}`}
       className={cn(
-        "flex min-w-0 items-center gap-2 rounded-[var(--radius-md)] border px-2 py-1.5 transition-colors",
-        disabled
-          ? "cursor-default opacity-50"
-          : "cursor-pointer hover:border-[var(--blue-500)] hover:bg-[var(--space-overlay)]",
-        staged
-          ? "border-[var(--blue-500)] bg-[var(--space-overlay)]"
-          : "border-[var(--silver-200)]",
+        "flex min-w-0 items-center gap-3 rounded-md border bg-space-surface px-3 py-2 transition-colors duration-150",
+        disabled ? "cursor-default opacity-40" : "cursor-pointer hover:border-line-strong",
+        staged ? "border-blue-500" : "border-line",
       )}
     >
       {/* The native picker is the right control here: it is the one widget
@@ -145,16 +144,16 @@ function SwatchTile({
         disabled={disabled}
         onChange={(e) => onPick(e.target.value)}
         aria-label={label}
-        className="size-5 shrink-0 cursor-[inherit] rounded-[var(--radius-sm)] border border-[var(--silver-200)] bg-transparent p-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-[3px] [&::-webkit-color-swatch]:border-0"
+        className="size-[22px] shrink-0 cursor-[inherit] rounded-xs border-0 bg-transparent p-0 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] [&::-moz-color-swatch]:rounded-xs [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded-xs [&::-webkit-color-swatch]:border-0"
       />
-      <span className="flex min-w-0 flex-col leading-tight">
-        <span className="truncate text-[11px] text-[var(--silver-900)]">
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate text-[12.5px] font-medium text-silver-900">
           {label}
         </span>
         <span
           className={cn(
-            "truncate font-mono text-[10px]",
-            staged ? "text-[var(--blue-500)]" : "text-[var(--silver-600)]",
+            "truncate font-mono text-[11px]",
+            staged ? "text-blue-500" : "text-silver-500",
           )}
         >
           {value}
@@ -358,250 +357,236 @@ export function VisualThemePanel({ onClose }: { onClose: () => void }) {
   return (
     // Taller than the old flat list needed, but capped against the preview's
     // own height: a panel that covers the app you are recolouring is worse
-    // than one you have to scroll.
-    <div className="absolute inset-x-0 bottom-0 max-h-[min(26rem,70%)] overflow-y-auto border-t border-[var(--silver-200)] bg-[var(--space-surface)] px-3 pb-2">
+    // than one you have to scroll. Tau chrome: it stays dark even when the app
+    // is light, and the swatches are the only colour in it.
+    <div className="scrollbar-thin absolute inset-x-0 bottom-0 max-h-[min(30rem,75%)] overflow-y-auto border-t border-line-strong bg-space-overlay text-silver-900 shadow-[0_-16px_48px_rgba(0,0,0,0.5)]">
       {/* Sticky, because the body scrolls and the palette you are editing has
           to stay visible: with both palettes holding different values, an
           off-screen Dark/Light toggle is how you edit the wrong one. */}
-      <div className="sticky top-0 z-10 -mx-3 flex items-center gap-2 border-b border-[var(--silver-200)] bg-[var(--space-surface)] px-3 py-2">
-        <SwatchBookIcon className="size-3.5 shrink-0 text-[var(--silver-600)]" />
-        <span className="text-xs font-semibold text-[var(--silver-900)]">
-          Theme
-        </span>
-        <div className="flex items-center gap-0.5 rounded-[var(--radius-md)] bg-[var(--space-overlay)] p-0.5">
-          {(["dark", "root"] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setScope(s)}
-              aria-pressed={scope === s}
-              className={cn(
-                "flex items-center gap-1 rounded-[var(--radius-sm)] px-2 py-0.5 text-[11px] transition-colors",
-                scope === s
-                  ? "bg-[var(--space-surface)] text-[var(--silver-900)] shadow-sm"
-                  : "text-[var(--silver-600)] hover:text-[var(--silver-900)]",
-              )}
-            >
-              {s === "dark" ? (
-                <MoonIcon className="size-3" />
-              ) : (
-                <SunIcon className="size-3" />
-              )}
-              {s === "dark" ? "Dark" : "Light"}
-            </button>
-          ))}
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line bg-space-overlay px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-3.5">
+          <span className="flex items-center gap-2 text-[13.5px] font-semibold">
+            <PaletteIcon className="size-4 text-silver-600" />
+            Theme
+          </span>
+          <Segmented
+            value={scope}
+            onValueChange={(v) => setScope(v as typeof scope)}
+            aria-label="Which palette to edit"
+          >
+            <SegmentedItem value="dark">
+              <MoonIcon />
+              Dark
+            </SegmentedItem>
+            <SegmentedItem value="root">
+              <SunIcon />
+              Light
+            </SegmentedItem>
+          </Segmented>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={close}
+          aria-label={dirty ? "Discard changes and close" : "Close theme"}
           title={dirty ? "Discard changes and close" : "Close theme"}
-          className="ml-auto rounded-[var(--radius-md)] p-1 text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)]"
         >
-          <XIcon className="size-3.5" />
-        </button>
+          <XIcon />
+        </Button>
       </div>
 
-      {theme.isPending && (
-        <p className="py-2 text-[11px] text-[var(--silver-600)]">
-          Reading the theme…
-        </p>
-      )}
-      {theme.isError && (
-        <p className="py-2 text-[11px] text-[var(--silver-600)]">
-          This project has no theme file to edit.
-        </p>
-      )}
+      <div className="flex flex-col gap-5 px-4 py-5 sm:px-6">
+        {theme.isPending && (
+          <p className="text-[12.5px] text-silver-500">Reading the theme…</p>
+        )}
+        {theme.isError && (
+          <p className="text-[12.5px] text-silver-500">
+            This project has no theme file to edit.
+          </p>
+        )}
 
-      {current && projectId && (
-        <section className="flex items-center gap-2 border-b border-[var(--silver-200)] py-2">
-          <span className="min-w-0 flex-1 leading-tight">
-            <span className="block truncate text-xs font-semibold text-[var(--silver-900)]">
-              {current.styleName} style
+        {current && projectId && (
+          <section className="flex flex-wrap items-center justify-between gap-3">
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold">
+                {current.styleName} style
+              </span>
+              <span className="block truncate text-[12.5px] text-silver-500">
+                {current.fontsLabel}
+              </span>
             </span>
-            <span className="block truncate text-[11px] text-[var(--silver-600)]">
-              {current.fontsLabel}
-            </span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setRestyleOpen(true)}
-            disabled={saving || dirty > 0}
-            title={
-              dirty > 0
-                ? "Save or discard your colour changes first"
-                : "Change the style, typefaces, accent or feel"
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setRestyleOpen(true)}
+              disabled={saving || dirty > 0}
+              title={
+                dirty > 0
+                  ? "Save or discard your colour changes first"
+                  : "Change the style, typefaces, accent or feel"
+              }
+            >
+              Change look…
+            </Button>
+            <RestyleDialog
+              projectId={projectId}
+              current={current}
+              exactAccent={
+                design.data?.chosen.accent === current.accent ? current.accent : undefined
+              }
+              open={restyleOpen}
+              onOpenChange={setRestyleOpen}
+              onRestyled={(result) => {
+                setPending({});
+                setRestyled(result);
+                toast.success(
+                  result.live
+                    ? `Now ${result.design?.styleName ?? "restyled"}.`
+                    : `Now ${result.design?.styleName ?? "restyled"}. You'll see it when the preview starts.`,
+                );
+              }}
+            />
+          </section>
+        )}
+
+        {restyled && (
+          <Alert
+            tone="info"
+            action={
+              <span className="flex items-center gap-1">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={adaptLayouts}
+                  disabled={!canSend}
+                  title="Sends a message to tau; uses credits like any other request"
+                >
+                  <WandSparklesIcon />
+                  Adapt layouts
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setRestyled(null)}
+                  aria-label="Dismiss"
+                >
+                  <XIcon />
+                </Button>
+              </span>
             }
-            className="shrink-0 rounded-[var(--radius-md)] border border-[var(--silver-200)] px-2 py-1 text-xs font-medium text-[var(--silver-900)] transition-colors hover:border-[var(--blue-500)] hover:bg-[var(--space-overlay)] disabled:cursor-default disabled:opacity-40"
           >
-            Change look…
-          </button>
-          <RestyleDialog
-            projectId={projectId}
-            current={current}
-            exactAccent={
-              design.data?.chosen.accent === current.accent ? current.accent : undefined
-            }
-            open={restyleOpen}
-            onOpenChange={setRestyleOpen}
-            onRestyled={(result) => {
-              setPending({});
-              setRestyled(result);
-              toast.success(
-                result.live
-                  ? `Now ${result.design?.styleName ?? "restyled"}.`
-                  : `Now ${result.design?.styleName ?? "restyled"}. You'll see it when the preview starts.`,
-              );
-            }}
-          />
-        </section>
-      )}
-
-      {restyled && (
-        <div className="mt-2 flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--blue-500)]/40 bg-[var(--space-overlay)] p-2">
-          <p className="min-w-0 flex-1 text-[11px] leading-relaxed text-[var(--silver-900)]">
             Colours, type and component shapes are now{" "}
             {restyled.design?.styleName ?? "the new style"}. Page layouts are as
             they were.
             {restyled.skipped.length > 0 && (
-              <span className="block text-[var(--silver-600)]">
+              <span className="block text-silver-600">
                 Not done: {restyled.skipped.join("; ")}.
               </span>
             )}
-          </p>
-          <button
-            type="button"
-            onClick={adaptLayouts}
-            disabled={!canSend}
-            title="Sends a message to tau; uses credits like any other request"
-            className="flex shrink-0 items-center gap-1 rounded-[var(--radius-md)] bg-brand px-2 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40"
-          >
-            <WandSparklesIcon className="size-3" />
-            Adapt layouts
-          </button>
-          <button
-            type="button"
-            onClick={() => setRestyled(null)}
-            aria-label="Dismiss"
-            className="shrink-0 rounded-[var(--radius-md)] p-1 text-[var(--silver-600)] transition-colors hover:text-[var(--silver-900)]"
-          >
-            <XIcon className="size-3" />
-          </button>
-        </div>
-      )}
+          </Alert>
+        )}
+
+        {theme.data && (
+          <>
+            <p className="-mb-1 text-[12.5px] text-silver-500">
+              Applies to every element using these colours, across the whole app.
+            </p>
+
+            {GROUPS.map((group) => {
+              const tiles = group.tokens
+                .map((t) => ({
+                  ...t,
+                  value: pending[pendingKey(scope, t.name)] ?? palette[t.name],
+                }))
+                // A theme the agent rewrote may not declare all of these, and a
+                // swatch with no value would render as black and write one.
+                .filter((t) => Boolean(t.value));
+              if (tiles.length === 0) return null;
+
+              return (
+                <section key={group.title} className="flex flex-col gap-2.5">
+                  <h3 className="lab">{group.title}</h3>
+                  <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
+                    {tiles.map((t) => (
+                      <SwatchTile
+                        key={t.name}
+                        name={t.name}
+                        label={t.label}
+                        value={t.value!}
+                        staged={pendingKey(scope, t.name) in pending}
+                        disabled={saving}
+                        onPick={(v) => stage(t.name, v)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+
+            {radius && (
+              <section className="flex flex-col gap-2.5">
+                <h3 className="lab">
+                  Corners
+                  {pendingKey(scope, "--radius") in pending && (
+                    <span className="ml-1.5 text-blue-500">· edited</span>
+                  )}
+                </h3>
+                <Segmented
+                  size="sm"
+                  value={radius}
+                  onValueChange={(v) => stage("--radius", v)}
+                  aria-label="Corner radius"
+                  disabled={saving}
+                  className="self-start"
+                >
+                  {RADIUS_STEPS.map((step) => (
+                    <SegmentedItem key={step.value} value={step.value} title={step.value}>
+                      {step.label}
+                    </SegmentedItem>
+                  ))}
+                </Segmented>
+              </section>
+            )}
+          </>
+        )}
+      </div>
 
       {theme.data && (
-        <>
-          <p className="pt-2 text-[11px] text-[var(--silver-600)]">
-            Applies to every element using these colours, across the whole app.
-          </p>
-
-          {GROUPS.map((group) => {
-            const tiles = group.tokens
-              .map((t) => ({
-                ...t,
-                value: pending[pendingKey(scope, t.name)] ?? palette[t.name],
-              }))
-              // A theme the agent rewrote may not declare all of these, and a
-              // swatch with no value would render as black and write one.
-              .filter((t) => Boolean(t.value));
-            if (tiles.length === 0) return null;
-
-            return (
-              <section key={group.title} className="pt-2">
-                <h3 className="pb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--silver-600)]">
-                  {group.title}
-                </h3>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {tiles.map((t) => (
-                    <SwatchTile
-                      key={t.name}
-                      name={t.name}
-                      label={t.label}
-                      value={t.value!}
-                      staged={pendingKey(scope, t.name) in pending}
-                      disabled={saving}
-                      onPick={(v) => stage(t.name, v)}
-                    />
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-
-          {radius && (
-            <section className="pt-3">
-              <h3 className="pb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--silver-600)]">
-                Corners
-                {pendingKey(scope, "--radius") in pending && (
-                  <span className="ml-1 font-normal normal-case tracking-normal text-[var(--blue-500)]">
-                    · edited
-                  </span>
-                )}
-              </h3>
-              <div className="flex flex-wrap gap-1">
-                {RADIUS_STEPS.map((step) => (
-                  <button
-                    key={step.value}
-                    type="button"
-                    disabled={saving}
-                    onClick={() => stage("--radius", step.value)}
-                    aria-pressed={radius === step.value}
-                    title={step.value}
-                    className={cn(
-                      "rounded-[var(--radius-md)] border px-1.5 py-0.5 text-[11px] transition-colors disabled:cursor-default disabled:opacity-50",
-                      radius === step.value
-                        ? "border-[var(--blue-500)] text-[var(--silver-900)]"
-                        : "border-[var(--silver-200)] text-[var(--silver-600)] hover:text-[var(--silver-900)]",
-                    )}
-                  >
-                    {step.label}
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Sticky so Save is reachable without scrolling a panel that is
-              routinely taller than its own max height. */}
-          <div className="sticky bottom-0 -mx-3 mt-3 flex items-center gap-2 border-t border-[var(--silver-200)] bg-[var(--space-surface)] px-3 py-2">
-            <span
-              className={cn(
-                "flex items-center gap-1.5 text-[11px]",
-                dirty
-                  ? "text-[var(--silver-900)]"
-                  : "text-[var(--silver-600)]",
-              )}
+        // Sticky so Save is reachable without scrolling a panel that is
+        // routinely taller than its own max height.
+        <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-line bg-space-overlay px-4 py-3 sm:px-6">
+          <span
+            className={cn(
+              "flex items-center gap-2 text-[12.5px]",
+              dirty ? "text-silver-900" : "text-silver-500",
+            )}
+          >
+            {dirty > 0 && (
+              <span className="size-1.5 shrink-0 rounded-full bg-blue-500" />
+            )}
+            {dirty === 0
+              ? "No unsaved changes"
+              : `${dirty} unsaved change${dirty === 1 ? "" : "s"}`}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={discard}
+              disabled={!dirty || saving}
             >
-              {dirty > 0 && (
-                <span className="size-1.5 shrink-0 rounded-full bg-[var(--blue-500)]" />
-              )}
-              {dirty === 0
-                ? "No unsaved changes"
-                : `${dirty} unsaved change${dirty === 1 ? "" : "s"}`}
-            </span>
-            <div className="ml-auto flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={discard}
-                disabled={!dirty || saving}
-                className="rounded-[var(--radius-md)] px-2 py-1 text-xs font-medium text-[var(--silver-600)] transition-colors hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)] disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
-              >
-                Discard
-              </button>
-              <button
-                type="button"
-                onClick={() => void save()}
-                disabled={!dirty || saving}
-                className="flex items-center gap-1.5 rounded-[var(--radius-md)] bg-brand px-3 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-brand/90 disabled:opacity-40 disabled:hover:bg-brand"
-              >
-                {saving && (
-                  <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                )}
-                {saving ? "Saving…" : "Save"}
-              </button>
-            </div>
+              Discard
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => void save()}
+              disabled={!dirty}
+              loading={saving}
+            >
+              {saving ? "Saving…" : "Save"}
+            </Button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -1,6 +1,8 @@
 import * as React from "react";
+import { SearchIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
+import { fieldClass } from "@/src/components/ui/styles";
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
@@ -8,13 +10,9 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       type={type}
       data-slot="input"
       className={cn(
-        "flex h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none",
-        "placeholder:text-muted-foreground selection:bg-brand selection:text-primary-foreground",
+        fieldClass,
+        "flex h-9 px-3 py-1",
         "file:inline-flex file:border-0 file:bg-transparent file:text-sm file:font-medium",
-        "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
-        "focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/25",
-        "aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
-        "md:text-sm dark:bg-input/30",
         className,
       )}
       {...props}
@@ -22,4 +20,19 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   );
 }
 
-export { Input };
+/** An input with a leading search icon ("Search name or description"). */
+function SearchInput({ className, ...props }: Omit<React.ComponentProps<"input">, "type">) {
+  return (
+    <div className={cn("relative min-w-0", className)}>
+      <SearchIcon aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-silver-500" />
+      <Input type="search" className="pl-9" {...props} />
+    </div>
+  );
+}
+
+/** An input with its action beside it: `www.example.com [Connect]`. */
+function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
+  return <div data-slot="input-group" className={cn("flex min-w-0 items-center gap-2", className)} {...props} />;
+}
+
+export { Input, InputGroup, SearchInput };

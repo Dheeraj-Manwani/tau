@@ -29,13 +29,7 @@ export function ProfileCard({ user }: { user: AuthUser }) {
   const persona = activity ? personaFor(activity) : null;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border bg-card p-5">
-      {/* A faint brand-blue glow behind the header. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-24 -right-24 size-64 rounded-full opacity-[0.10] blur-3xl"
-        style={{ backgroundImage: "radial-gradient(circle, var(--blue-500), transparent 70%)" }}
-      />
+    <div className="relative overflow-hidden rounded-lg border border-line bg-space-surface p-6">
 
       <div className="relative flex items-start gap-4">
         <AvatarEditor user={user} />
@@ -48,12 +42,12 @@ export function ProfileCard({ user }: { user: AuthUser }) {
       </div>
 
       {persona && (
-        <div className="relative mt-4 flex items-center gap-3 rounded-lg border border-silver-400/20 bg-space-overlay/60 px-3 py-2.5">
+        <div className="relative mt-4 flex items-center gap-3 rounded-md border border-line bg-space-void px-3.5 py-3">
           <span className="text-xl leading-none" aria-hidden>
             {persona.emoji}
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-[color:var(--blue-300)]">{persona.title}</p>
+            <p className="text-sm font-medium text-blue-500">{persona.title}</p>
             <p className="text-xs text-muted-foreground">{persona.line}</p>
           </div>
         </div>
@@ -83,7 +77,7 @@ function AvatarEditor({ user }: { user: AuthUser }) {
         disabled={busy}
         onClick={() => input.current?.click()}
         aria-label={user.avatarPath ? "Change profile picture" : "Add a profile picture"}
-        className="group relative cursor-pointer rounded-[8px] outline-none focus-visible:ring-3 focus-visible:ring-brand/40 disabled:cursor-wait"
+        className="group relative cursor-pointer rounded-full outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-wait"
       >
         <UserAvatar user={user} className="size-18" fallbackClassName="text-xl" />
         <span

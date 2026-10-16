@@ -15,26 +15,26 @@ export function SiteFooter({
 }) {
   const openSupport = useSupportStore((s) => s.open);
   return (
-    <footer className="border-t border-border/50 px-6 py-2">
+    <footer className="border-t border-line px-6 py-3">
       <div className="mx-auto max-w-6xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-silver-500">
           <span>© {new Date().getFullYear()} Tau. All rights reserved.</span>
           <nav className="flex flex-wrap items-center gap-4">
-            <button type="button" onClick={openSupport} className="cursor-pointer hover:text-foreground">
+            <button type="button" onClick={openSupport} className="cursor-pointer transition-colors hover:text-silver-900">
               Support tau
             </button>
-            <a href={LANDING_PRICING} className="hover:text-foreground">
+            <a href={LANDING_PRICING} className="transition-colors hover:text-silver-900">
               Pricing
             </a>
-            <a href={LANDING_PRIVACY} className="hover:text-foreground">
+            <a href={LANDING_PRIVACY} className="transition-colors hover:text-silver-900">
               Privacy Policy
             </a>
-            <a href={LANDING_TERMS} className="hover:text-foreground">
+            <a href={LANDING_TERMS} className="transition-colors hover:text-silver-900">
               Terms &amp; Cancellation
             </a>
             <a
               href="mailto:iammadfortech@gmail.com"
-              className="hover:text-foreground"
+              className="transition-colors hover:text-silver-900"
             >
               Contact
             </a>

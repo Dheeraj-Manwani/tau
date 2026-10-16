@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import toast from "react-hot-toast";
@@ -6,7 +6,6 @@ import toast from "react-hot-toast";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { useAttachments } from "@/src/features/composer/attachments/useAttachments";
-import { LightningComposer } from "@/src/features/composer/LightningComposer";
 import { EffortToggle } from "@/src/features/composer/EffortToggle";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
 import { DesignButton } from "@/src/features/design/DesignButton";
@@ -23,7 +22,7 @@ import { clearPendingPrompt, peekPendingPrompt } from "@/src/lib/promptHandoff";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
-import { StormCanvas } from "@/src/components/StormCanvas";
+import { RainLayer, RainSplash } from "@/src/components/motion/RainLayer";
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
 import { useSettings } from "@/src/hooks/useSettings";
 import { cn } from "@/src/lib/utils";
@@ -45,9 +44,6 @@ function Home() {
   useDocumentMeta({ title: "Tau", exactTitle: true, noIndex: true });
 
   const navigate = useNavigate();
-  // Target for StormCanvas's rain splash - landing splashes drops against the
-  // composer's top edge the same way.
-  const composerRef = useRef<HTMLDivElement>(null);
   const initProject = useInitProject();
   const openOutOfCredits = useBillingStore((s) => s.open);
   const { data: projects, isLoading: projectsLoading } = useProjects();
@@ -80,10 +76,9 @@ function Home() {
 
   // Shared with the project composer and the visual-edit inspector.
   const { effort, setEffort } = useEffortChoice();
-  // Drives the Home-only dramatic animations (lightning composer + glitch stars).
-  const maxActive = effort === "MAX";
-  // Covers both the OS setting and the in-app Settings toggle - the tube
-  // flicker and the placeholder's stutter-in/rotation both defer to it.
+  // Covers both the OS setting and the in-app Settings toggle: the
+  // placeholder's stutter-in and rotation defer to it (the CSS loops stop
+  // on their own).
   const reduceMotion = useReduceMotion();
 
   // A prefilled prompt is a one-time welcome, not a sticky draft.
@@ -164,80 +159,71 @@ function Home() {
   };
 
   return (
-    <div className="h-full overflow-y-auto pt-12">
-      <StormCanvas target={() => composerRef.current} />
-      <div className="relative flex min-h-[70svh] flex-col items-center justify-center overflow-hidden">
-        <div className="relative z-10 w-full max-w-4xl px-6 text-center">
-          <p className="eyebrow">— describe it. build it. —</p>
-          <h1 className="display-heading mt-4 text-7xl text-silver-900 sm:text-8xl">
-            What do you want
-            <br />
-            <span
-              className={reduceMotion ? "text-blue-300" : "tube-text"}
-              data-text="to build?"
-              style={
-                reduceMotion
-                  ? {
-                      filter:
-                        "drop-shadow(0 0 28px #60a5fa88) drop-shadow(0 0 60px #60a5fa33)",
-                    }
-                  : undefined
-              }
-            >
-              to build?
-            </span>
-          </h1>
+    // Tier A (boards/Home.dc.html): the rain, the tube-lit "to build?" and the
+    // glitching placeholder belong here. The composer itself stays a tool.
+    <div className="relative h-full overflow-x-hidden overflow-y-auto">
+      <RainLayer />
+      <div className="relative mx-auto flex w-full max-w-[976px] flex-col px-6 pt-20">
+        <section className="flex flex-col items-center gap-9 pt-16 sm:pt-[104px]">
+          <div className="flex flex-col items-center gap-[22px] text-center">
+            <p className="eyebrow">— Describe it. Build it. —</p>
+            <h1 className="text-[clamp(52px,10vw,112px)] tracking-[-0.005em] [text-shadow:0_0_40px_rgba(255,255,255,0.08)]">
+              What do you want
+              <br />
+              <span className="tube">to build?</span>
+            </h1>
+          </div>
 
-          <div ref={composerRef} className="mt-10 text-left">
-            <LightningComposer active={maxActive}>
-              <PromptComposer
-                value={prompt}
-                onChange={setPrompt}
-                onSubmit={submit}
-                isSubmitting={isSubmitting}
-                disabled={atProjectLimit}
-                minRows={2}
-                maxRows={12}
-                submitLabel="Build"
-                attachments={attachments.attachments}
-                onAttach={(files) => attachments.addFiles(files)}
-                onRemoveAttachment={attachments.remove}
-                onPasteLarge={attachments.addPaste}
-                attachmentsBusy={attachments.isBusy}
-                rightSlot={
-                  <>
-                    <DesignButton
-                      value={design}
-                      onChange={setChosenDesign}
-                      disabled={atProjectLimit || isSubmitting}
-                      savedDefault={defaultDesign}
-                      onSaveDefault={(look) => {
-                        setDefaultDesign(look);
-                        toast.success("New projects will start from this look");
-                      }}
-                    />
-                    <EffortToggle effort={effort} onChange={setEffort} />
-                  </>
-                }
-                placeholderText={
-                  showPlaceholder ? SUGGESTIONS[suggestion] : undefined
-                }
-                overlay={
-                  showPlaceholder ? (
-                    <span
-                      key={suggestion}
-                      aria-hidden="true"
-                      className={cn(
-                        "pointer-events-none absolute left-2 top-1 text-lg whitespace-pre-wrap text-muted-foreground",
-                        !reduceMotion && "composer-glitch",
-                      )}
-                    >
-                      {SUGGESTIONS[suggestion]}
-                    </span>
-                  ) : null
-                }
-              />
-            </LightningComposer>
+          <div className="relative w-full max-w-[848px] text-left">
+            <RainSplash />
+            <PromptComposer
+              value={prompt}
+              onChange={setPrompt}
+              onSubmit={submit}
+              isSubmitting={isSubmitting}
+              disabled={atProjectLimit}
+              minRows={2}
+              maxRows={12}
+              submitLabel="Build"
+              ariaLabel="Describe what you want to build"
+              attachments={attachments.attachments}
+              onAttach={(files) => attachments.addFiles(files)}
+              onRemoveAttachment={attachments.remove}
+              onPasteLarge={attachments.addPaste}
+              attachmentsBusy={attachments.isBusy}
+              rightSlot={
+                <>
+                  <DesignButton
+                    value={design}
+                    onChange={setChosenDesign}
+                    disabled={atProjectLimit || isSubmitting}
+                    savedDefault={defaultDesign}
+                    onSaveDefault={(look) => {
+                      setDefaultDesign(look);
+                      toast.success("New projects will start from this look");
+                    }}
+                  />
+                  <EffortToggle effort={effort} onChange={setEffort} />
+                </>
+              }
+              placeholderText={
+                showPlaceholder ? SUGGESTIONS[suggestion] : undefined
+              }
+              overlay={
+                showPlaceholder ? (
+                  <span
+                    key={suggestion}
+                    aria-hidden="true"
+                    className={cn(
+                      "pointer-events-none absolute top-0 left-1 text-base leading-[1.55] whitespace-pre-wrap text-silver-500",
+                      !reduceMotion && "composer-glitch",
+                    )}
+                  >
+                    {SUGGESTIONS[suggestion]}
+                  </span>
+                ) : null
+              }
+            />
             {limitsLoading ? (
               <div className="mt-2 flex h-5 items-center px-1">
                 <DataSpinner
@@ -247,34 +233,32 @@ function Home() {
               </div>
             ) : (
               isFreePlan && (
-                <div className="mt-2 px-1">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="font-mono">
-                      {Math.min(projectCount, FREE_PLAN_MAX_PROJECTS)} /{" "}
-                      {FREE_PLAN_MAX_PROJECTS} projects
+                <div className="mt-2 flex items-center justify-between px-1 font-mono text-xs text-silver-500">
+                  <span>
+                    {Math.min(projectCount, FREE_PLAN_MAX_PROJECTS)} /{" "}
+                    {FREE_PLAN_MAX_PROJECTS} projects
+                  </span>
+                  {atProjectLimit && (
+                    <span className="text-orange-400">
+                      Free plan limit reached.
                     </span>
-                    {atProjectLimit && (
-                      <span className="text-amber-400">
-                        Free plan limit reached.
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
               )
             )}
           </div>
-        </div>
-      </div>
+        </section>
 
-      <AnimatePresence mode="wait">
-        {!initializing && (
-          <motion.div key="projects" exit={{ opacity: 0 }}>
-            <MyProjects />
-            <CommunityProjects />
-            <HomeFooter />
-          </motion.div>
-        )}
-      </AnimatePresence>
+        <AnimatePresence mode="wait">
+          {!initializing && (
+            <motion.div key="projects" exit={{ opacity: 0 }}>
+              <MyProjects />
+              <CommunityProjects />
+              <HomeFooter />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

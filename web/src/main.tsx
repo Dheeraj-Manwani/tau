@@ -88,6 +88,10 @@ const router = createBrowserRouter([
         path: "/checkout",
         lazy: lazyComponent(() => import("./pages/Checkout")),
       },
+      // Component kit for the redesign (doc/REDESIGN_PLAN.md); dev builds only.
+      ...(import.meta.env.DEV
+        ? [{ path: "/_kit", lazy: lazyComponent(() => import("./pages/Kit")) }]
+        : []),
       {
         path: "*",
         lazy: lazyComponent(() => import("./pages/NotFound")),

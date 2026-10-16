@@ -27,7 +27,7 @@ const LEVEL_COLORS = [
   "rgb(96 165 250 / 0.22)",
   "rgb(96 165 250 / 0.45)",
   "rgb(96 165 250 / 0.72)",
-  "var(--blue-300)",
+  "var(--blue-500)",
 ];
 
 const DAY_LABELS = ["", "Mon", "", "Wed", "", "Fri", ""];
@@ -56,14 +56,14 @@ export function ActivityCard() {
 
   if (isLoading) {
     return (
-      <div className="flex h-56 items-center justify-center rounded-xl border bg-card">
+      <div className="flex h-56 items-center justify-center rounded-lg border border-line bg-space-surface">
         <DataSpinner label="Charting your sky" />
       </div>
     );
   }
   if (isError || !data) {
     return (
-      <div className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
+      <div className="rounded-lg border border-line bg-space-surface p-5 text-sm text-muted-foreground">
         Couldn't load your activity. The telescope's foggy, so try again in a bit.
       </div>
     );
@@ -129,13 +129,13 @@ function ActivityBody({ activity }: { activity: Activity }) {
   const gridWidth = WEEKS * CELL + (WEEKS - 1) * GAP;
 
   return (
-    <div className="rounded-xl border bg-card p-5">
+    <div className="rounded-lg border border-line bg-space-surface p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="text-sm font-medium">{headline(activity)}</h2>
+        <h2 className="text-[15px] font-semibold">{headline(activity)}</h2>
         <p
           className={cn(
             "flex items-center gap-1.5 text-xs",
-            streak.current > 0 ? "text-amber-300" : "text-muted-foreground",
+            streak.current > 0 ? "text-orange-400" : "text-muted-foreground",
           )}
         >
           <FlameIcon className="size-3.5" />
@@ -155,7 +155,7 @@ function ActivityBody({ activity }: { activity: Activity }) {
         >
           <div
             aria-hidden
-            className="grid shrink-0 pt-[18px] text-[10px] leading-none text-muted-foreground"
+            className="grid shrink-0 pt-[18px] text-[11px] leading-none text-muted-foreground"
             style={{ gridTemplateRows: `repeat(7, ${CELL}px)`, rowGap: GAP }}
           >
             {DAY_LABELS.map((d, i) => (
@@ -168,7 +168,7 @@ function ActivityBody({ activity }: { activity: Activity }) {
           <div style={{ width: gridWidth }}>
             <div
               aria-hidden
-              className="mb-[7px] grid h-[11px] text-[10px] leading-none text-muted-foreground"
+              className="mb-[7px] grid h-[11px] text-[11px] leading-none text-muted-foreground"
               style={{ gridTemplateColumns: `repeat(${WEEKS}, ${CELL}px)`, columnGap: GAP }}
             >
               {monthLabels.map((m, i) => (
@@ -207,7 +207,7 @@ function ActivityBody({ activity }: { activity: Activity }) {
                     style={{
                       backgroundColor: LEVEL_COLORS[lvl],
                       boxShadow:
-                        lvl === 4 ? "0 0 6px rgb(96 165 250 / 0.55)" : undefined,
+                        undefined,
                     }}
                   />
                 );
@@ -239,7 +239,7 @@ function ActivityBody({ activity }: { activity: Activity }) {
               className="size-[10px] rounded-[3px]"
               style={{
                 backgroundColor: c,
-                boxShadow: i === 4 ? "0 0 6px rgb(96 165 250 / 0.55)" : undefined,
+                boxShadow: undefined,
               }}
             />
           ))}
@@ -291,9 +291,9 @@ function ActivityBody({ activity }: { activity: Activity }) {
         <button
           type="button"
           onClick={() => void navigate(APP_HOME)}
-          className="group mt-4 flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-silver-400/30 px-3 py-2.5 text-left text-xs text-muted-foreground transition-colors hover:border-[color:var(--blue-500)]/50 hover:text-foreground"
+          className="group mt-4 flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-line-strong px-3 py-2.5 text-left text-xs text-muted-foreground transition-colors hover:border-[color:var(--blue-500)]/50 hover:text-foreground"
         >
-          <SparklesIcon className="size-3.5 shrink-0 text-[color:var(--blue-500)]" />
+          <SparklesIcon className="size-3.5 shrink-0 text-blue-500" />
           {streak.current > 0
             ? "Today's square is still dark. One build keeps the streak alive."
             : "Today's square is still dark. Go make something."}
@@ -316,7 +316,7 @@ function DayTooltip({
   return (
     <div
       role="tooltip"
-      className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full rounded-md bg-foreground px-3 py-1.5 text-xs whitespace-nowrap text-background shadow-lg"
+      className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full rounded-sm border border-line-strong bg-space-raised px-2.5 py-1.5 text-xs whitespace-nowrap text-silver-900 shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
       style={{ left: hover.x, top: hover.y - 6 }}
     >
       <span className="font-medium">{dayLabel(hover.date, today)}</span>

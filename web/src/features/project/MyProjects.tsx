@@ -1,23 +1,26 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { DropdownMenu } from "radix-ui";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  FolderOpenIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  SearchIcon,
-  Trash2Icon,
-  XIcon,
-} from "lucide-react";
+import { FolderOpenIcon, MoreHorizontalIcon, PencilIcon, Trash2Icon, XIcon } from "lucide-react";
 
 import { useMe } from "@/src/features/auth/queries";
 import { DeleteProjectDialog } from "@/src/features/project/DeleteProjectDialog";
 import { EditProjectDialog } from "@/src/features/project/EditProjectDialog";
-import { DataSpinner } from "@/src/components/ui/data-spinner";
+import { Alert } from "@/src/components/ui/alert";
+import { Button } from "@/src/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/src/components/ui/dropdown-menu";
+import { EmptyState } from "@/src/components/ui/empty-state";
+import { SearchInput } from "@/src/components/ui/input";
+import { Pagination } from "@/src/components/ui/pagination";
 import { APP_HOME, projectPath } from "@/src/lib/routes";
 import { useProjectsPage } from "./api";
+import { CardChrome, ProjectCardSkeleton, ThumbnailPlaceholder } from "./ProjectCardParts";
+import { projectCardClass, projectGridClass } from "./projectCardStyles";
 import type { ProjectListItem } from "./types";
 
 function formatUpdated(iso: string): string {
@@ -28,18 +31,6 @@ function formatUpdated(iso: string): string {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function ThumbnailPlaceholder() {
-  // Covers all three thumbnail-less states uniformly: never built, build in
-  // progress, or a failed/absent capture.
-  return (
-    <div className="flex size-full items-center justify-center bg-gradient-to-br from-space-overlay to-space-surface">
-      <span className="text-2xl font-semibold text-silver-600/40 select-none">
-        τ
-      </span>
-    </div>
-  );
 }
 
 function ProjectCard({
@@ -53,88 +44,57 @@ function ProjectCard({
 }) {
   return (
     <div className="group relative">
-      <Link
-        to={projectPath(project.id)}
-        className="flex flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition-colors hover:border-silver-400/60 hover:bg-space-overlay"
-      >
-        <div className="flex items-center gap-1 border-b border-border/60 bg-space-void/60 px-2.5 py-1.5" aria-hidden="true">
-          <span className="size-1.5 rounded-full bg-silver-400/40" />
-          <span className="size-1.5 rounded-full bg-silver-400/40" />
-          <span className="size-1.5 rounded-full bg-silver-400/40" />
-        </div>
-        <div className="aspect-video w-full overflow-hidden bg-space-overlay">
+      <Link to={projectPath(project.id)} className={projectCardClass}>
+        <CardChrome />
+        <div className="h-[150px] w-full overflow-hidden bg-space-void">
           {project.previewImageUrl ? (
-            <img
-              src={project.previewImageUrl}
-              alt={project.name}
-              loading="lazy"
-              className="size-full object-cover object-top"
-            />
+            <img src={project.previewImageUrl} alt="" loading="lazy" className="size-full object-cover object-top" />
           ) : (
             <ThumbnailPlaceholder />
           )}
         </div>
-        <div className="flex flex-col gap-2 p-5">
-          <span className="truncate pr-8 text-sm font-medium text-silver-900 group-hover:text-foreground">
-            {project.name}
-          </span>
+        <div className="flex flex-col gap-1.5 px-4 py-3.5">
+          <span className="truncate pr-8 text-sm font-semibold text-silver-900">{project.name}</span>
           {project.description && (
-            <span className="line-clamp-2 text-xs text-silver-600">
-              {project.description}
-            </span>
+            <span className="line-clamp-2 text-xs leading-normal text-silver-600">{project.description}</span>
           )}
           {project.tags && project.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {project.tags.slice(0, 4).map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full border border-silver-200 px-2 py-0.5 text-[11px] text-silver-600"
-                >
+                <span key={tag} className="rounded-xs border border-line px-1.5 py-0.5 font-mono text-[10.5px] text-silver-500">
                   {tag}
                 </span>
               ))}
             </div>
           )}
-          <span className="text-xs text-silver-600">
-            Updated {formatUpdated(project.updatedAt)}
-          </span>
+          <span className="font-mono text-[11.5px] text-silver-500">Updated {formatUpdated(project.updatedAt)}</span>
         </div>
       </Link>
 
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild>
-          <button
-            type="button"
-            aria-label="Project options"
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="secondary"
+            size="icon-sm"
+            aria-label={`Options for ${project.name}`}
             onClick={(e) => e.preventDefault()}
-            className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-md text-[var(--silver-500)] opacity-0 transition-all hover:bg-[var(--space-overlay)] hover:text-[var(--silver-900)] group-hover:opacity-100 data-[state=open]:opacity-100"
+            className="absolute top-8 right-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
           >
-            <MoreHorizontalIcon className="size-4" />
-          </button>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content
-            align="end"
-            sideOffset={4}
-            className="z-50 min-w-[140px] rounded-lg border border-[var(--silver-200)] bg-[var(--space-surface)] p-1 shadow-xl"
-          >
-            <DropdownMenu.Item
-              onSelect={() => onEditClick(project)}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm text-silver-600 outline-none select-none transition-colors data-[highlighted]:bg-[var(--space-overlay)] data-[highlighted]:text-silver-900"
-            >
-              <PencilIcon className="size-3.5 shrink-0" />
-              Edit project
-            </DropdownMenu.Item>
-            <DropdownMenu.Item
-              onSelect={() => onDeleteClick(project)}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm text-red-400 outline-none select-none transition-colors data-[highlighted]:bg-red-500/10 data-[highlighted]:text-red-500"
-            >
-              <Trash2Icon className="size-3.5 shrink-0" />
-              Delete project
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
+            <MoreHorizontalIcon />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-44">
+          <DropdownMenuItem onSelect={() => onEditClick(project)}>
+            <PencilIcon />
+            Edit project
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onSelect={() => onDeleteClick(project)}>
+            <Trash2Icon />
+            Delete project
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -144,10 +104,7 @@ export function MyProjects() {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
-  const { data, isLoading, isError, refetch } = useProjectsPage(
-    query,
-    cursors.at(-1),
-  );
+  const { data, isLoading, isError, refetch } = useProjectsPage(query, cursors.at(-1));
   const projects = data?.projects ?? [];
   useEffect(() => {
     if (search.trim() === query) return;
@@ -160,95 +117,80 @@ export function MyProjects() {
   const navigate = useNavigate();
   const { id: currentProjectId } = useParams<{ id?: string }>();
 
-  const [pendingDelete, setPendingDelete] = useState<ProjectListItem | null>(
-    null,
-  );
+  const [pendingDelete, setPendingDelete] = useState<ProjectListItem | null>(null);
   const [pendingEdit, setPendingEdit] = useState<ProjectListItem | null>(null);
 
   if (!user) return null;
 
+  const synced = search.trim() === query;
+
   return (
     <>
-      <section
-        aria-labelledby="my-projects-heading"
-        className="relative z-10 mx-auto w-full max-w-5xl px-6 pt-16 pb-12"
-      >
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
+      <section aria-labelledby="my-projects-heading" className="relative flex flex-col gap-7 pt-[140px] pb-12">
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div className="flex flex-col gap-3">
             <p className="eyebrow">// 01</p>
-            <h2
-              id="my-projects-heading"
-              className="display-heading mt-1 text-3xl text-silver-900"
-            >
+            <h2 id="my-projects-heading" className="display-heading text-[44px] text-silver-900">
               My projects
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Pick up where you left off.
-            </p>
+            <p className="text-sm text-silver-600">Pick up where you left off.</p>
           </div>
-          <div className="flex h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 focus-within:ring-1 focus-within:ring-ring sm:w-72">
-            <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
-            <input
+          <div className="relative w-full sm:w-[300px]">
+            <SearchInput
               aria-label="Search projects"
               placeholder="Search name or description"
               maxLength={200}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="[&_input]:pr-9"
             />
             {search && (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 aria-label="Clear search"
                 onClick={() => setSearch("")}
-                className="rounded p-1 text-muted-foreground hover:text-foreground"
+                className="absolute top-1/2 right-1 -translate-y-1/2"
               >
-                <XIcon className="size-3.5" />
-              </button>
+                <XIcon />
+              </Button>
             )}
           </div>
         </div>
+
         {isLoading ? (
-          <div className="flex min-h-64 items-center justify-center">
-            <DataSpinner label="Loading projects" />
+          <div className={projectGridClass} aria-busy="true" aria-label="Loading projects">
+            {Array.from({ length: 3 }, (_, i) => (
+              <ProjectCardSkeleton key={i} />
+            ))}
           </div>
         ) : isError ? (
-          <div
-            role="alert"
-            className="rounded-xl border border-border p-10 text-center text-sm text-muted-foreground"
+          <Alert
+            tone="danger"
+            action={
+              <Button variant="secondary" size="sm" onClick={() => void refetch()}>
+                Try again
+              </Button>
+            }
           >
-            Could not load your projects.{" "}
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              className="text-foreground underline underline-offset-4"
-            >
-              Try again
-            </button>
-          </div>
+            Could not load your projects.
+          </Alert>
         ) : projects.length === 0 ? (
-          <div
-            role="status"
-            className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 text-center"
-          >
-            <FolderOpenIcon className="mb-4 size-6 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              {query
-                ? "No projects found"
-                : cursors.length > 1
-                  ? "No more projects on this page"
-                  : "Your next idea starts here"}
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {query
+          <EmptyState
+            icon={FolderOpenIcon}
+            title={
+              query ? "No projects found" : cursors.length > 1 ? "No more projects on this page" : "Your next idea starts here"
+            }
+            description={
+              query
                 ? "Try a different name or description."
                 : cursors.length > 1
                   ? "Go back to your previous projects."
-                  : "Describe an idea above to create your first project."}
-            </p>
-          </div>
+                  : "Describe an idea above to create your first project."
+            }
+          />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={projectGridClass}>
             {projects.map((project) => (
               <ProjectCard
                 key={project.id}
@@ -259,43 +201,17 @@ export function MyProjects() {
             ))}
           </div>
         )}
-        {(cursors.length > 1 || Boolean(data?.nextCursor)) && <nav
-          aria-label="Project pagination"
-          className="mt-6 flex items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground"
-        >
-          <span aria-live="polite">
-            Page {cursors.length}
-            {query ? " · Search results" : ""}
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={cursors.length === 1 || isLoading}
-              onClick={() => setCursors((previous) => previous.slice(0, -1))}
-              className="flex items-center gap-1 rounded-md border border-border px-3 py-2 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <ChevronLeftIcon className="size-3.5" />
-              Previous
-            </button>
-            <button
-              type="button"
-              disabled={
-                !data?.nextCursor ||
-                isLoading ||
-                isError ||
-                search.trim() !== query
-              }
-              onClick={() => {
-                if (data?.nextCursor)
-                  setCursors((previous) => [...previous, data.nextCursor!]);
-              }}
-              className="flex items-center gap-1 rounded-md border border-border px-3 py-2 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Next
-              <ChevronRightIcon className="size-3.5" />
-            </button>
-          </div>
-        </nav>}
+        {(cursors.length > 1 || Boolean(data?.nextCursor)) && (
+          <Pagination
+            page={cursors.length}
+            note={query ? "Search results" : undefined}
+            hasNext={Boolean(data?.nextCursor) && !isLoading && !isError && synced}
+            onPrevious={() => setCursors((previous) => previous.slice(0, -1))}
+            onNext={() => {
+              if (data?.nextCursor) setCursors((previous) => [...previous, data.nextCursor!]);
+            }}
+          />
+        )}
       </section>
 
       <EditProjectDialog

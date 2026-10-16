@@ -1,17 +1,18 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
-import { SiteFooter } from "@/src/components/SiteFooter";
-import { Loader2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
+import { Alert } from "@/src/components/ui/alert";
 import { Button } from "@/src/components/ui/button";
+import { Field } from "@/src/components/ui/field";
 import { Input } from "@/src/components/ui/input";
 import { PasswordInput } from "@/src/components/ui/password-input";
-import { Label } from "@/src/components/ui/label";
 import { ApiError } from "@/src/lib/api-client";
 import { APP_HOME, LANDING_PRIVACY, LANDING_TERMS } from "@/src/lib/routes";
+import { AuthDivider, AuthLayout, AuthTerms } from "@/src/features/auth/AuthLayout";
 import { GoogleButton } from "@/src/features/auth/GoogleButton";
 import { useRegister } from "@/src/features/auth/mutations";
 import { signUpSchema, type SignUpValues } from "@/src/features/auth/schemas";
@@ -21,6 +22,7 @@ function SignUp() {
 
   const navigate = useNavigate();
   const registerMutation = useRegister();
+  const [serverError, setServerError] = useState<string | null>(null);
   const {
     register: field,
     handleSubmit,
@@ -31,6 +33,7 @@ function SignUp() {
   });
 
   const onSubmit = async (values: SignUpValues) => {
+    setServerError(null);
     try {
       const { user } = await registerMutation.mutateAsync({
         email: values.email,
@@ -39,114 +42,76 @@ function SignUp() {
       toast.success(`Welcome to tau, ${user.email}`);
       navigate(APP_HOME, { replace: true });
     } catch (err) {
-      toast.error(
-        err instanceof ApiError ? err.message : "Something went wrong",
-      );
+      setServerError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     }
   };
 
   return (
-    <div className="flex min-h-[100svh] flex-col">
-    <div className="flex flex-1 flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm text-left">
-        <div className="mb-6 flex justify-center">
-          <div className="logo-mark size-10" />
-        </div>
-        <h1 className="mb-6 text-center text-2xl font-semibold text-foreground">
-          Create your account
-        </h1>
-
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="space-y-4"
-          noValidate
-        >
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              aria-invalid={!!errors.email}
-              {...field("email")}
-            />
-            {errors.email && (
-              <p className="text-xs text-destructive">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <PasswordInput
-              id="password"
-              autoComplete="new-password"
-              placeholder="At least 8 characters"
-              aria-invalid={!!errors.password}
-              {...field("password")}
-            />
-            {errors.password && (
-              <p className="text-xs text-destructive">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm password</Label>
-            <PasswordInput
-              id="confirmPassword"
-              autoComplete="new-password"
-              placeholder="Re-enter your password"
-              aria-invalid={!!errors.confirmPassword}
-              {...field("confirmPassword")}
-            />
-            {errors.confirmPassword && (
-              <p className="text-xs text-destructive">
-                {errors.confirmPassword.message}
-              </p>
-            )}
-          </div>
-
-          <Button type="submit" className="h-11 w-full" disabled={isSubmitting}>
-            {isSubmitting && <Loader2Icon className="size-4 animate-spin" />}
-            Create account
-          </Button>
-        </form>
-
-        <div className="my-4 flex items-center gap-3 text-xs text-silver-600">
-          <span className="h-px flex-1 bg-silver-400/30" />
-          or
-          <span className="h-px flex-1 bg-silver-400/30" />
-        </div>
-
-        <GoogleButton label="Sign up with Google" />
-
-        <p className="mt-4 text-center text-sm text-muted-foreground">
+    <AuthLayout
+      title="Create your account"
+      subtitle="Describe an app, and tau builds it."
+      footer={
+        <>
           Already have an account?{" "}
-          <Link
-            to="/login"
-            className="font-medium text-foreground hover:underline"
-          >
-            Sign in
+          <Link to="/login" className="font-medium text-blue-500 hover:text-blue-hi hover:underline">
+            Log in
           </Link>
-        </p>
+        </>
+      }
+    >
+      {serverError && (
+        <Alert tone="danger" className="mb-5">
+          {serverError}
+        </Alert>
+      )}
 
-        <p className="mt-5 text-center text-xs text-muted-foreground">
-          By creating an account you agree to our{" "}
-          <a href={LANDING_TERMS} className="underline hover:text-foreground">
-            Terms of Service
-          </a>{" "}
-          and{" "}
-          <a href={LANDING_PRIVACY} className="underline hover:text-foreground">
-            Privacy Policy
-          </a>
-          .
-        </p>
-      </div>
-    </div>
-    <SiteFooter watermark={false} />
-    </div>
+      <GoogleButton label="Sign up with Google" />
+      <AuthDivider />
+
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+        <Field label="Email" htmlFor="email" error={errors.email?.message}>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            aria-invalid={!!errors.email}
+            {...field("email")}
+          />
+        </Field>
+
+        <Field
+          label="Password"
+          htmlFor="password"
+          error={errors.password?.message}
+          help="At least 8 characters."
+        >
+          <PasswordInput
+            id="password"
+            autoComplete="new-password"
+            placeholder="Choose a password"
+            aria-invalid={!!errors.password}
+            {...field("password")}
+          />
+        </Field>
+
+        <Field label="Confirm password" htmlFor="confirmPassword" error={errors.confirmPassword?.message}>
+          <PasswordInput
+            id="confirmPassword"
+            autoComplete="new-password"
+            placeholder="Type it again"
+            aria-invalid={!!errors.confirmPassword}
+            {...field("confirmPassword")}
+          />
+        </Field>
+
+        <Button type="submit" size="lg" className="mt-1 w-full" loading={isSubmitting}>
+          Create account
+        </Button>
+      </form>
+
+      <AuthTerms terms={LANDING_TERMS} privacy={LANDING_PRIVACY} />
+    </AuthLayout>
   );
 }
 

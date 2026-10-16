@@ -12,7 +12,9 @@ import {
 } from "@/src/components/ui/dialog";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
-import { Label } from "@/src/components/ui/label";
+import { Alert } from "@/src/components/ui/alert";
+import { Field } from "@/src/components/ui/field";
+import { Textarea } from "@/src/components/ui/textarea";
 import { conflictSummary, useCheckInstructions } from "@/src/features/settings/instructionCheck";
 import { useSettings } from "@/src/hooks/useSettings";
 import {
@@ -129,29 +131,29 @@ function EditProjectForm({
       </DialogHeader>
 
       <form
-        className="space-y-4"
+        className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
           handleSave();
         }}
       >
-        <div className="space-y-1.5">
-          <Label htmlFor="edit-project-name">Name</Label>
+        <Field label="Name" htmlFor="edit-project-name">
           <Input
             id="edit-project-name"
             value={name}
             maxLength={100}
             disabled={update.isPending}
             onChange={(e) => setName(e.target.value)}
+            aria-invalid={trimmedName.length === 0 || undefined}
             autoFocus
           />
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="edit-project-description">
-            Description <span className="text-muted-foreground">(optional)</span>
-          </Label>
-          <textarea
+        <Field
+          label={<>Description <Optional /></>}
+          htmlFor="edit-project-description"
+        >
+          <Textarea
             id="edit-project-description"
             value={description}
             maxLength={MAX_DESCRIPTION}
@@ -159,22 +161,22 @@ function EditProjectForm({
             onChange={(e) => setDescription(e.target.value)}
             placeholder="What's this project about?"
             rows={3}
-            className="w-full resize-y rounded-lg border border-input bg-background p-3 text-sm outline-none transition-shadow focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/25"
           />
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="edit-project-tags">
-            Tags <span className="text-muted-foreground">(optional)</span>
-          </Label>
+        <Field
+          label={<>Tags <Optional /></>}
+          htmlFor="edit-project-tags"
+          help="Press Enter or comma to add a tag."
+        >
           <div
             onClick={() => document.getElementById("edit-project-tags")?.focus()}
-            className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-background px-2 py-1.5 transition-shadow focus-within:border-brand focus-within:ring-3 focus-within:ring-brand/25"
+            className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-line-strong bg-space-void px-2 py-1.5 transition-[border-color,box-shadow] duration-150 hover:border-line-hover focus-within:border-blue-500 focus-within:shadow-[0_0_0_3px_rgb(96_165_250/0.2)]"
           >
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-space-overlay px-2 py-0.5 text-xs text-foreground"
+                className="inline-flex h-6 items-center gap-1 rounded-xs border border-line-strong bg-space-raised pr-1 pl-2 text-xs text-silver-900"
               >
                 {tag}
                 <button
@@ -182,7 +184,7 @@ function EditProjectForm({
                   aria-label={`Remove ${tag}`}
                   disabled={update.isPending}
                   onClick={() => setTags((prev) => prev.filter((t) => t !== tag))}
-                  className="text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                  className="grid size-4 cursor-pointer place-items-center rounded-[4px] text-silver-500 transition-colors hover:text-silver-900 disabled:opacity-40"
                 >
                   <XIcon className="size-3" />
                 </button>
@@ -196,20 +198,27 @@ function EditProjectForm({
               onKeyDown={handleTagKeyDown}
               onBlur={() => addTag(tagDraft)}
               placeholder={tags.length === 0 ? "e.g. side project, client work" : ""}
-              className="min-w-20 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50"
+              className="h-6 min-w-20 flex-1 bg-transparent px-1 text-[13px] text-silver-900 outline-none placeholder:text-silver-500 focus-visible:outline-none disabled:opacity-40"
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Press Enter or comma to add a tag.
-          </p>
-        </div>
+        </Field>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="edit-project-instructions">
-            Instructions for tau{" "}
-            <span className="text-muted-foreground">(optional)</span>
-          </Label>
-          <textarea
+        <Field
+          label={<>Instructions for tau <Optional /></>}
+          htmlFor="edit-project-instructions"
+          counter={
+            instructions.length > MAX_INSTRUCTIONS * 0.8
+              ? `${instructions.length.toLocaleString()} / ${MAX_INSTRUCTIONS.toLocaleString()}`
+              : undefined
+          }
+          help={
+            <>
+              tau reads these with every request in this project, so you
+              don&rsquo;t have to repeat them.
+            </>
+          }
+        >
+          <Textarea
             id="edit-project-instructions"
             value={instructions}
             maxLength={MAX_INSTRUCTIONS}
@@ -217,44 +226,38 @@ function EditProjectForm({
             onChange={(e) => setInstructions(e.target.value)}
             placeholder={"e.g. The pricing page is signed off, don't change it without asking.\nPrices are in pounds."}
             rows={4}
-            className="w-full resize-y rounded-lg border border-input bg-background p-3 text-sm outline-none transition-shadow focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/25"
           />
-          <p className="flex justify-between gap-3 text-xs text-muted-foreground">
-            <span>
-              tau reads these with every request in this project, so you
-              don&rsquo;t have to repeat them.
-            </span>
-            {instructions.length > MAX_INSTRUCTIONS * 0.8 && (
-              <span className="shrink-0 tabular-nums">
-                {instructions.length.toLocaleString()} /{" "}
-                {MAX_INSTRUCTIONS.toLocaleString()}
-              </span>
-            )}
-          </p>
-        </div>
+        </Field>
 
         {update.error && (
-          <p role="alert" className="text-sm text-red-400">
-            Couldn't update the project. Try again.
-          </p>
+          <Alert tone="danger">Couldn&rsquo;t update the project. Try again.</Alert>
         )}
       </form>
 
       <DialogFooter>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           disabled={update.isPending}
           onClick={() => onOpenChange(false)}
         >
           Cancel
         </Button>
-        <Button type="button" disabled={!canSave} onClick={handleSave}>
+        <Button
+          type="button"
+          disabled={trimmedName.length === 0}
+          loading={update.isPending}
+          onClick={handleSave}
+        >
           {update.isPending ? "Saving…" : "Save changes"}
         </Button>
       </DialogFooter>
     </>
   );
+}
+
+function Optional() {
+  return <span className="font-normal text-silver-500">(optional)</span>;
 }
 
 /** Edit-project modal shared verbatim by Home (`MyProjects`) and the project
@@ -268,7 +271,7 @@ export function EditProjectDialog({
 }: EditProjectDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-[520px]">
         {project && (
           <EditProjectForm
             key={project.id}

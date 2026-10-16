@@ -2,17 +2,15 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
-  ArrowUpIcon,
   ExternalLinkIcon,
   EyeIcon,
   EyeOffIcon,
   KeyRoundIcon,
-  Loader2Icon,
   LockIcon,
   XIcon,
 } from "lucide-react";
 
-import { cn } from "@/src/lib/utils";
+import { Button } from "@/src/components/ui/button";
 import {
   errorMessage,
   secretKeys,
@@ -50,7 +48,7 @@ function SecretInput({
   return (
     <div className="px-2 py-1.5">
       <div className="flex items-baseline justify-between gap-2">
-        <label htmlFor={id} className="text-xs font-medium text-foreground">
+        <label htmlFor={id} className="text-[13px] font-medium text-silver-900">
           {field.label}
         </label>
         {field.url && (
@@ -58,7 +56,7 @@ function SecretInput({
             href={field.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+            className="flex shrink-0 items-center gap-1 text-xs text-blue-500 transition-colors hover:text-blue-hi"
           >
             Get key
             <ExternalLinkIcon className="size-3" />
@@ -66,13 +64,13 @@ function SecretInput({
         )}
       </div>
       {field.description && (
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
+        <p className="mt-0.5 text-xs text-silver-500">
           {field.description}
         </p>
       )}
 
       {multiline ? (
-        <div className="mt-1.5 flex h-8 items-center gap-2 rounded-lg border border-silver-400/40 bg-space-overlay px-2.5 text-xs text-muted-foreground">
+        <div className="mt-1.5 flex h-9 items-center gap-2 rounded-md border border-line-strong bg-space-void px-3 text-xs text-silver-600">
           <KeyRoundIcon className="size-3.5 shrink-0" />
           <span className="min-w-0 flex-1 truncate">
             Multi-line key pasted ({value.split("\n").length} lines)
@@ -82,7 +80,7 @@ function SecretInput({
             disabled={disabled}
             onClick={() => onChange("")}
             aria-label={`Clear ${field.label}`}
-            className="shrink-0 transition-colors hover:text-foreground disabled:opacity-50"
+            className="shrink-0 cursor-pointer transition-colors hover:text-silver-900 disabled:opacity-40"
           >
             <XIcon className="size-3.5" />
           </button>
@@ -118,13 +116,13 @@ function SecretInput({
             data-lpignore="true"
             data-bwignore
             data-form-type="other"
-            className="h-8 w-full rounded-lg border border-silver-400/40 bg-transparent pl-2.5 pr-8 font-mono text-xs text-foreground placeholder:font-sans placeholder:text-muted-foreground focus:border-silver-600/60 focus:outline-none disabled:opacity-50"
+            className="h-9 w-full rounded-md border border-line-strong bg-space-void pr-9 pl-3 font-mono text-xs text-silver-900 transition-[border-color,box-shadow] duration-150 outline-none placeholder:font-sans placeholder:text-silver-500 hover:border-line-hover focus-visible:border-blue-500 focus-visible:shadow-[0_0_0_3px_rgb(96_165_250/0.2)] disabled:opacity-40"
           />
           <button
             type="button"
             onClick={() => setRevealed((r) => !r)}
             aria-label={revealed ? "Hide key" : "Show key"}
-            className="absolute inset-y-0 right-0 flex w-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+            className="absolute inset-y-0 right-0 flex w-9 cursor-pointer items-center justify-center text-silver-500 transition-colors hover:text-silver-900"
           >
             {revealed ? (
               <EyeOffIcon className="size-3.5" />
@@ -193,10 +191,10 @@ export function SecretRequestPrompt({
         e.preventDefault();
         void submit(false);
       }}
-      className="rounded-xl border border-silver-400/40 bg-space-surface p-2 shadow-xl focus-within:border-silver-600/45 focus-within:ring-3 focus-within:ring-silver-400/10"
+      className="rounded-[14px] border border-line-strong bg-space-surface p-2 transition-[border-color,box-shadow] duration-150 focus-within:border-blue-500 focus-within:shadow-[0_0_0_3px_rgb(96_165_250/0.16)]"
     >
-      <div className="flex items-center gap-1.5 px-2 pb-1 pt-0.5 text-[11px] text-muted-foreground">
-        <LockIcon className="size-3 shrink-0" />
+      <div className="flex items-center gap-1.5 px-2 pt-0.5 pb-1.5 text-xs text-silver-500">
+        <LockIcon className="size-3 shrink-0 text-blue-500" />
         <span>Encrypted and only used by your app. Never shown in the chat.</span>
       </div>
 
@@ -216,35 +214,21 @@ export function SecretRequestPrompt({
 
       <div className="mt-1 flex items-center justify-end gap-2 px-2 pb-0.5">
         {fields.length > 1 && filled.length > 0 && filled.length < fields.length && (
-          <span className="mr-auto text-[11px] text-muted-foreground">
+          <span className="mr-auto text-xs text-silver-500">
             Empty fields will be skipped
           </span>
         )}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           disabled={submitting}
           onClick={() => void submit(true)}
-          className="rounded-lg px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-space-overlay hover:text-foreground disabled:opacity-50"
         >
-          Skip
-        </button>
-        <button
-          type="submit"
-          disabled={!canSave}
-          aria-label="Save keys"
-          className={cn(
-            "flex size-7 items-center justify-center rounded-lg transition-[background-color,transform]",
-            canSave
-              ? "bg-brand text-primary-foreground hover:bg-brand/90 active:scale-95"
-              : "cursor-not-allowed bg-space-overlay text-silver-600",
-          )}
-        >
-          {submitting ? (
-            <Loader2Icon className="size-4 animate-spin" />
-          ) : (
-            <ArrowUpIcon className="size-4" />
-          )}
-        </button>
+          Add later
+        </Button>
+        <Button type="submit" size="sm" disabled={!canSave} loading={submitting} aria-label="Save keys">
+          Save secret{fields.length > 1 ? "s" : ""}
+        </Button>
       </div>
     </form>
   );

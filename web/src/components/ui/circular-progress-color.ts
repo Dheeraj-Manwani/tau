@@ -6,7 +6,9 @@ const SUMMARIZE_RATIO = 0.75;
 
 export function colorForPercent(percent: number): string {
   const fraction = percent / 100;
+  // The chat-header meter is a blue donut (boards/Workspace-*.dc.html); it
+  // turns orange as it nears auto-compaction and red past summarization.
   if (fraction >= SUMMARIZE_RATIO) return "text-red-400";
-  if (fraction >= COMPACT_RATIO) return "text-amber-400";
-  return "text-green-500";
+  if (fraction >= COMPACT_RATIO) return "text-orange-400";
+  return "text-blue-500";
 }

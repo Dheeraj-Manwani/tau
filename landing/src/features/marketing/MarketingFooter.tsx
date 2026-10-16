@@ -139,7 +139,7 @@ export function MarketingFooter() {
           >
             {columns.map((column) => (
               <div key={column.title}>
-                <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-silver-900">
+                <h2 className="lab">
                   {column.title}
                 </h2>
                 <ul className="mt-3 flex flex-col gap-2">
@@ -168,7 +168,7 @@ export function MarketingFooter() {
           Describe it. Build it.
         </p>
 
-        <p className="mt-6 text-xs text-silver-600">
+        <p className="mt-6 font-mono text-[11px] text-silver-500">
           © {new Date().getFullYear()} Tau. All rights reserved.
         </p>
       </div>

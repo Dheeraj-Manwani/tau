@@ -294,7 +294,7 @@ export function BuildReplay() {
               ))}
             </ul>
             <div className="mt-3 min-h-0 flex-1 overflow-hidden rounded-lg bg-space-void p-3">
-              <p className="mb-2 font-mono text-[0.7rem] text-silver-400">
+              <p className="mb-2 font-mono text-[0.7rem] text-silver-500">
                 {shown.activeFile ?? "-"}
               </p>
               <pre className="overflow-hidden whitespace-pre-wrap break-all font-mono text-[0.7rem] leading-relaxed text-silver-600">
@@ -302,7 +302,7 @@ export function BuildReplay() {
               </pre>
             </div>
             {shown.shell.length > 0 && (
-              <div className="mt-2 rounded-lg bg-space-void p-2 font-mono text-[0.65rem] leading-relaxed text-silver-400">
+              <div className="mt-2 rounded-lg bg-space-void p-2 font-mono text-[11px] leading-relaxed text-silver-500">
                 {shown.shell.map((line, i) => (
                   <div key={i} className="truncate">
                     {line}
@@ -393,7 +393,7 @@ export function BuildReplay() {
 
 function PaneLabel({ children }: { children: string }) {
   return (
-    <p className="text-[0.65rem] font-medium uppercase tracking-[0.14em] text-silver-400">
+    <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-silver-500">
       {children}
     </p>
   );

@@ -50,11 +50,11 @@ export function AttachmentChip({ chip, onOpen, onRemove }: AttachmentChipProps) 
         onClick={onOpen}
         title={chip.filename}
         className={cn(
-          "relative flex h-16 overflow-hidden rounded-lg border text-left transition-colors",
+          "relative flex h-16 cursor-pointer overflow-hidden rounded-sm border text-left transition-colors duration-150",
           chip.kind === "PASTED" || chip.kind === "FILE" ? "w-40" : "w-16",
           failed
-            ? "border-red-500/60 bg-red-500/5"
-            : "border-silver-400/40 bg-space-overlay hover:border-silver-600/60",
+            ? "border-red-400/32 bg-red-400/10"
+            : "border-line-strong bg-space-raised hover:border-line-hover",
         )}
       >
         {chip.kind === "IMAGE" &&
@@ -70,10 +70,10 @@ export function AttachmentChip({ chip, onOpen, onRemove }: AttachmentChipProps) 
 
         {chip.kind === "PASTED" && (
           <div className="flex size-full flex-col justify-between p-1.5">
-            <p className="overflow-hidden font-mono text-[9px] leading-[1.35] text-muted-foreground">
-              {(chip.preview ?? "").slice(0, 180)}
+            <p className="line-clamp-2 font-mono text-[11px] leading-[1.35] text-silver-500">
+              {(chip.preview ?? "").slice(0, 120)}
             </p>
-            <span className="w-fit rounded bg-space-surface px-1 py-px text-[8px] font-medium tracking-wide text-silver-600">
+            <span className="w-fit rounded-[4px] border border-line px-1 font-mono text-[11px] leading-4 tracking-[0.08em] text-silver-600">
               PASTED
             </span>
           </div>
@@ -83,10 +83,10 @@ export function AttachmentChip({ chip, onOpen, onRemove }: AttachmentChipProps) 
           <div className="flex size-full items-center gap-2 p-2">
             <FileTextIcon className="size-5 shrink-0 text-silver-600" />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[11px] text-foreground">
+              <p className="truncate font-mono text-[11px] text-silver-900">
                 {chip.filename}
               </p>
-              <span className="mt-0.5 inline-block rounded bg-space-surface px-1 py-px text-[8px] font-medium tracking-wide text-silver-600">
+              <span className="mt-1 inline-block rounded-[4px] border border-line px-1 font-mono text-[11px] leading-4 tracking-[0.08em] text-silver-600">
                 {fileExtension(chip.filename)}
               </span>
             </div>
@@ -95,7 +95,7 @@ export function AttachmentChip({ chip, onOpen, onRemove }: AttachmentChipProps) 
 
         {busy && (
           <div className="absolute inset-0 flex items-center justify-center bg-space-void/60">
-            <Loader2Icon className="size-4 animate-spin text-silver-600" />
+            <Loader2Icon className="size-4 animate-spin text-blue-500 motion-reduce:animate-none" />
           </div>
         )}
         {failed && (
@@ -113,7 +113,7 @@ export function AttachmentChip({ chip, onOpen, onRemove }: AttachmentChipProps) 
             onRemove();
           }}
           aria-label={`Remove ${chip.filename}`}
-          className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border border-silver-400/40 bg-space-surface text-silver-600 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-silver-900"
+          className="absolute -top-1.5 -right-1.5 flex size-5 cursor-pointer items-center justify-center rounded-full border border-line-strong bg-space-overlay text-silver-600 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-silver-900"
         >
           <XIcon className="size-3" />
         </button>

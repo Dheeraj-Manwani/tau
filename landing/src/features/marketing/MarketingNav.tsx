@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { MenuIcon, XIcon } from "lucide-react";
 import { APP_ORIGIN, APP_HOME } from "@/src/lib/routes";
 
 export function MarketingNav() {
@@ -29,21 +30,27 @@ export function MarketingNav() {
           <Link to="/docs">Docs</Link>
           <Link to="/pricing">Pricing</Link>
           <Link to="/changelog">Changelog</Link>
+          {/* Phones hide Log in from the bar; the sheet carries it. */}
+          <a href={`${APP_ORIGIN}/login`} className="nav-sheet-only">
+            Log in
+          </a>
         </div>
         <div className="storm-nav-actions">
-          <a href={`${APP_ORIGIN}/login`}>Sign in</a>
+          <a href={`${APP_ORIGIN}/login`} className="nav-login">
+            Log in
+          </a>
           <a href={APP_HOME} className="start-building">
             Start building
           </a>
           <button
             type="button"
             className="mobile-nav-toggle"
-            aria-label="Toggle navigation"
+            aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             aria-controls="storm-navigation"
             onClick={() => setOpen(!open)}
           >
-            {open ? "×" : "☰"}
+            {open ? <XIcon /> : <MenuIcon />}
           </button>
         </div>
       </nav>

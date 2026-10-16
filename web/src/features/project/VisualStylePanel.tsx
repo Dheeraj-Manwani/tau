@@ -148,14 +148,14 @@ export function VisualStylePanel({
   return (
     <div
       className={cn(
-        "max-h-64 overflow-y-auto border-t border-[var(--silver-200)] bg-[var(--space-surface)] px-3 py-2",
+        "scrollbar-thin max-h-64 overflow-y-auto border-b border-line px-4 py-2",
         visualEdit.isPending && "opacity-60",
       )}
     >
       {variant && (
-        <p className="pb-1.5 text-[11px] text-[var(--silver-600)]">
+        <p className="py-1.5 text-xs leading-normal text-silver-500">
           Writing{" "}
-          <span className="font-mono text-[var(--silver-900)]">{variant}</span>{" "}
+          <span className="font-mono text-silver-900">{variant}</span>{" "}
           styles: these apply at {VARIANT_SCOPE[variant]}. Dimmed values are
           inherited from all sizes and are left alone unless you change them.
         </p>
@@ -167,11 +167,11 @@ export function VisualStylePanel({
           variant,
         );
         return (
-          <div key={group.id} className="flex items-start gap-2 py-1">
-            <span className="w-20 shrink-0 pt-1 text-[11px] text-[var(--silver-600)]">
+          <div key={group.id} className="flex items-start gap-3 border-t border-line py-2 first-of-type:border-t-0">
+            <span className="lab w-20 shrink-0 pt-[7px]">
               {group.label}
             </span>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1.5">
               {group.options.map((option) => {
                 const isActive = current?.className === option.className;
                 // Dashed + dimmed for a value this breakpoint is only borrowing:
@@ -190,18 +190,18 @@ export function VisualStylePanel({
                     }
                     aria-pressed={isActive}
                     className={cn(
-                      "flex items-center gap-1 rounded-[var(--radius-md)] border px-1.5 py-0.5 text-[11px] transition-colors disabled:cursor-default",
+                      "flex h-6 cursor-pointer items-center gap-1.5 rounded-xs border px-2 text-xs transition-colors duration-150 disabled:cursor-default",
                       isActive
                         ? isInherited
-                          ? "border-dashed border-[var(--silver-400)] text-[var(--silver-600)]"
-                          : "border-[var(--blue-500)] text-[var(--silver-900)]"
-                        : "border-[var(--silver-200)] text-[var(--silver-600)] hover:text-[var(--silver-900)]",
+                          ? "border-dashed border-line-hover text-silver-500"
+                          : "border-blue-500 bg-blue-500/12 text-silver-900"
+                        : "border-line-strong bg-space-surface text-silver-600 hover:border-line-hover hover:text-silver-900",
                     )}
                   >
                     {group.swatches && (
                       <span
                         aria-hidden
-                        className="size-2.5 shrink-0 rounded-[2px] border border-[var(--silver-200)]"
+                        className="size-3 shrink-0 rounded-[3px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]"
                         // Theme tokens resolve inside the generated app, not
                         // here, so only literal colours get a real swatch.
                         style={

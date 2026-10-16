@@ -12,7 +12,8 @@ export function GoogleButton({
   label?: string;
 }) {
   return (
-    <Button asChild variant="outline" className="h-11 w-full">
+    // Secondary: the form's submit is the page's one primary.
+    <Button asChild variant="secondary" size="lg" className="w-full">
       <a href={`${env.API_URL}/auth/google`}>
         <GoogleIcon />
         {label}

@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { LoaderCircleIcon, SparklesIcon, UploadIcon } from "lucide-react";
+import { Alert } from "@/src/components/ui/alert";
+import { Badge } from "@/src/components/ui/badge";
+import { Button } from "@/src/components/ui/button";
+import { Skeleton } from "@/src/components/ui/skeleton";
 import toast from "react-hot-toast";
 import TextareaAutosize from "react-textarea-autosize";
 import { AppLogo } from "./AppLogo";
@@ -57,45 +61,41 @@ export function IdentitySection({
   const identity = query.data;
   if (!identity)
     return (
-      <div role="status" className="py-4 text-xs text-silver-600">
+      <div role="status">
         {query.isError ? (
-          <>
-            Couldn't load name and logo.{" "}
-            <button
-              type="button"
-              onClick={() => void query.refetch()}
-              className="text-blue-500 underline"
-            >
-              Try again
-            </button>
-          </>
+          <Alert
+            tone="danger"
+            action={
+              <Button variant="secondary" size="sm" onClick={() => void query.refetch()}>
+                Try again
+              </Button>
+            }
+          >
+            Couldn&apos;t load name and logo.
+          </Alert>
         ) : (
-          <span className="flex items-center gap-2">
-            <LoaderCircleIcon className="size-4 animate-spin" />
-            Loading name and logo…
-          </span>
+          <div className="flex flex-col gap-3" aria-label="Loading name and logo">
+            <Skeleton className="h-3.5 w-40" />
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
         )}
       </div>
     );
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
-        <h2 className="text-sm font-medium">Name & logo</h2>
-        <p className="mt-1 text-xs leading-relaxed text-silver-600">
+        <h2 className="text-[15px] font-semibold">Name & logo</h2>
+        <p className="mt-1 text-[13px] leading-relaxed text-silver-500">
           Choose how your app appears in browser tabs, search results and shared
           links.
         </p>
       </div>
       {saved && (
-        <p
-          role="status"
-          className="rounded-lg bg-emerald-400/10 p-3 text-xs text-emerald-300"
-        >
-          Saved. Deploy changes to update the live site.
-        </p>
+        <Alert tone="success">Saved. Deploy changes to update the live site.</Alert>
       )}
       {blocked && (
-        <p role="status" className="text-xs text-silver-600">
+        <p role="status" className="text-[13px] text-silver-500">
           Editing is available when the current project operation finishes and
           the site is not suspended.
         </p>
@@ -248,15 +248,15 @@ function IdentityForm({
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
+    <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
       <fieldset
         disabled={blocked || save.isPending}
         className="min-w-0 space-y-5"
       >
         <label className="block">
-          <span className="mb-1 flex justify-between text-[11px] text-silver-600">
+          <span className="mb-1.5 flex items-baseline justify-between text-[13px] font-medium text-silver-900">
             Name
-            <span>
+            <span className="font-mono text-[11px] font-normal text-silver-500">
               {title.length}/{TITLE_MAX}
             </span>
           </span>
@@ -267,18 +267,18 @@ function IdentityForm({
               setTitle(e.target.value);
               onEdit();
             }}
-            className="w-full rounded-md border border-silver-400/30 bg-space-surface px-2 py-1.5 text-xs text-silver-900 outline-none focus:border-brand"
+            className="w-full rounded-md border border-line-strong bg-space-void text-[13px] text-silver-900 outline-none transition-[border-color,box-shadow] duration-150 hover:border-line-hover focus-visible:border-blue-500 focus-visible:shadow-[0_0_0_3px_rgb(96_165_250/0.2)] h-9 px-3"
           />
-          <span className="mt-1 block text-[10px] leading-snug text-silver-600">
+          <span className="mt-1.5 block text-xs leading-normal text-silver-500">
             The title in a browser tab and a shared link. Your address doesn't
             change.
           </span>
         </label>
 
         <label className="block">
-          <span className="mb-1 flex justify-between text-[11px] text-silver-600">
+          <span className="mb-1.5 flex items-baseline justify-between text-[13px] font-medium text-silver-900">
             Description
-            <span>
+            <span className="font-mono text-[11px] font-normal text-silver-500">
               {description.length}/{DESCRIPTION_MAX}
             </span>
           </span>
@@ -291,21 +291,21 @@ function IdentityForm({
               setDescription(e.target.value);
               onEdit();
             }}
-            className="w-full resize-none rounded-md border border-silver-400/30 bg-space-surface px-2 py-1.5 text-xs text-silver-900 outline-none focus:border-brand"
+            className="w-full rounded-md border border-line-strong bg-space-void text-[13px] text-silver-900 outline-none transition-[border-color,box-shadow] duration-150 hover:border-line-hover focus-visible:border-blue-500 focus-visible:shadow-[0_0_0_3px_rgb(96_165_250/0.2)] resize-none px-3 py-2.5 leading-[1.55]"
           />
         </label>
 
         <div>
-          <span className="mb-1 block text-[11px] text-silver-600">Logo</span>
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-silver-400/30 bg-space-surface">
+          <span className="mb-1.5 block text-[13px] font-medium text-silver-900">Logo</span>
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line-strong bg-space-surface">
               <AppLogo
                 projectId={projectId}
                 icon={identity.icon}
                 draftUrl={draft?.previewUrl}
               />
             </div>
-            <div className="min-w-0 flex-1 text-[11px] leading-snug text-silver-600">
+            <div className="min-w-0 flex-1 text-[13px] leading-snug text-silver-500">
               {draft ? (
                 <>
                   New logo. Shown here at tab size:
@@ -331,29 +331,26 @@ function IdentityForm({
             className="hidden"
             onChange={(e) => void onFile(e.target.files?.[0])}
           />
-          <div className="mt-2 grid grid-cols-2 gap-1.5">
-            <button
-              type="button"
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
               disabled={busy || save.isPending}
               onClick={() => fileRef.current?.click()}
-              className="flex flex-col items-center gap-0.5 rounded-md border border-silver-400/30 px-2 py-1.5 text-[11px] font-medium text-silver-900 transition-colors hover:bg-space-overlay disabled:opacity-50"
             >
-              <span className="flex items-center gap-1">
-                {busy ? (
-                  <LoaderCircleIcon className="size-3 animate-spin" />
-                ) : (
-                  <UploadIcon className="size-3" />
-                )}
-                Upload logo
-              </span>
-              <span className="text-[10px] font-normal text-silver-600">
+              {busy ? (
+                <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
+              ) : (
+                <UploadIcon />
+              )}
+              Upload logo
+              <span className="font-mono text-[11px] font-normal text-silver-500">
                 {credits(prices.logoUpload)}
               </span>
-            </button>
+            </Button>
 
             {(identity.canGenerate || !isPro) && (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
                 disabled={
                   generate.isPending ||
                   save.isPending ||
@@ -361,26 +358,18 @@ function IdentityForm({
                   (isPro && identity.generationsLeftToday === 0)
                 }
                 onClick={() => void onGenerate()}
-                className="flex flex-col items-center gap-0.5 rounded-md border border-silver-400/30 px-2 py-1.5 text-[11px] font-medium text-silver-900 transition-colors hover:bg-space-overlay disabled:opacity-50"
               >
-                <span className="flex items-center gap-1">
-                  {generate.isPending ? (
-                    <LoaderCircleIcon className="size-3 animate-spin" />
-                  ) : (
-                    <SparklesIcon className="size-3" />
-                  )}
-                  {draft?.generationId ? "Regenerate" : "Generate logo"}
-                  {!isPro && (
-                    <span className="rounded-full bg-brand/10 px-1.5 py-px text-[10px] font-semibold text-brand">
-                      PRO
-                    </span>
-                  )}
+                {generate.isPending ? (
+                  <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
+                ) : (
+                  <SparklesIcon />
+                )}
+                {draft?.generationId ? "Regenerate" : "Generate logo"}
+                {!isPro && <Badge tone="pro">PRO</Badge>}
+                <span className="font-mono text-[11px] font-normal text-silver-500">
+                  {credits(prices.logoGeneration)} · balance {Math.floor(available)}
                 </span>
-                <span className="text-[10px] font-normal text-silver-600">
-                  {credits(prices.logoGeneration)} · balance{" "}
-                  {Math.floor(available)}
-                </span>
-              </button>
+              </Button>
             )}
           </div>
           {generateShort && (
@@ -389,43 +378,35 @@ function IdentityForm({
             </BuyCredits>
           )}
           {problem && (
-            <p className="mt-1.5 text-[11px] leading-snug text-red-300">
+            <p role="alert" className="mt-2 text-xs leading-snug text-red-400">
               {problem}
             </p>
           )}
         </div>
 
-        <button
-          type="button"
-          disabled={
-            !dirty || save.isPending || cantAfford || busy || generate.isPending
-          }
+        <Button
+          disabled={!dirty || cantAfford || busy || generate.isPending}
+          loading={save.isPending}
           onClick={onSave}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-silver-400/30 px-3 py-1.5 text-xs font-medium text-silver-900 transition-colors hover:bg-space-overlay disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {save.isPending && (
-            <LoaderCircleIcon className="size-3.5 animate-spin" />
-          )}
           {save.isPending
             ? "Saving…"
             : saveCost > 0
               ? `Save changes · ${credits(saveCost)}`
               : "Save changes"}
-        </button>
+        </Button>
         {cantAfford && (
           <BuyCredits>Saving this logo needs {credits(saveCost)}.</BuyCredits>
         )}
-        <p className="text-[10px] leading-snug text-silver-600">
+        <p className="text-xs leading-normal text-silver-500">
           Name and description are free. Uploaded logos are charged when you
           save. Deploy after saving to update the live site.
         </p>
       </fieldset>
-      <aside className="min-w-0 space-y-4 rounded-xl border border-silver-200 bg-space-void/40 p-4 self-start">
-        <h3 className="text-xs font-medium text-silver-600">
-          Appearance preview
-        </h3>
-        <div className="rounded-lg border border-silver-200 bg-space-surface p-3">
-          <div className="flex items-center gap-2 text-xs">
+      <aside className="min-w-0 space-y-4 self-start rounded-lg border border-line bg-space-void p-4.5">
+        <h3 className="lab">Appearance preview</h3>
+        <div className="rounded-md border border-line bg-space-surface p-3">
+          <div className="flex items-center gap-2 text-[13px]">
             <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded">
               <AppLogo
                 projectId={projectId}
@@ -435,21 +416,21 @@ function IdentityForm({
             </span>
             <span className="truncate">{title.trim() || "Your app name"}</span>
           </div>
-          <p className="mt-3 truncate border-t border-silver-200 pt-2 text-[11px] text-silver-600">
+          <p className="mt-3 truncate border-t border-line pt-2 font-mono text-[11px] text-silver-500">
             {url ?? "Your address is set on first deploy"}
           </p>
         </div>
         <div className="space-y-2">
-          <p className="text-[11px] text-silver-600">Search & shared link</p>
-          <p className="break-words text-sm text-blue-400">
+          <p className="lab">Search & shared link</p>
+          <p className="text-sm break-words text-blue-500">
             {title.trim() || "Your app name"}
           </p>
-          <p className="break-words text-xs leading-relaxed text-silver-600">
+          <p className="text-xs leading-relaxed break-words text-silver-600">
             {description.trim() ||
               "Add a description to help visitors understand your app."}
           </p>
         </div>
-        <p className="text-[11px] leading-relaxed text-silver-600">
+        <p className="text-xs leading-relaxed text-silver-500">
           Preview of your saved or draft appearance. Search engines may take
           time to pick up a deployment.
         </p>
@@ -489,13 +470,13 @@ export function AddressPicker({
       : null;
 
   return (
-    <div className="rounded-lg border border-silver-400/20 bg-space-void/40 p-3">
+    <div className="rounded-md border border-line bg-space-void p-3.5">
       <label className="block">
-        <span className="mb-1 block text-[11px] text-silver-600">
+        <span className="mb-1.5 block text-[13px] font-medium text-silver-900">
           Address{" "}
-          <span className="text-silver-600">· fixed after you deploy</span>
+          <span className="font-normal text-silver-500">· fixed after you deploy</span>
         </span>
-        <span className="flex items-center overflow-hidden rounded-md border border-silver-400/30 bg-space-surface focus-within:border-brand">
+        <span className="flex h-9 items-center overflow-hidden rounded-md border border-line-strong bg-space-void transition-[border-color,box-shadow] duration-150 focus-within:border-blue-500 focus-within:shadow-[0_0_0_3px_rgb(96_165_250/0.2)] hover:border-line-hover">
           <input
             value={shown}
             maxLength={40}
@@ -503,21 +484,21 @@ export function AddressPicker({
             autoCapitalize="none"
             aria-label="Address"
             onChange={(e) => onChange(cleanAddressInput(e.target.value))}
-            className="min-w-0 flex-1 bg-transparent px-2 py-1.5 text-xs text-silver-900 outline-none"
+            className="min-w-0 flex-1 bg-transparent px-3 font-mono text-[12.5px] text-silver-900 outline-none focus-visible:outline-none"
           />
-          <span className="shrink-0 pr-2 text-[11px] text-silver-600">
+          <span className="shrink-0 pr-3 font-mono text-[12px] text-silver-500">
             {domain ? `.${domain}` : ""}
           </span>
         </span>
       </label>
       <p
         className={cn(
-          "mt-1.5 min-h-[14px] text-[11px] leading-snug",
+          "mt-1.5 min-h-[16px] text-xs leading-snug",
           stale || !result
-            ? "text-silver-600"
+            ? "text-silver-500"
             : result.available
               ? "text-green-400"
-              : "text-red-300",
+              : "text-red-400",
         )}
         aria-live="polite"
       >
@@ -527,7 +508,7 @@ export function AddressPicker({
             <button
               type="button"
               onClick={() => void check.retry()}
-              className="text-blue-500 underline"
+              className="cursor-pointer text-blue-500 underline-offset-3 hover:underline"
             >
               Try again
             </button>
@@ -547,12 +528,12 @@ export function AddressPicker({
 /** Shown where a price cannot be paid: says so, and links to where credits are bought. */
 export function BuyCredits({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mt-1.5 text-[11px] leading-snug text-amber-200">
+    <p className="mt-2 text-xs leading-snug text-orange-400">
       {children}{" "}
       <Link
         to={`${APP_BILLING}#buy-credits`}
         onClick={() => toast.dismiss()}
-        className="font-medium underline underline-offset-2"
+        className="font-medium text-blue-500 underline-offset-3 hover:text-blue-hi hover:underline"
       >
         Buy credits
       </Link>

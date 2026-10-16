@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(git)",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "PowerShell(git)",
+      "PowerShell(git *)",
+      "PowerShell(gh *)",
+      "Bash(psql *)",
+      "PowerShell(psql *)",
+      "Bash(docker *)",
+      "PowerShell(docker *)",
+      "Bash(bunx prisma *)",
+      "Bash(npx prisma *)",
+      "Bash(prisma *)",
+      "PowerShell(bunx prisma *)",
+      "PowerShell(npx prisma *)",
+      "PowerShell(prisma *)",
+      "Bash(bun run migrate*)",
+      "Bash(bun run reset*)",
+      "Bash(bun run dev*)",
+      "Bash(bun run start*)",
+      "Bash(bun run src/index.ts*)",
+      "Bash(bun run scripts/*)",
+      "Bash(bun scripts/*)",
+      "PowerShell(bun run migrate*)",
+      "PowerShell(bun run reset*)",
+      "PowerShell(bun run dev*)",
+      "PowerShell(bun run start*)",
+      "PowerShell(bun run src/index.ts*)",
+      "PowerShell(bun run scripts/*)",
+      "PowerShell(bun scripts/*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)"
+    ]
+  }
+}
