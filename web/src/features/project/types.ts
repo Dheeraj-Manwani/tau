@@ -133,6 +133,8 @@ export interface ProjectListItem {
 export interface ListProjectsResponse {
   projects: ProjectListItem[];
   nextCursor: string | null;
+  /** Every project matching the search, across all pages. */
+  total: number;
 }
 
 /**

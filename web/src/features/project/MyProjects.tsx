@@ -18,7 +18,7 @@ import { EmptyState } from "@/src/components/ui/empty-state";
 import { SearchInput } from "@/src/components/ui/input";
 import { Pagination } from "@/src/components/ui/pagination";
 import { APP_HOME, projectPath } from "@/src/lib/routes";
-import { useProjectsPage } from "./api";
+import { PROJECTS_PAGE_SIZE, useProjectsPage } from "./api";
 import { CardChrome, ProjectCardSkeleton, ThumbnailPlaceholder } from "./ProjectCardParts";
 import { projectCardClass, projectGridClass } from "./projectCardStyles";
 import type { ProjectListItem } from "./types";
@@ -106,6 +106,11 @@ export function MyProjects() {
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
   const { data, isLoading, isError, refetch } = useProjectsPage(query, cursors.at(-1));
   const projects = data?.projects ?? [];
+  // Kept from the last page that loaded, so the count doesn't blink out while
+  // the next page is on its way.
+  const [total, setTotal] = useState<number | null>(null);
+  if (data && data.total !== total) setTotal(data.total);
+  const pageCount = total === null ? undefined : Math.max(1, Math.ceil(total / PROJECTS_PAGE_SIZE));
   useEffect(() => {
     if (search.trim() === query) return;
     const timer = setTimeout(() => {
@@ -133,7 +138,13 @@ export function MyProjects() {
             <h2 id="my-projects-heading" className="display-heading text-[44px] text-silver-900">
               My projects
             </h2>
-            <p className="text-sm text-silver-600">Pick up where you left off.</p>
+            <p className="text-sm text-silver-600">
+              {total === null || (total === 0 && !query)
+                ? "Pick up where you left off."
+                : query
+                  ? `${total} ${total === 1 ? "match" : "matches"}`
+                  : `${total} ${total === 1 ? "project" : "projects"} · Pick up where you left off.`}
+            </p>
           </div>
           <div className="relative w-full sm:w-[300px]">
             <SearchInput
@@ -204,6 +215,7 @@ export function MyProjects() {
         {(cursors.length > 1 || Boolean(data?.nextCursor)) && (
           <Pagination
             page={cursors.length}
+            pageCount={pageCount}
             note={query ? "Search results" : undefined}
             hasNext={Boolean(data?.nextCursor) && !isLoading && !isError && synced}
             onPrevious={() => setCursors((previous) => previous.slice(0, -1))}

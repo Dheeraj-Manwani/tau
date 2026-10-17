@@ -46,11 +46,14 @@ export function useProjects() {
   });
 }
 
+/** Projects per page in My projects. */
+export const PROJECTS_PAGE_SIZE = 6;
+
 export function useProjectsPage(search: string, cursor?: string) {
   return useQuery({
     queryKey: [...projectKeys.list(), "page", search, cursor ?? ""],
     queryFn: () => api.get<ListProjectsResponse>("/project", {
-      params: { search: search || undefined, cursor, limit: 6 },
+      params: { search: search || undefined, cursor, limit: PROJECTS_PAGE_SIZE },
     }).then((response) => response.data),
     staleTime: 30_000,
   });

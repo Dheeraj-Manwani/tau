@@ -7,6 +7,7 @@ import {
   MessageSquareIcon,
   SettingsIcon,
   ShieldCheckIcon,
+  UserIcon,
   ZapIcon,
 } from "lucide-react";
 
@@ -41,7 +42,7 @@ const LOW_CREDITS = 10;
 /**
  * The avatar menu (boards/Overlays.dc.html "Menus in context"): who you are,
  * then credits in orange mono and the admin-only console with a quiet mono
- * badge, then help, then settings and log out. The avatar gets a blue ring
+ * badge, then help, then account, settings and log out. The avatar gets a blue ring
  * offset by the page colour while the menu is open.
  */
 export function UserMenu() {
@@ -159,6 +160,11 @@ export function UserMenu() {
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
+
+        <DropdownMenuItem onSelect={() => void navigate(APP_ACCOUNT)}>
+          <UserIcon />
+          Account
+        </DropdownMenuItem>
 
         <DropdownMenuItem onSelect={() => openSettings()}>
           <SettingsIcon />

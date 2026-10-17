@@ -608,7 +608,7 @@ export async function listProjects(
   userId: string,
   opts: { cursor?: string; limit: number; search?: string },
 ) {
-  const { projects, nextCursor } = await projectRepo.listProjectsByUser(
+  const { projects, nextCursor, total } = await projectRepo.listProjectsByUser(
     userId,
     opts,
   );
@@ -630,6 +630,7 @@ export async function listProjects(
       })),
     ),
     nextCursor,
+    total,
   };
 }
 

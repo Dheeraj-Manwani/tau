@@ -88,24 +88,30 @@ export function countProjectsByUser(
 export async function listProjectsByUser(
   userId: string,
   opts: { cursor?: string; limit: number; search?: string },
-): Promise<{ projects: Project[]; nextCursor: string | null }> {
-  const rows = await prisma.project.findMany({
-    where: {
-      userId,
-      ...(opts.search ? { OR: [
-        { name: { contains: opts.search, mode: "insensitive" as const } },
-        { description: { contains: opts.search, mode: "insensitive" as const } },
-      ] } : {}),
-    },
-    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-    take: opts.limit + 1,
-    ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
-  });
+): Promise<{ projects: Project[]; nextCursor: string | null; total: number }> {
+  const where: Prisma.ProjectWhereInput = {
+    userId,
+    ...(opts.search ? { OR: [
+      { name: { contains: opts.search, mode: "insensitive" as const } },
+      { description: { contains: opts.search, mode: "insensitive" as const } },
+    ] } : {}),
+  };
+  // `total` counts every match, not just this page, so the list can say how
+  // many there are and how many pages that makes.
+  const [rows, total] = await Promise.all([
+    prisma.project.findMany({
+      where,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: opts.limit + 1,
+      ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+    }),
+    prisma.project.count({ where }),
+  ]);
 
   const hasMore = rows.length > opts.limit;
   const projects = hasMore ? rows.slice(0, opts.limit) : rows;
   const nextCursor = hasMore ? (projects.at(-1)?.id ?? null) : null;
-  return { projects, nextCursor };
+  return { projects, nextCursor, total };
 }
 
 export function findActiveJob(
