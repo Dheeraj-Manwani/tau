@@ -197,8 +197,8 @@ function serverWarningFor(templateKey: string): string | null {
       : null;
   }
   return template.hasDb
-    ? "This project has a backend and a database. Deploying ships the front-end only — anything that calls the API or stores data won't work on the deployed site yet."
-    : "This project has a backend. Deploying ships the front-end only — anything that calls the API won't work on the deployed site yet.";
+    ? "This project has a backend and a database. Deploying ships the front-end only, so anything that calls the API or stores data won't work on the deployed site yet."
+    : "This project has a backend. Deploying ships the front-end only, so anything that calls the API won't work on the deployed site yet.";
 }
 
 /** `https://{hostname}` of the project's active primary domain, if it has one. */
@@ -513,7 +513,7 @@ export async function requestDeploy(
 
   const fileCount = await prisma.projectFile.count({ where: { projectId } });
   if (fileCount === 0) {
-    throw Errors.badRequest("Nothing to deploy yet — build something first");
+    throw Errors.badRequest("Nothing to deploy yet. Build something first");
   }
 
   // Plan limits (C12). Refused before a sandbox is spent; nothing is deleted.

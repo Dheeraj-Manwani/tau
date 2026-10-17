@@ -151,7 +151,7 @@ function reauthCodeEmailHtml(code: string, minutes: number): string {
               <tr>
                 <td style="padding:0 40px 32px;">
                   <p style="margin:0;font-size:13px;line-height:1.6;color:${BRAND.muted};">
-                    This code expires in ${minutes} minutes. If you didn't ask for it, someone may have access to your account — change your sign-in method and revoke your API key from the billing page.
+                    This code expires in ${minutes} minutes. If you didn't ask for it, someone may have access to your account. Change your sign-in method and revoke your API key from the billing page.
                   </p>
                 </td>
               </tr>

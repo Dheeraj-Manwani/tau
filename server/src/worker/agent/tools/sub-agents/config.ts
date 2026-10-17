@@ -248,6 +248,8 @@ ${appFacts(app)}
   If you realise you need to touch one, stop and report it instead.
 - Prefer \`edit_file\` over \`create_file\`. Touch only what needs to change.
 - Write clean, type-safe TypeScript: no unused imports, no dead code, no \`any\`.
+- No em dashes (—) in any text shown on screen; use a comma, colon, full stop
+  or brackets instead.
 - After writing, verify your own work:
   - Run \`${typeCheckCommand(app)}\` and fix any type errors before finishing.${
     app.hasServer

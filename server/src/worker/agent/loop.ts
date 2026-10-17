@@ -527,10 +527,10 @@ export async function runAgentLoop(
     const finishRun = async (reason: StopReason): Promise<void> => {
       const notice =
         reason === FinishReason.CANCELLED
-          ? "⏹️ Stopped. This run was halted before the task finished — send another message to continue."
+          ? "⏹️ Stopped. This run was halted before the task finished. Send another message to continue."
           : reason === FinishReason.BUDGET
             ? "⚠️ This run reached its per-request credit budget and was stopped before finishing. Send another message to continue where it left off."
-            : "⚠️ Out of credits — this run was stopped before the task finished. Add credits, then send another message to continue.";
+            : "⚠️ Out of credits. This run was stopped before the task finished. Add credits, then send another message to continue.";
 
       await prisma.$transaction(async (tx) => {
         const seq = await getNextSequence(tx, projectId);

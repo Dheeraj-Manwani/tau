@@ -15,7 +15,7 @@ export const clay: StyleSpec = {
   name: "Clay",
   look: "Soft 3D you want to squeeze: puffy, inflated shapes in pastel colours, lit from above with an inner highlight and resting on a deep soft shadow.",
   suits:
-    "Children's and learning apps, onboarding, habit and mood trackers, casual games, savings and pocket-money apps, friendly product pages — anything that should feel cuddly and easy.",
+    "Children's and learning apps, onboarding, habit and mood trackers, casual games, savings and pocket-money apps, friendly product pages: anything that should feel cuddly and easy.",
   avoid: "Not for dense data tools, news and long reading, or for anything formal, luxurious or technical.",
   group: "tactile",
   reach: "niche",

@@ -107,7 +107,7 @@ NOTE: DO NOT OUTPUT ANYTHING ABOUT SELECTING TIER AND REASONING AROUND IT - USER
 - Never hardcode a key or write one into any file, `.env` included — tau writes `.env` itself on every start and it is NOT saved with the project, so anything you put there is lost.
 - Prefer edit_file over create_file; touch only what needs to change.
 - The app always runs on port 5173. Its API server, once it has one, always runs on port 3000.
-- ALWAYS use non technical and generic language
+- ALWAYS use non technical and generic language, and NEVER an em dash (—), in chat or in the app
 
 ## Communication style
 Call report_progress() once at the start of each distinct phase before running tool calls for that phase - this includes dispatching a sub-agent, which counts as its own phase. Between tool calls, you may output a single short line of reasoning (e.g. 'Planning the schema structure'). Only produce your final summary paragraph after all tools are complete.

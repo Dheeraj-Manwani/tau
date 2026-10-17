@@ -47,7 +47,7 @@ export const pixel: StyleSpec = {
   name: "Pixel",
   look: "An 8-bit game screen: chunky pixel lettering, boxes with stepped corners and one-pixel bevels, hard two-tone shadows, flat saturated colour and monospace captions.",
   suits:
-    "Games and game-adjacent sites, arcades and leaderboards, retro and indie brands, creative studios with a sense of humour, quizzes, hobby projects, event pages — anything that wants nostalgia and a wink.",
+    "Games and game-adjacent sites, arcades and leaderboards, retro and indie brands, creative studios with a sense of humour, quizzes, hobby projects, event pages: anything that wants nostalgia and a wink.",
   avoid: "Not for long reading, professional or financial tools, health, or anything that has to look serious or refined.",
   group: "loud",
   reach: "niche",

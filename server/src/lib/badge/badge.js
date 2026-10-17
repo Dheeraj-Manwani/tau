@@ -266,7 +266,7 @@
     return card(
       "Built with tau",
       "Describe an app in plain words and tau builds it and puts it online.",
-      "Build your own — free",
+      "Build your own for free",
       href,
       function (c) {
         c.appendChild(h("div", "sep"));

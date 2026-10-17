@@ -384,7 +384,7 @@ ${memoryStep}
 ${keyRules}
 - Prefer edit_file over create_file; touch only what needs to change.
 ${portsRule}
-- ALWAYS use non technical and generic language
+- ALWAYS use non technical and generic language, and NEVER an em dash (—) in your messages or any text on screen in the app: use a comma, colon or full stop.
 
 ## Communication style
 Call report_progress() once at the start of each distinct phase before running tool calls for that phase - this includes dispatching a sub-agent, which counts as its own phase. Between tool calls, you may output a single short line of reasoning (e.g. 'Planning the schema structure'). Only produce your final summary paragraph after all tools are complete.

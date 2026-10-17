@@ -9,7 +9,7 @@ export const formal: StyleSpec = {
   name: "Formal",
   look: "Institutional and trustworthy: a sober serif for headings, a clear sans for everything else, white paper with a deep accent, ruled panels, nothing that moves.",
   suits:
-    "Law, finance, insurance and accounting, healthcare, government and public services, universities, consultancies, business-to-business — anything that has to be believed before it is liked.",
+    "Law, finance, insurance and accounting, healthcare, government and public services, universities, consultancies, business-to-business: anything that has to be believed before it is liked.",
   avoid: "Not for entertainment, children, or brands that want to feel young, playful or rebellious.",
   group: "crafted",
   reach: "general",

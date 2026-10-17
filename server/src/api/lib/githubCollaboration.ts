@@ -132,7 +132,7 @@ export async function createProjectGithubIssue(projectId: string, userId: string
     if (!title || title.length > 200 || opts.description.length > 5_000) throw Errors.badRequest("Provide an issue title up to 200 characters and a description up to 5,000 characters.");
     await checkAssociation(projectId, repo.full_name);
     const issue = await gh<Issue>(token, "POST", `${path}/issues`, { title, body: opts.description.trim() });
-    return { issueUrl: issue.html_url, number: issue.number, summary: `Opened issue [#${issue.number} — ${issue.title}](${issue.html_url})` };
+    return { issueUrl: issue.html_url, number: issue.number, summary: `Opened issue [#${issue.number}: ${issue.title}](${issue.html_url})` };
   } catch (err) {
     if (err instanceof AppError) throw err;
     if (err instanceof GithubApiError) {

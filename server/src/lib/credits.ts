@@ -839,7 +839,7 @@ export async function grantPlanCycle(
           type: LedgerType.EXPIRE,
           amount: -acc.planBalance,
           balanceAfter: grossAfterExpire,
-          reason: "plan cycle reset — prior unused credits expired",
+          reason: "plan cycle reset: prior unused credits expired",
         },
       });
     }

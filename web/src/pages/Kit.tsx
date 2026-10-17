@@ -218,7 +218,7 @@ export default function Kit() {
       <Section id="02" title="Fields">
         <Spec label="Text · states">
           <Field label="Name" htmlFor="kit-name" counter="30/60" help="The title in a browser tab and a shared link.">
-            <Input id="kit-name" defaultValue="Daybook — a calm daily planner" />
+            <Input id="kit-name" defaultValue="Daybook, a calm daily planner" />
           </Field>
           <Field label="Domain" htmlFor="kit-domain" error="Enter a full domain, like www.example.com.">
             <Input id="kit-domain" defaultValue="daybook" aria-invalid />

@@ -268,7 +268,7 @@ export function dotenvValue(raw: string): string {
 export function renderDotenv(vars: Record<string, string>): string {
   return (
     "# Managed by tau. Do not edit or commit.\n" +
-    "# This file is intentionally not saved with your project — tau rewrites it\n" +
+    "# This file is intentionally not saved with your project. tau rewrites it\n" +
     "# each time the app starts, and it is never pushed to GitHub.\n" +
     "# Change keys from the Keys tab in tau.\n" +
     Object.entries(vars)

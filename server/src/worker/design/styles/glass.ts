@@ -10,7 +10,7 @@ export const glass: StyleSpec = {
   name: "Glass",
   look: "Frosted glass over colour: translucent, blurred panels with a bright hairline edge, floating on a soft gradient backdrop made from the accent.",
   suits:
-    "Health and wellness dashboards, weather, music and media players, smart-home and finance overviews, app landing pages, portfolios — anything that should feel light, modern and a little dreamy.",
+    "Health and wellness dashboards, weather, music and media players, smart-home and finance overviews, app landing pages, portfolios: anything that should feel light, modern and a little dreamy.",
   avoid: "Not for long reading, dense tables and admin tools, or for anything formal, handmade or austere.",
   group: "tactile",
   reach: "niche",

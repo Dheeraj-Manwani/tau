@@ -161,7 +161,7 @@ async function runBuild(
   return {
     log: tail(`${first.output}\n${retry.output}`),
     warning:
-      "Deployed, but the project's type check failed. The app was bundled anyway — the errors are worth fixing.",
+      "Deployed, but the project's type check failed. The app was bundled anyway, but the errors are worth fixing.",
   };
 }
 

@@ -969,7 +969,7 @@ function ProjectSwitcher({ projectId }: { projectId: string }) {
 // Sentinel selection for the free-form row, distinct from any option string
 // the agent could plausibly suggest.
 const ASK_USER_CUSTOM = "__custom__";
-const ASK_USER_SKIP_ANSWER = "No strong preference — use your best judgment.";
+const ASK_USER_SKIP_ANSWER = "No strong preference. Use your best judgment.";
 
 function AskUserOptionRow({
   label,

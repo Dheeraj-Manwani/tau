@@ -53,7 +53,7 @@ Because a file is read when you send it, what you typed guides the reading:
 ## Putting your own picture in the app
 
 An attached picture or PDF can also go into the app itself. Say where you want
-it — "use the attached photo of me as the portrait at the top" — and tau saves
+it, for example "use the attached photo of me as the portrait at the top", and tau saves
 that exact file into the project and builds the page around it. It works for a
 photo, a logo, a product shot, or a PDF the page should link to, such as a CV.
 

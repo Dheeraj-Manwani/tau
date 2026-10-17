@@ -17,7 +17,7 @@ export const neumorphic: StyleSpec = {
   name: "Neumorphic",
   look: "One soft material: panels and controls pushed out of, or pressed into, a single pale surface, drawn with a light shadow on one side and a dark one on the other instead of with colour.",
   suits:
-    "Smart-home and device controls, music players and remotes, calculators, timers and clocks, settings screens, small single-purpose tools — anything with a few large controls.",
+    "Smart-home and device controls, music players and remotes, calculators, timers and clocks, settings screens, small single-purpose tools: anything with a few large controls.",
   avoid: "Not for text-heavy pages, data tables, shops and marketing sites, or for anything read in a hurry or in bright light: it is a low-contrast look by nature.",
   group: "tactile",
   reach: "niche",

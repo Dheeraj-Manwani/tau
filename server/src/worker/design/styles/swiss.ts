@@ -8,7 +8,7 @@ export const swiss: StyleSpec = {
   name: "Swiss",
   look: "International-style precision: one grotesk typeface, a strict grid, flat colour on white, everything aligned to something.",
   suits:
-    "Tools, software products, documentation, agencies, studios, institutions — anything that should feel exact, calm and confident.",
+    "Tools, software products, documentation, agencies, studios, institutions: anything that should feel exact, calm and confident.",
   avoid: "Not for anything that should feel warm, handmade, cosy or playful.",
   group: "precise",
   reach: "general",

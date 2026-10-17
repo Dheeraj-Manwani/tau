@@ -238,64 +238,63 @@ function Home() {
               <LightningComposer
                 active={effort === "MAX" && ambience.lightning}
               > */}
-                <PromptComposer
-                  value={prompt}
-                  onChange={setPrompt}
-                  onSubmit={submit}
-                  isSubmitting={isSubmitting}
-                  disabled={atProjectLimit}
-                  minRows={2}
-                  maxRows={12}
-                  submitLabel="Build"
-                  ariaLabel="Describe what you want to build"
-                  attachments={attachments.attachments}
-                  onAttach={(files) => attachments.addFiles(files)}
-                  onRemoveAttachment={attachments.remove}
-                  onPasteLarge={attachments.addPaste}
-                  attachmentsBusy={attachments.isBusy}
-                  controls={
-                    <ComposerSettings
-                      effort={effort}
-                      onEffortChange={setEffort}
-                      disabled={atProjectLimit || isSubmitting}
-                      // Hidden where the server builds on the older templates
-                      // (`catalog.enabled`): a choice there would be stored and ignored.
-                      style={
-                        catalog.data?.enabled
-                          ? {
-                              label: designLabel(design, catalog.data),
-                              accent: design.accent,
-                              isAuto: countChoices(design) === 0,
-                              detail:
-                                defaultDesign &&
-                                sameDesign(design, defaultDesign)
-                                  ? "Your default look"
-                                  : "Chosen for this project",
-                              onAuto: () => setChosenDesign({}),
-                              onBrowse: () => setDesignOpen(true),
-                            }
-                          : null
-                      }
-                    />
-                  }
-                  placeholderText={
-                    showPlaceholder ? SUGGESTIONS[suggestion] : undefined
-                  }
-                  overlay={
-                    showPlaceholder ? (
-                      <span
-                        key={suggestion}
-                        aria-hidden="true"
-                        className={cn(
-                          "pointer-events-none absolute top-0 left-1 text-base leading-[1.55] whitespace-pre-wrap text-silver-500",
-                          !reduceMotion && "composer-glitch",
-                        )}
-                      >
-                        {SUGGESTIONS[suggestion]}
-                      </span>
-                    ) : null
-                  }
-                />
+              <PromptComposer
+                value={prompt}
+                onChange={setPrompt}
+                onSubmit={submit}
+                isSubmitting={isSubmitting}
+                disabled={atProjectLimit}
+                minRows={2}
+                maxRows={12}
+                submitLabel="Build"
+                ariaLabel="Describe what you want to build"
+                attachments={attachments.attachments}
+                onAttach={(files) => attachments.addFiles(files)}
+                onRemoveAttachment={attachments.remove}
+                onPasteLarge={attachments.addPaste}
+                attachmentsBusy={attachments.isBusy}
+                controls={
+                  <ComposerSettings
+                    effort={effort}
+                    onEffortChange={setEffort}
+                    disabled={atProjectLimit || isSubmitting}
+                    // Hidden where the server builds on the older templates
+                    // (`catalog.enabled`): a choice there would be stored and ignored.
+                    style={
+                      catalog.data?.enabled
+                        ? {
+                            label: designLabel(design, catalog.data),
+                            accent: design.accent,
+                            isAuto: countChoices(design) === 0,
+                            detail:
+                              defaultDesign && sameDesign(design, defaultDesign)
+                                ? "Your default look"
+                                : "Chosen for this project",
+                            onAuto: () => setChosenDesign({}),
+                            onBrowse: () => setDesignOpen(true),
+                          }
+                        : null
+                    }
+                  />
+                }
+                placeholderText={
+                  showPlaceholder ? SUGGESTIONS[suggestion] : undefined
+                }
+                overlay={
+                  showPlaceholder ? (
+                    <span
+                      key={suggestion}
+                      aria-hidden="true"
+                      className={cn(
+                        "pointer-events-none absolute top-0 left-1 text-base leading-[1.55] whitespace-pre-wrap text-silver-500",
+                        !reduceMotion && "composer-glitch",
+                      )}
+                    >
+                      {SUGGESTIONS[suggestion]}
+                    </span>
+                  ) : null
+                }
+              />
               {/* </LightningComposer> */}
             </div>
             <DesignDialog

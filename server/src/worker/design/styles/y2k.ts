@@ -22,7 +22,7 @@ export const y2k: StyleSpec = {
   name: "Y2K",
   look: "The turn of the millennium: glossy gel buttons, chunky sticker lettering with a white rim, chrome, candy colours and soft blobs of colour over graph paper.",
   suits:
-    "Fashion and streetwear drops, music and pop-culture fan sites, parties and club nights, youth brands, creator link pages, quizzes and social toys — anything loud, nostalgic and fun.",
+    "Fashion and streetwear drops, music and pop-culture fan sites, parties and club nights, youth brands, creator link pages, quizzes and social toys: anything loud, nostalgic and fun.",
   avoid: "Not for professional tools, finance, health, news, or anything that should feel calm, serious or timeless.",
   group: "loud",
   reach: "niche",

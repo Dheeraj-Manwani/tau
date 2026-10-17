@@ -7,7 +7,7 @@ export const minimal: StyleSpec = {
   name: "Minimal",
   look: "Almost nothing, placed exactly: a white page, near-black type in one quiet grotesk, small pill controls, no borders or shadows, and the accent used once.",
   suits:
-    "Portfolios, studios, single-product pages, personal sites, galleries and collections, writing and reading tools, calm utilities — anything where the content is the design.",
+    "Portfolios, studios, single-product pages, personal sites, galleries and collections, writing and reading tools, calm utilities: anything where the content is the design.",
   avoid: "Not for dense dashboards and data-heavy tools, or for anything that should feel loud, cosy or decorated.",
   group: "precise",
   reach: "general",
