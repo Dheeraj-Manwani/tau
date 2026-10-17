@@ -116,7 +116,7 @@ export function DeployPanel() {
       variant={unpublished && !onDeployPage ? "primary" : "secondary"}
       aria-label={label}
       onClick={unpublished ? () => go("overview") : undefined}
-      className="shrink-0"
+      className="h-8 shrink-0"
     >
       {busy ? (
         <StatusDot tone="deploying" />

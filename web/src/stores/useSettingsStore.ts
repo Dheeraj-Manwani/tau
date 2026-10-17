@@ -24,6 +24,12 @@ interface SettingsState {
    *  deliberately not written into `lastEffort`, where it would masquerade as a
    *  choice the user made and outlive their plan. */
   planDefault: Effort | null;
+  /** Home's ambience switches: the storm's rain and lightning, and the
+   *  soundtrack. Per-device, like the notification sound. */
+  ambience: Ambience;
+  /** Whether Home's one-time callout pointing at the ambience switches has
+   *  been dismissed. Per-device, like the switches it points at. */
+  ambienceHintSeen: boolean;
   /** Settings modal visibility (not persisted). */
   settingsOpen: boolean;
   /** A tour the user asked to replay from Settings (not persisted). */
@@ -33,11 +39,22 @@ interface SettingsState {
   setNotificationSound: (v: boolean) => void;
   snoozeNotifyPrompt: () => void;
   setPlanDefault: (e: Effort) => void;
+  setAmbience: (patch: Partial<Ambience>) => void;
+  markAmbienceHintSeen: () => void;
   openSettings: () => void;
   closeSettings: () => void;
   requestTour: (id: TourId) => void;
   clearTourRequest: () => void;
 }
+
+export interface Ambience {
+  rain: boolean;
+  lightning: boolean;
+  sound: boolean;
+}
+
+/** The storm on, the music off: browsers refuse sound before a click anyway. */
+export const DEFAULT_AMBIENCE: Ambience = { rain: true, lightning: true, sound: false };
 
 /** "Not now" on the notification opt-in hides it for this long. */
 export const NOTIFY_PROMPT_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
@@ -49,6 +66,8 @@ export const useSettingsStore = create<SettingsState>()(
       notificationSound: true,
       notifyPromptSnoozedUntil: null,
       planDefault: null,
+      ambience: DEFAULT_AMBIENCE,
+      ambienceHintSeen: false,
       settingsOpen: false,
       tourRequest: null,
 
@@ -57,6 +76,8 @@ export const useSettingsStore = create<SettingsState>()(
       snoozeNotifyPrompt: () =>
         set({ notifyPromptSnoozedUntil: Date.now() + NOTIFY_PROMPT_SNOOZE_MS }),
       setPlanDefault: (e) => set({ planDefault: e }),
+      setAmbience: (patch) => set((s) => ({ ambience: { ...s.ambience, ...patch } })),
+      markAmbienceHintSeen: () => set({ ambienceHintSeen: true }),
       openSettings: () => set({ settingsOpen: true }),
       closeSettings: () => set({ settingsOpen: false }),
       requestTour: (id) => set({ tourRequest: id, settingsOpen: false }),
@@ -87,6 +108,9 @@ export const useSettingsStore = create<SettingsState>()(
         notifyWhenReady: s.notifyWhenReady,
         notificationSound: s.notificationSound,
         notifyPromptSnoozedUntil: s.notifyPromptSnoozedUntil,
+        // Added within v2: an older save simply lacks them and keeps the defaults.
+        ambience: s.ambience,
+        ambienceHintSeen: s.ambienceHintSeen,
       }),
     },
   ),

@@ -72,7 +72,7 @@ import { ChatLoader } from "@/src/components/motion/ChatLoader";
 import { TauMark } from "@/src/components/motion/TauMark";
 import { chatLoaderView, type ChatLoaderView } from "@/src/features/project/chatLoaderState";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
-import { EffortToggle } from "@/src/features/composer/EffortToggle";
+import { ComposerSettings } from "@/src/features/composer/ComposerSettings";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
 import { useAttachments } from "@/src/features/composer/attachments/useAttachments";
 import { MessageAttachmentRail } from "@/src/features/composer/attachments/AttachmentRail";
@@ -1587,8 +1587,8 @@ export function ChatPanel({
             onRemoveAttachment={attachments.remove}
             onPasteLarge={attachments.addPaste}
             attachmentsBusy={attachments.isBusy}
-            rightSlot={
-              <EffortToggle effort={effort} onChange={setEffort} compact />
+            controls={
+              <ComposerSettings effort={effort} onEffortChange={setEffort} compact />
             }
           />
         )}

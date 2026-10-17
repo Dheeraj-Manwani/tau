@@ -86,6 +86,9 @@ import { Switch } from "@/src/components/ui/switch";
 import { Tabs, TabsCount, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
 import { Textarea } from "@/src/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/src/components/ui/tooltip";
+import { ComposerSettings } from "@/src/features/composer/ComposerSettings";
+import { PromptComposer } from "@/src/features/composer/PromptComposer";
+import type { Effort } from "@/src/features/project/types";
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return (
@@ -121,6 +124,9 @@ export default function Kit() {
   const [sound, setSound] = useState(true);
   const [page, setPage] = useState(1);
   const [nav, setNav] = useState("deploy");
+  const [draft, setDraft] = useState("");
+  const [composerEffort, setComposerEffort] = useState<Effort>("MAX");
+  const [lookChosen, setLookChosen] = useState(false);
 
   return (
     <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-16 px-6 py-14">
@@ -306,6 +312,42 @@ export default function Kit() {
       </Section>
 
       <Section id="03" title="Selection & navigation">
+        <Spec label="Composer · Home, then chat" wide>
+          <PromptComposer
+            value={draft}
+            onChange={setDraft}
+            onSubmit={() => toast.success("Build")}
+            placeholder="Make a kanban board with drag-and-drop…"
+            minRows={2}
+            submitLabel="Build"
+            onAttach={() => {}}
+            controls={
+              <ComposerSettings
+                effort={composerEffort}
+                onEffortChange={setComposerEffort}
+                style={{
+                  label: lookChosen ? "Brutalist" : "Auto",
+                  accent: lookChosen ? "#f97316" : undefined,
+                  isAuto: !lookChosen,
+                  detail: "Chosen for this project",
+                  onAuto: () => setLookChosen(false),
+                  onBrowse: () => setLookChosen(true),
+                }}
+              />
+            }
+          />
+          <div className="max-w-[420px]">
+            <PromptComposer
+              value=""
+              onChange={() => {}}
+              onSubmit={() => {}}
+              placeholder="Ask tau to change something…"
+              compact
+              onAttach={() => {}}
+              controls={<ComposerSettings effort={composerEffort} onEffortChange={setComposerEffort} compact />}
+            />
+          </div>
+        </Spec>
         <Spec label="Segmented · views">
           <Segmented value={view} onValueChange={setView} aria-label="View">
             <SegmentedItem value="preview">

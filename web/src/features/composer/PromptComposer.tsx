@@ -42,8 +42,8 @@ interface PromptComposerProps {
   compact?: boolean;
   /** When provided, replaces the send button with a red stop button. */
   onStop?: () => void;
-  /** Extra control rendered in the bottom row, just left of the send/stop button. */
-  rightSlot?: ReactNode;
+  /** Settings for the run (style, effort), beside the attach button. */
+  controls?: ReactNode;
   /** Text shown next to the send icon (e.g. "Build"). Icon-only when omitted. */
   submitLabel?: string;
 
@@ -71,7 +71,7 @@ export function PromptComposer({
   autoFocus = false,
   compact = false,
   onStop,
-  rightSlot,
+  controls,
   submitLabel,
   attachments = [],
   onAttach,
@@ -199,16 +199,21 @@ export function PromptComposer({
         {overlay}
       </div>
 
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
+      {/* Tools of the message on the left (attach, then its settings), the
+          one action on the right. */}
+      <div className="mt-auto flex items-center gap-2">
         <Button
           variant="ghost"
           size={compact ? "icon-sm" : "icon"}
           aria-label="Attach files"
+          // Outlined like the settings chip beside it, so the left group reads as one set.
+          className="rounded-md border-line-strong hover:cursor-pointer"
           disabled={disabled || !attachmentsEnabled}
           onClick={() => fileInputRef.current?.click()}
         >
           <PaperclipIcon />
         </Button>
+        {controls}
         <input
           ref={fileInputRef}
           type="file"
@@ -225,9 +230,7 @@ export function PromptComposer({
           }}
         />
 
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-          {rightSlot}
-
+        <div className="ml-auto flex shrink-0 items-center">
           {onStop ? (
             <Button
               variant="secondary"
@@ -243,12 +246,19 @@ export function PromptComposer({
             <Button
               variant={canSubmit || isSubmitting ? "primary" : "secondary"}
               size={submitLabel ? "default" : compact ? "icon-sm" : "icon"}
+              // A labelled send matches the row's 32px controls.
+              className={
+                submitLabel ? "h-8 max-[419px]:w-8 max-[419px]:px-0" : undefined
+              }
               onClick={onSubmit}
               disabled={!canSubmit}
               loading={isSubmitting || attachmentsBusy}
               aria-label={submitLabel ?? "Send prompt"}
             >
-              {submitLabel}
+              {/* On a phone the arrow alone leaves the settings chip room to name the look. */}
+              {submitLabel && (
+                <span className="hidden min-[420px]:inline">{submitLabel}</span>
+              )}
               {!(isSubmitting || attachmentsBusy) && <ArrowUpIcon />}
             </Button>
           )}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import toast from "react-hot-toast";
@@ -6,10 +6,17 @@ import toast from "react-hot-toast";
 import { useDocumentMeta } from "@/src/components/useDocumentMeta";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { useAttachments } from "@/src/features/composer/attachments/useAttachments";
-import { EffortToggle } from "@/src/features/composer/EffortToggle";
+import { ComposerSettings } from "@/src/features/composer/ComposerSettings";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
-import { DesignButton } from "@/src/features/design/DesignButton";
-import { compactConfig, type DesignConfig } from "@/src/features/design/api";
+import { DesignDialog } from "@/src/features/design/DesignDialog";
+import {
+  compactConfig,
+  countChoices,
+  designLabel,
+  sameDesign,
+  useDesignCatalog,
+  type DesignConfig,
+} from "@/src/features/design/api";
 import { MyProjects } from "@/src/features/project/MyProjects";
 import { CommunityProjects } from "@/src/features/project/CommunityProjects";
 import { HomeFooter } from "@/src/components/HomeFooter";
@@ -22,7 +29,15 @@ import { clearPendingPrompt, peekPendingPrompt } from "@/src/lib/promptHandoff";
 import { useBillingStore } from "@/src/features/billing/useBillingStore";
 import { useBalance } from "@/src/features/billing/api";
 import { DataSpinner } from "@/src/components/ui/data-spinner";
-import { RainLayer, RainSplash } from "@/src/components/motion/RainLayer";
+import { StormCanvas } from "@/src/components/StormCanvas";
+// import { LightningComposer } from "@/src/features/composer/LightningComposer";
+import { AmbienceSwitches } from "@/src/components/AmbienceSwitches";
+import { shouldShowAmbienceHint } from "@/src/lib/ambienceHint";
+import { useLoopingAudio } from "@/src/hooks/useLoopingAudio";
+import { useThunder } from "@/src/hooks/useThunder";
+import { stormSounds } from "@/src/lib/thunder";
+import { useSettingsStore } from "@/src/stores/useSettingsStore";
+import { env } from "@/src/lib/env";
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
 import { useSettings } from "@/src/hooks/useSettings";
 import { cn } from "@/src/lib/utils";
@@ -60,8 +75,13 @@ function Home() {
   // Settings. A choice made here is not carried to the next project: a style
   // picked for a bakery should not quietly dress the next dashboard.
   const [chosenDesign, setChosenDesign] = useState<DesignConfig | null>(null);
-  const { defaultDesign, setDefaultDesign } = useSettings();
+  const { defaultDesign, setDefaultDesign, hasSeenMotionIntro } = useSettings();
   const design: DesignConfig = chosenDesign ?? defaultDesign ?? {};
+  const catalog = useDesignCatalog();
+  const [designOpen, setDesignOpen] = useState(false);
+  // The storm's rain splashes against the composer's top edge.
+  const composerRef = useRef<HTMLDivElement>(null);
+  const composer = useCallback(() => composerRef.current, []);
   const isSubmitting = initProject.isPending;
   // Otherwise the suggestion carousel animates over the chip rail.
   const showPlaceholder =
@@ -80,6 +100,23 @@ function Home() {
   // placeholder's stutter-in and rotation defer to it (the CSS loops stop
   // on their own).
   const reduceMotion = useReduceMotion();
+  // Rain, lightning and the soundtrack, switched from above the composer.
+  const ambience = useSettingsStore((s) => s.ambience);
+  const setAmbience = useSettingsStore((s) => s.setAmbience);
+  // With Sound on: the music, plus the storm's rain bed and thunder when those
+  // switches are on too. The storm sits under the music.
+  const audible = stormSounds({ ...ambience, reduceMotion });
+  useLoopingAudio(env.AUDIO_URL, ambience.sound, 0.35);
+  useLoopingAudio(env.RAIN_AUDIO_URL, audible.rain, 0.25);
+  const onStrike = useThunder(env.THUNDER_AUDIO_URLS, audible.thunder);
+  // A one-time callout pointing at those switches, once the page has settled.
+  const ambienceHintSeen = useSettingsStore((s) => s.ambienceHintSeen);
+  const markAmbienceHintSeen = useSettingsStore((s) => s.markAmbienceHintSeen);
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setSettled(true), 1500);
+    return () => window.clearTimeout(id);
+  }, []);
 
   // A prefilled prompt is a one-time welcome, not a sticky draft.
   useEffect(() => clearPendingPrompt(), []);
@@ -162,7 +199,12 @@ function Home() {
     // Tier A (boards/Home.dc.html): the rain, the tube-lit "to build?" and the
     // glitching placeholder belong here. The composer itself stays a tool.
     <div className="relative h-full overflow-x-hidden overflow-y-auto">
-      <RainLayer />
+      <StormCanvas
+        target={composer}
+        rain={ambience.rain}
+        lightning={ambience.lightning}
+        onStrike={onStrike}
+      />
       <div className="relative mx-auto flex w-full max-w-[976px] flex-col px-6 pt-20">
         <section className="flex flex-col items-center gap-9 pt-16 sm:pt-[104px]">
           <div className="flex flex-col items-center gap-[22px] text-center">
@@ -175,54 +217,97 @@ function Home() {
           </div>
 
           <div className="relative w-full max-w-[848px] text-left">
-            <RainSplash />
-            <PromptComposer
-              value={prompt}
-              onChange={setPrompt}
-              onSubmit={submit}
-              isSubmitting={isSubmitting}
-              disabled={atProjectLimit}
-              minRows={2}
-              maxRows={12}
-              submitLabel="Build"
-              ariaLabel="Describe what you want to build"
-              attachments={attachments.attachments}
-              onAttach={(files) => attachments.addFiles(files)}
-              onRemoveAttachment={attachments.remove}
-              onPasteLarge={attachments.addPaste}
-              attachmentsBusy={attachments.isBusy}
-              rightSlot={
-                <>
-                  <DesignButton
-                    value={design}
-                    onChange={setChosenDesign}
-                    disabled={atProjectLimit || isSubmitting}
-                    savedDefault={defaultDesign}
-                    onSaveDefault={(look) => {
-                      setDefaultDesign(look);
-                      toast.success("New projects will start from this look");
-                    }}
-                  />
-                  <EffortToggle effort={effort} onChange={setEffort} />
-                </>
-              }
-              placeholderText={
-                showPlaceholder ? SUGGESTIONS[suggestion] : undefined
-              }
-              overlay={
-                showPlaceholder ? (
-                  <span
-                    key={suggestion}
-                    aria-hidden="true"
-                    className={cn(
-                      "pointer-events-none absolute top-0 left-1 text-base leading-[1.55] whitespace-pre-wrap text-silver-500",
-                      !reduceMotion && "composer-glitch",
-                    )}
-                  >
-                    {SUGGESTIONS[suggestion]}
-                  </span>
-                ) : null
-              }
+            {/* Out of flow: floats in the hero gap instead of adding a row. */}
+            <div className="absolute right-0 bottom-full mb-1.5">
+              <AmbienceSwitches
+                value={ambience}
+                onChange={setAmbience}
+                reduceMotion={reduceMotion}
+                hasSound={Boolean(env.AUDIO_URL)}
+                hint={shouldShowAmbienceHint({
+                  seen: ambienceHintSeen,
+                  motionIntroSeen: hasSeenMotionIntro,
+                  settled,
+                  blocked: designOpen,
+                })}
+                onHintDismiss={markAmbienceHintSeen}
+              />
+            </div>
+            <div ref={composerRef}>
+              {/* Lightning border on MAX effort, switched off for now.
+              <LightningComposer
+                active={effort === "MAX" && ambience.lightning}
+              > */}
+                <PromptComposer
+                  value={prompt}
+                  onChange={setPrompt}
+                  onSubmit={submit}
+                  isSubmitting={isSubmitting}
+                  disabled={atProjectLimit}
+                  minRows={2}
+                  maxRows={12}
+                  submitLabel="Build"
+                  ariaLabel="Describe what you want to build"
+                  attachments={attachments.attachments}
+                  onAttach={(files) => attachments.addFiles(files)}
+                  onRemoveAttachment={attachments.remove}
+                  onPasteLarge={attachments.addPaste}
+                  attachmentsBusy={attachments.isBusy}
+                  controls={
+                    <ComposerSettings
+                      effort={effort}
+                      onEffortChange={setEffort}
+                      disabled={atProjectLimit || isSubmitting}
+                      // Hidden where the server builds on the older templates
+                      // (`catalog.enabled`): a choice there would be stored and ignored.
+                      style={
+                        catalog.data?.enabled
+                          ? {
+                              label: designLabel(design, catalog.data),
+                              accent: design.accent,
+                              isAuto: countChoices(design) === 0,
+                              detail:
+                                defaultDesign &&
+                                sameDesign(design, defaultDesign)
+                                  ? "Your default look"
+                                  : "Chosen for this project",
+                              onAuto: () => setChosenDesign({}),
+                              onBrowse: () => setDesignOpen(true),
+                            }
+                          : null
+                      }
+                    />
+                  }
+                  placeholderText={
+                    showPlaceholder ? SUGGESTIONS[suggestion] : undefined
+                  }
+                  overlay={
+                    showPlaceholder ? (
+                      <span
+                        key={suggestion}
+                        aria-hidden="true"
+                        className={cn(
+                          "pointer-events-none absolute top-0 left-1 text-base leading-[1.55] whitespace-pre-wrap text-silver-500",
+                          !reduceMotion && "composer-glitch",
+                        )}
+                      >
+                        {SUGGESTIONS[suggestion]}
+                      </span>
+                    ) : null
+                  }
+                />
+              {/* </LightningComposer> */}
+            </div>
+            <DesignDialog
+              open={designOpen}
+              onOpenChange={setDesignOpen}
+              value={design}
+              onChange={setChosenDesign}
+              savedDefault={defaultDesign}
+              onSaveDefault={(look) => {
+                setDefaultDesign(look);
+                toast.success("New projects will start from this look");
+              }}
             />
             {limitsLoading ? (
               <div className="mt-2 flex h-5 items-center px-1">

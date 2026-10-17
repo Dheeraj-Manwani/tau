@@ -65,6 +65,11 @@ const DEVICES: {
   { id: "desktop", icon: MonitorIcon, label: "Desktop" },
 ];
 
+/** Every control in the 64px bar is 32px tall, the avatar's size, so the row
+ *  shares one centre line. Segmented defaults to `self-start` (for column
+ *  layouts); in the bar it must centre with everything else. */
+const BAR_SEGMENTED = "self-center p-0.5";
+
 /** PREVIEW / CODE / TOOLS: a view switch, so a raised neutral chip with a blue
  *  icon, never the blue fill it used to be (boards/Controls.dc.html §03). */
 function TabToggle() {
@@ -84,9 +89,10 @@ function TabToggle() {
       }}
       aria-label="Workspace view"
       data-tour="view-tabs"
+      className={BAR_SEGMENTED}
     >
       {TABS.map(({ id, icon: Icon }) => (
-        <SegmentedItem key={id} value={id} className="uppercase">
+        <SegmentedItem key={id} value={id} className="h-[26px] uppercase">
           {id === "code" && isWriting ? (
             <LoaderCircleIcon className="animate-spin motion-reduce:animate-none" />
           ) : (
@@ -111,9 +117,10 @@ function DeviceSwitcher() {
       onValueChange={(id) => setPreviewDevice(id as PreviewDevice)}
       aria-label="Preview device"
       data-tour="device-switcher"
+      className={BAR_SEGMENTED}
     >
       {DEVICES.map(({ id, icon: Icon, label }) => (
-        <SegmentedItem key={id} value={id} aria-label={label} className="w-7">
+        <SegmentedItem key={id} value={id} aria-label={label} className="h-[26px] w-[26px]">
           <Icon className="size-3.5" />
         </SegmentedItem>
       ))}
@@ -142,12 +149,12 @@ function ToolbarIcon({
       <TooltipTrigger asChild>
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="icon"
           aria-label={label}
           aria-pressed={pressed}
           disabled={disabled}
           onClick={onClick}
-          className={cn(pressed && "bg-space-raised text-silver-900 [&_svg]:text-blue-500")}
+          className={cn("[&_svg:not([class*='size-'])]:size-3.5", pressed && "bg-space-raised text-silver-900 [&_svg]:text-blue-500")}
           {...rest}
         >
           {children}
@@ -187,7 +194,7 @@ function VisualEditToggle() {
           data-tour="select-element"
           aria-pressed={enabled}
           className={cn(
-            "shrink-0",
+            "h-8 shrink-0",
             enabled && "border-line-hover bg-space-raised [&_svg]:text-blue-500",
           )}
         >
@@ -269,7 +276,7 @@ function PreviewNavigation() {
             disabled={!hasUrl}
             aria-label={`Navigate preview: ${previewPath}`}
             title={fullUrl ?? "No preview yet"}
-            className="max-w-32 min-w-0 sm:max-w-48"
+            className="h-8 max-w-32 min-w-0 sm:max-w-48"
           >
             <span className="truncate font-mono">{previewPath}</span>
             <ChevronDownIcon className="text-silver-600" />

@@ -24,7 +24,7 @@ export function GithubPanel() {
       aria-label="GitHub"
       disabled={!projectId}
       onClick={() => openTool("github")}
-      className="shrink-0"
+      className="h-8 shrink-0"
     >
       <GithubMark className="size-4" />
       GitHub

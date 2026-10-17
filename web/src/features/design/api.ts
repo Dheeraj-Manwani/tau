@@ -289,6 +289,13 @@ export function countChoices(config: DesignConfig): number {
   ].filter(Boolean).length;
 }
 
+/** The word the composer shows for a choice: "Auto" until something is chosen. */
+export function designLabel(config: DesignConfig, catalog: DesignCatalog): string {
+  if (config.designMd) return config.reference ? "Screenshot" : "Your design";
+  const style = catalog.styles.find((s) => s.key === config.style);
+  return style?.name ?? (countChoices(config) > 0 ? "Custom" : "Auto");
+}
+
 /**
  * The part of a choice that can be kept as a default look: everything but an
  * imported file. Null when nothing is left.
