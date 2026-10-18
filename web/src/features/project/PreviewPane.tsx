@@ -1432,7 +1432,11 @@ export function PreviewPane({
                   <PreviewStateCard
                     role="status"
                     coverImageUrl={previewImageUrl}
-                    description={recovery.attempt ? "Reconnecting preview…" : "Loading preview…"}
+                    description={
+                      <span className="shimmer-text">
+                        {recovery.attempt ? "Reconnecting preview…" : "Loading preview…"}
+                      </span>
+                    }
                   />
                 )}
               </div>

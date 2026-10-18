@@ -3,6 +3,11 @@ import { MoonIcon, PlayIcon, RotateCwIcon } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { PreviewStateCard } from "@/src/features/project/PreviewStateCard";
 
+const ANIMATION: Partial<Record<string, string>> = {
+  stopped: "/Sleepy-Moon.json",
+  restoring: "/Hammer-animation.json",
+};
+
 const COPY: Record<string, { title: string; description: string }> = {
   stopped: {
     title: "Preview is asleep",
@@ -43,6 +48,7 @@ export function PreviewStoppedCard({
   return (
     <PreviewStateCard
       role={starting ? "status" : mode === "failed" ? "alert" : undefined}
+      animation={ANIMATION[mode]}
       icon={mode === "failed" ? RotateCwIcon : MoonIcon}
       tone={mode === "failed" ? "error" : "neutral"}
       busy={starting}

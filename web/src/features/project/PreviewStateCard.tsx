@@ -1,6 +1,7 @@
 import type * as React from "react";
 import { LoaderCircleIcon, type LucideIcon } from "lucide-react";
 
+import { LottieAnimation } from "@/src/components/LottieAnimation";
 import { cn } from "@/src/lib/utils";
 
 const TONE_ICON = {
@@ -17,6 +18,7 @@ const TONE_ICON = {
  */
 export function PreviewStateCard({
   icon: Icon,
+  animation,
   tone = "neutral",
   busy = false,
   title,
@@ -28,6 +30,8 @@ export function PreviewStateCard({
 }: {
   /** Without one the tile holds the τ mark: tau's idle face for "nothing to show yet". */
   icon?: LucideIcon;
+  /** A Lottie JSON in `public/`, played larger in place of the tile; wins over `icon` and `busy`. */
+  animation?: string;
   tone?: keyof typeof TONE_ICON;
   /** Swaps the icon for a blue spinner while something is already happening. */
   busy?: boolean;
@@ -55,15 +59,19 @@ export function PreviewStateCard({
         </>
       )}
       <div role={role} className="relative flex w-full max-w-md flex-col items-center gap-4 text-center">
-        <span className="grid size-11 place-items-center rounded-lg border border-line-strong bg-space-surface">
-          {busy ? (
-            <LoaderCircleIcon aria-hidden className="size-5 animate-spin text-blue-500 motion-reduce:animate-none" />
-          ) : Icon ? (
-            <Icon aria-hidden className={cn("size-5", TONE_ICON[tone])} />
-          ) : (
-            <span aria-hidden className="logo-mark size-5 [filter:none]" />
-          )}
-        </span>
+        {animation ? (
+          <LottieAnimation src={animation} className={cn("size-20", busy ? "text-blue-500" : TONE_ICON[tone])} />
+        ) : (
+          <span className="grid size-11 place-items-center rounded-lg border border-line-strong bg-space-surface">
+            {busy ? (
+              <LoaderCircleIcon aria-hidden className="size-5 animate-spin text-blue-500 motion-reduce:animate-none" />
+            ) : Icon ? (
+              <Icon aria-hidden className={cn("size-5", TONE_ICON[tone])} />
+            ) : (
+              <span aria-hidden className="logo-mark size-5 [filter:none]" />
+            )}
+          </span>
+        )}
         {title ? (
           <div className="flex flex-col gap-2">
             <h2 className="display-heading display-s text-silver-900">{title}</h2>
