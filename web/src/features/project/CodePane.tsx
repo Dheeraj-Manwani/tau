@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import CodeMirror, { EditorView, keymap } from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { css as cssLang } from "@codemirror/lang-css";
@@ -33,6 +33,7 @@ import {
 } from "@/src/components/ui/context-menu";
 
 import { cn } from "@/src/lib/utils";
+import { TabIndicator } from "@/src/components/motion/TabIndicator";
 import { Alert } from "@/src/components/ui/alert";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { File, Folder, Tree } from "@/src/components/ui/file-tree";
@@ -223,6 +224,7 @@ function TabBar({ onShowFiles }: { onShowFiles?: () => void }) {
   const writingPath = useProjectStore((s) => s.writingPath);
 
   const stripRef = useRef<HTMLDivElement>(null);
+  const tabIndicatorId = useId();
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
 
@@ -297,12 +299,13 @@ function TabBar({ onShowFiles }: { onShowFiles?: () => void }) {
                   aria-selected={isActive}
                   onClick={() => setActiveFile(id)}
                   className={cn(
-                    "group/tab relative flex shrink-0 cursor-pointer items-center gap-2 px-3 font-mono text-xs transition-colors duration-150 after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full",
-                    isActive
-                      ? "text-silver-900 after:bg-blue-500"
-                      : "text-silver-600 hover:text-silver-900",
+                    "group/tab relative flex shrink-0 cursor-pointer items-center gap-2 px-3 font-mono text-xs transition-colors duration-150",
+                    isActive ? "text-silver-900" : "text-silver-600 hover:text-silver-900",
                   )}
                 >
+                  {isActive && (
+                    <TabIndicator id={tabIndicatorId} className="inset-x-2 bottom-0 h-0.5 rounded-full bg-blue-500" />
+                  )}
                   <MaterialIcon name={name} className="size-3.5 opacity-75 saturate-50" />
                   <span className="whitespace-nowrap">{name}</span>
                   {writingPath === id ? (

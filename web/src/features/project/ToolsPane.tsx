@@ -1,8 +1,9 @@
-import { type ComponentType } from "react";
+import { useId, type ComponentType } from "react";
 import { useSearchParams } from "react-router-dom";
 import { GlobeIcon, HardDriveIcon, LockIcon, RocketIcon } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
+import { useSmoothPanels } from "@/src/hooks/useSmoothPanels";
 import { SideNavItem, SideNavSection } from "@/src/components/ui/side-nav";
 import { DomainsPane } from "@/src/features/project/DomainsPane";
 import { KeysPane } from "@/src/features/project/KeysPane";
@@ -30,6 +31,7 @@ const TOOLS: ToolEntry[] = [
   { id: "deploy", label: "Deploy", icon: RocketIcon, group: "Delivery", pane: DeployPane },
   { id: "domains", label: "Domains", icon: GlobeIcon, group: "Delivery", pane: DomainsPane },
 ];
+const toolIndex = (id: ProjectTool) => TOOLS.findIndex((t) => t.id === id);
 
 export function ToolsPane({ projectId }: { projectId: string }) {
   const [params] = useSearchParams();
@@ -38,7 +40,13 @@ export function ToolsPane({ projectId }: { projectId: string }) {
   const { data: deploy } = useDeployStatus(projectId);
   const domainsLocked = !deploy?.live;
   const tool = TOOLS.find((t) => t.id === toolId) ?? TOOLS[0]!;
-  const Pane = tool.pane;
+  // The nav follows `tool` at once; the pane slides over after it, along the list.
+  const { shown, panel } = useSmoothPanels(tool.id, toolIndex, "y");
+  const shownTool = TOOLS.find((t) => t.id === shown) ?? tool;
+  const Pane = shownTool.pane;
+  // One per nav: the side list and the narrow-screen chip row each slide their own highlight.
+  const sideIndicator = useId();
+  const chipIndicator = useId();
 
   const groups = TOOLS.reduce<{ label: string; items: ToolEntry[] }[]>((acc, item) => {
     const last = acc.at(-1);
@@ -47,10 +55,11 @@ export function ToolsPane({ projectId }: { projectId: string }) {
     return acc;
   }, []);
 
-  const item = (entry: ToolEntry) => (
+  const item = (indicator: string) => (entry: ToolEntry) => (
     <SideNavItem
       key={entry.id}
       current={tool.id === entry.id}
+      indicator={indicator}
       aria-controls={`project-${entry.id}`}
       title={entry.id === "domains" && domainsLocked ? "Deploy your app to unlock domains" : undefined}
       onClick={() => openTool(entry.id)}
@@ -75,20 +84,27 @@ export function ToolsPane({ projectId }: { projectId: string }) {
           Under 640px it becomes a row of chips. */}
       <nav
         aria-label="Project tools"
-        className="scrollbar-none flex shrink-0 gap-1 overflow-x-auto border-b border-line p-2 sm:block sm:w-[200px] sm:overflow-y-auto sm:border-r sm:border-b-0 sm:px-3 sm:py-5 lg:w-[232px]"
+        className="scrollbar-none isolate flex shrink-0 gap-1 overflow-x-auto border-b border-line p-2 sm:block sm:w-[200px] sm:overflow-y-auto sm:border-r sm:border-b-0 sm:px-3 sm:py-5 lg:w-[232px]"
       >
         <div className="hidden sm:block">
           {groups.map((group) => (
             <SideNavSection key={group.label} label={group.label} className="not-first:mt-5">
-              {group.items.map(item)}
+              {group.items.map(item(sideIndicator))}
             </SideNavSection>
           ))}
         </div>
-        <div className="flex gap-1 sm:hidden">{TOOLS.map(item)}</div>
+        <div className="flex gap-1 sm:hidden">{TOOLS.map(item(chipIndicator))}</div>
       </nav>
-      <section id={`project-${tool.id}`} aria-label={tool.label} className="min-h-0 min-w-0 flex-1">
-        <Pane projectId={projectId} />
-      </section>
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+        <section
+          ref={panel(shownTool.id)}
+          id={`project-${shownTool.id}`}
+          aria-label={shownTool.label}
+          className="h-full"
+        >
+          <Pane projectId={projectId} />
+        </section>
+      </div>
     </div>
   );
 }

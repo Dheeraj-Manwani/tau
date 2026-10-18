@@ -207,7 +207,7 @@ export function DeployPane({ projectId }: { projectId: string }) {
   return (
     <div
       ref={root}
-      className="h-full overflow-y-auto text-silver-900 [scrollbar-gutter:stable]"
+      className="h-full overflow-x-hidden overflow-y-auto text-silver-900 [scrollbar-gutter:stable]"
     >
       <ToolPaneContent className="flex flex-col gap-[22px]">
         <PageHeader
@@ -292,12 +292,11 @@ export function DeployPane({ projectId }: { projectId: string }) {
             ))}
           </TabsList>
 
-          {/* Panels stay mounted (forceMount + hidden): Name & logo keeps its
+          {/* Panels stay mounted (forceMount): Name & logo keeps its
               unsaved draft while you look at another tab. */}
           <TabsContent
             value="overview"
             forceMount
-            hidden={section !== "overview"}
             data-deploy-section="overview"
             className="mt-[22px] flex flex-col gap-[22px]"
           >
@@ -485,7 +484,6 @@ export function DeployPane({ projectId }: { projectId: string }) {
           <TabsContent
             value="identity"
             forceMount
-            hidden={section !== "identity"}
             data-deploy-section="identity"
             className="mt-[22px]"
           >
@@ -503,7 +501,6 @@ export function DeployPane({ projectId }: { projectId: string }) {
             <TabsContent
               value="deployments"
               forceMount
-              hidden={section !== "deployments"}
               data-deploy-section="deployments"
               className="mt-[22px] flex flex-col gap-4"
             >
@@ -522,7 +519,6 @@ export function DeployPane({ projectId }: { projectId: string }) {
             <TabsContent
               value="resources"
               forceMount
-              hidden={section !== "resources"}
               data-deploy-section="resources"
               className="mt-[22px]"
             >

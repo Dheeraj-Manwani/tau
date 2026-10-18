@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui";
 
+import { TabIndicator } from "@/src/components/motion/TabIndicator";
 import { cn } from "@/src/lib/utils";
 
 /**
@@ -10,6 +11,7 @@ import { cn } from "@/src/lib/utils";
  * boards/Controls.dc.html §03.
  *
  * `size="sm"` is the mono-caps form; `iconOnly` makes square 32px items.
+ * The chip slides between items (components/motion/TabIndicator).
  */
 type SegmentedProps = Omit<
   React.ComponentProps<typeof ToggleGroupPrimitive.Root>,
@@ -21,14 +23,22 @@ type SegmentedProps = Omit<
   iconOnly?: boolean;
 };
 
-const SegmentedContext = React.createContext<{ size: "default" | "sm"; iconOnly: boolean }>({
+const SegmentedContext = React.createContext<{
+  size: "default" | "sm";
+  iconOnly: boolean;
+  value: string;
+  indicatorId: string;
+}>({
   size: "default",
   iconOnly: false,
+  value: "",
+  indicatorId: "",
 });
 
 function Segmented({ className, value, onValueChange, size = "default", iconOnly = false, ...props }: SegmentedProps) {
+  const indicatorId = React.useId();
   return (
-    <SegmentedContext.Provider value={{ size, iconOnly }}>
+    <SegmentedContext.Provider value={{ size, iconOnly, value, indicatorId }}>
       <ToggleGroupPrimitive.Root
         data-slot="segmented"
         type="single"
@@ -36,7 +46,7 @@ function Segmented({ className, value, onValueChange, size = "default", iconOnly
         // A segmented control always has one item on: ignore the "unselect".
         onValueChange={(next) => next && onValueChange(next)}
         className={cn(
-          "inline-flex w-fit shrink-0 items-center gap-0.5 self-start border border-line bg-space-surface",
+          "relative isolate inline-flex w-fit shrink-0 items-center gap-0.5 self-start border border-line bg-space-surface",
           size === "sm" ? "rounded-md p-0.5" : "rounded-lg p-[3px]",
           className,
         )}
@@ -46,13 +56,14 @@ function Segmented({ className, value, onValueChange, size = "default", iconOnly
   );
 }
 
-function SegmentedItem({ className, ...props }: React.ComponentProps<typeof ToggleGroupPrimitive.Item>) {
-  const { size, iconOnly } = React.useContext(SegmentedContext);
+function SegmentedItem({ className, value, children, ...props }: React.ComponentProps<typeof ToggleGroupPrimitive.Item>) {
+  const { size, iconOnly, value: active, indicatorId } = React.useContext(SegmentedContext);
   return (
     <ToggleGroupPrimitive.Item
       data-slot="segmented-item"
+      value={value}
       className={cn(
-        "inline-flex cursor-pointer items-center justify-center gap-2 border-0 text-silver-600 transition-[background-color,color,box-shadow] duration-150 outline-none hover:text-silver-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-40 data-[state=on]:bg-space-raised data-[state=on]:text-silver-900 data-[state=on]:shadow-[inset_0_0_0_1px_var(--line-strong),0_1px_2px_rgba(0,0,0,0.4)] data-[state=on]:[&_svg]:text-blue-500 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative inline-flex cursor-pointer items-center justify-center border-0 text-silver-600 transition-colors duration-150 outline-none hover:text-silver-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-40 data-[state=on]:text-silver-900 data-[state=on]:[&_svg]:text-blue-500 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         size === "sm"
           ? "h-6 rounded-sm px-2.5 font-mono text-[11px] font-medium tracking-[0.06em] uppercase"
           : "h-[30px] rounded-[9px] px-3 text-xs font-medium",
@@ -60,7 +71,17 @@ function SegmentedItem({ className, ...props }: React.ComponentProps<typeof Togg
         className,
       )}
       {...props}
-    />
+    >
+      {active === value && (
+        <TabIndicator
+          id={indicatorId}
+          radius={size === "sm" ? 8 : 9}
+          className="inset-0 bg-space-raised shadow-[inset_0_0_0_1px_var(--line-strong),0_1px_2px_rgba(0,0,0,0.4)]"
+        />
+      )}
+      {/* Above every item's chip, so a label stays readable as the chip passes under it. */}
+      <span className="relative z-10 inline-flex items-center justify-center gap-2">{children}</span>
+    </ToggleGroupPrimitive.Item>
   );
 }
 

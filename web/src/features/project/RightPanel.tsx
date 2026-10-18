@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/src/lib/utils";
+import { useSmoothPanels } from "@/src/hooks/useSmoothPanels";
 import { Button } from "@/src/components/ui/button";
 import { Input, InputGroup } from "@/src/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/src/components/ui/popover";
@@ -54,6 +55,7 @@ const TABS: { id: Tab; icon: typeof CodeIcon }[] = [
   { id: "code", icon: CodeIcon },
   { id: "tools", icon: WrenchIcon },
 ];
+const tabIndex = (tab: Tab) => TABS.findIndex((t) => t.id === tab);
 
 const DEVICES: {
   id: PreviewDevice;
@@ -338,6 +340,8 @@ export function RightPanel() {
   const toggleChat = useProjectStore((s) => s.toggleChat);
   const setActiveTab = useProjectStore((s) => s.setActiveTab);
   const [params, setParams] = useSearchParams();
+  // The bar follows `activeTab` at once; the panes below slide over after it.
+  const { shown, panel } = useSmoothPanels(activeTab, tabIndex);
 
   useEffect(() => {
     if (params.get("publish") === "1" || params.get("tool") === "publish") {
@@ -381,36 +385,41 @@ export function RightPanel() {
         </span>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {/* Keep the iframe mounted while Code is open. Unmounting it made a
             simple tab round-trip navigate the preview again and replay the
             post-load shimmer even though the already-loaded page was usable. */}
         <div
-          className={cn("h-full bg-space-void", activeTab !== "preview" && "hidden")}
-          aria-hidden={activeTab !== "preview"}
+          ref={panel("preview")}
+          className={cn("h-full bg-space-void", shown !== "preview" && "hidden")}
+          aria-hidden={shown !== "preview"}
         >
           <PreviewPane
             device={previewDevice}
-            active={activeTab === "preview"}
+            active={shown === "preview"}
           />
         </div>
 
-        {activeTab === "code" && (
-          <Suspense
-            fallback={
-              <div className="flex h-full flex-col gap-3 bg-space-void p-6" aria-label="Loading editor">
-                <Skeleton className="h-3.5 w-1/3" />
-                <Skeleton className="h-3 w-2/3" />
-                <Skeleton className="h-3 w-1/2" />
-              </div>
-            }
-          >
-            <CodePane />
-          </Suspense>
+        {shown === "code" && (
+          <div ref={panel("code")} className="h-full">
+            <Suspense
+              fallback={
+                <div className="flex h-full flex-col gap-3 bg-space-void p-6" aria-label="Loading editor">
+                  <Skeleton className="h-3.5 w-1/3" />
+                  <Skeleton className="h-3 w-2/3" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              }
+            >
+              <CodePane />
+            </Suspense>
+          </div>
         )}
 
-        {activeTab === "tools" && projectId && (
-          <ToolsPane key={projectId} projectId={projectId} />
+        {shown === "tools" && projectId && (
+          <div ref={panel("tools")} className="h-full">
+            <ToolsPane key={projectId} projectId={projectId} />
+          </div>
         )}
       </div>
     </div>

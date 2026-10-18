@@ -34,6 +34,8 @@ interface Drop {
   y: number;
   l: number;
   v: number;
+  /** False once the drop has left the sky with rain off; it waits for rain. */
+  live: boolean;
 }
 interface Splash {
   x: number;
@@ -50,7 +52,12 @@ interface StormState {
   bolts: Bolt[];
   next: number;
   flash: number;
+  /** The rain switch as of the last frame, to catch it flipping. */
+  raining: boolean;
 }
+
+/** Drops fall left by this much per pixel of fall. */
+const DRIFT = 0.12;
 
 export function StormCanvas({ target, rain = true, lightning = true, onStrike, className }: StormCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -118,12 +125,21 @@ export function StormCanvas({ target, rain = true, lightning = true, onStrike, c
       }
       // Same density/speed/drift as landing's SpaceCanvas - rain is meant to
       // look identical, not just "similarly busy".
+      const raining = rainRef.current;
       const rain: Drop[] = [];
       for (let k = 0; k < (W * H) / 12000; k++) {
-        rain.push({ x: rnd(0, W), y: rnd(0, H), l: rnd(16, 32), v: rnd(320, 520) });
+        rain.push({ x: rnd(0, W), y: rnd(0, H), l: rnd(16, 32), v: rnd(320, 520), live: raining });
       }
 
-      state = { stars, rain, splashes: [], bolts: [], next: rnd(8, 12), flash: 0 };
+      state = { stars, rain, splashes: [], bolts: [], next: rnd(8, 12), flash: 0, raining };
+    };
+
+    /** Back to the top of the sky, `lead` px above the edge. */
+    const respawn = (d: Drop, lead: number) => {
+      d.y = -lead;
+      // Start further right the higher it starts, so the drift doesn't leave
+      // the right edge of the screen dry while the sky fills.
+      d.x = rnd(0, W + 100) + lead * DRIFT;
     };
 
     /** Ambient only - never aimed at anything. */
@@ -150,14 +166,34 @@ export function StormCanvas({ target, rain = true, lightning = true, onStrike, c
         ? relRect(targetRef.current() ?? null)
         : null;
 
-      if (rainRef.current && state.rain.length) {
+      // The switch is gradual both ways. Off: drops already in the sky keep
+      // falling, and each one parks as it leaves instead of respawning. On:
+      // parked drops come back staggered up to a screen-height above the top
+      // edge, so the rain builds in over the same 1-3s it takes to clear.
+      const raining = rainRef.current;
+      if (raining !== state.raining) {
+        state.raining = raining;
+        for (const d of state.rain) {
+          if (raining && !d.live) {
+            d.live = true;
+            respawn(d, rnd(20, H + 20));
+          } else if (!raining && d.y - d.l < 0) {
+            // Not on screen yet (still queued above the top): drop it now, or
+            // switching off right after on would keep raining for seconds.
+            d.live = false;
+          }
+        }
+      }
+
+      if (state.rain.length) {
         ctx.strokeStyle = "rgba(170,200,255,0.22)";
         ctx.lineWidth = 1.4;
         ctx.beginPath();
         for (const d of state.rain) {
+          if (!d.live) continue;
           const prevY = d.y;
           d.y += d.v * dt;
-          d.x -= d.v * dt * 0.12;
+          d.x -= d.v * dt * DRIFT;
 
           if (
             composerRect &&
@@ -176,18 +212,21 @@ export function StormCanvas({ target, rain = true, lightning = true, onStrike, c
                 life: 1,
               });
             }
-            d.y = -20;
-            d.x = rnd(0, W + 100);
             d.v = rnd(320, 520);
+            if (raining) respawn(d, 20);
+            else d.live = false;
             continue;
           }
 
-          if (d.y > H) {
-            d.y = -20;
-            d.x = rnd(0, W + 100);
+          if (d.y - d.l > H) {
+            if (raining) respawn(d, 20);
+            else {
+              d.live = false;
+              continue;
+            }
           }
           ctx.moveTo(d.x, d.y);
-          ctx.lineTo(d.x + d.l * 0.12, d.y - d.l);
+          ctx.lineTo(d.x + d.l * DRIFT, d.y - d.l);
         }
         ctx.stroke();
       }

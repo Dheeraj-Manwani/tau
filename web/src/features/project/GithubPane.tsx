@@ -45,7 +45,7 @@ export function GithubPane({ projectId }: { projectId: string }) {
   const openPrCount = info ? githubPullRequests(info).filter((pr) => pr.state === "open").length : 0;
 
   return (
-    <div ref={root} className="h-full overflow-y-auto text-silver-900 [scrollbar-gutter:stable]">
+    <div ref={root} className="h-full overflow-x-hidden overflow-y-auto text-silver-900 [scrollbar-gutter:stable]">
       <ToolPaneContent className="flex flex-col gap-[22px]">
         <PageHeader
           title="GitHub"

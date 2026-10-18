@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 
 import { Segmented, SegmentedItem } from "@/src/components/ui/segmented";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/src/components/ui/select";
@@ -29,6 +29,8 @@ export function Scenarios() {
     return first;
   });
   const [layout, setLayout] = useState<Layout>("workspace");
+  // The panes keep their tool and section in the query (?tool=deploy…).
+  const { search } = useLocation();
 
   // Applied here as well as on select: StrictMode's remount runs the reset.
   useEffect(() => {
@@ -98,7 +100,7 @@ export function Scenarios() {
           }}
         >
           {/* ChatPanel reads the project id from the route. */}
-          <Routes location={`${GALLERY_PATH}/project/${DEMO_PROJECT_ID}`}>
+          <Routes location={{ pathname: `${GALLERY_PATH}/project/${DEMO_PROJECT_ID}`, search }}>
             <Route path="project/:id" element={panes} />
           </Routes>
         </MockScope>

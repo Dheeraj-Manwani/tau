@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { CheckIcon, PauseIcon, PlayIcon } from "lucide-react";
+import { motion } from "motion/react";
 
 import { ChatMarkdown } from "@/src/components/ChatMarkdown";
 import { ChatLoader } from "@/src/components/ui/tau-loader";
@@ -78,6 +79,7 @@ export function BuildReplay() {
   const [time, setTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(4);
+  const speedChip = useId();
   const [started, setStarted] = useState(false);
 
   /** Milestones worth marking on the scrub bar. */
@@ -375,13 +377,23 @@ export function BuildReplay() {
                 onClick={() => setSpeed(option)}
                 aria-pressed={speed === option}
                 className={cn(
-                  "rounded-md px-1.5 py-0.5 font-mono text-[0.7rem] transition-colors",
-                  speed === option
-                    ? "bg-space-overlay text-silver-900"
-                    : "text-silver-600 hover:text-silver-900",
+                  "relative rounded-md px-1.5 py-0.5 font-mono text-[0.7rem] transition-colors",
+                  speed === option ? "text-silver-900" : "text-silver-600 hover:text-silver-900",
                 )}
               >
-                {option}×
+                {/* The chip slides between speeds, as smooth tabs do in the app. */}
+                {speed === option && (
+                  <motion.span
+                    aria-hidden="true"
+                    layoutId={speedChip}
+                    // The replay re-renders every frame; only a new speed moves the chip.
+                    layoutDependency={speed}
+                    transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 35 }}
+                    className="absolute inset-0 bg-space-overlay"
+                    style={{ borderRadius: 10 }}
+                  />
+                )}
+                <span className="relative">{option}×</span>
               </button>
             ))}
           </div>

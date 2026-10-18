@@ -2,7 +2,7 @@
  * Every primitive in every state (doc/REDESIGN_PLAN.md, Phase 2), to compare
  * against boards/Controls.dc.html and boards/Surfaces.dc.html. Was `/_kit`.
  */
-import { useState } from "react";
+import { useId, useState } from "react";
 import toast from "react-hot-toast";
 import {
   ArrowRightIcon,
@@ -81,7 +81,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SideNavItem, SideNavSection } from "@/src/components/ui/side-nav";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { Switch } from "@/src/components/ui/switch";
-import { Tabs, TabsCount, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
+import { Tabs, TabsContent, TabsCount, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
 import { Textarea } from "@/src/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/src/components/ui/tooltip";
 import { ComposerSettings } from "@/src/features/composer/ComposerSettings";
@@ -101,6 +101,7 @@ export function Primitives() {
   const [sound, setSound] = useState(true);
   const [page, setPage] = useState(1);
   const [nav, setNav] = useState("deploy");
+  const navIndicator = useId();
   const [draft, setDraft] = useState("");
   const [composerEffort, setComposerEffort] = useState<Effort>("MAX");
   const [lookChosen, setLookChosen] = useState(false);
@@ -368,6 +369,16 @@ export function Primitives() {
               </TabsTrigger>
               <TabsTrigger value="resources">Resources</TabsTrigger>
             </TabsList>
+            {[
+              ["overview", "Where the app lives and what is running now."],
+              ["identity", "The name and logo people see in the tab and on share cards."],
+              ["deployments", "Every build, newest first, with its logs."],
+              ["resources", "The database and storage this app uses."],
+            ].map(([value, text]) => (
+              <TabsContent key={value} value={value!} forceMount className="pt-4 text-[13px] text-silver-600">
+                {text}
+              </TabsContent>
+            ))}
           </Tabs>
           <Tabs defaultValue="prs">
             <TabsList>
@@ -383,21 +394,22 @@ export function Primitives() {
         <Spec label="Sidebar nav">
           <nav className="max-w-60">
             <SideNavSection label="Setup">
-              <SideNavItem current={nav === "secrets"} onClick={() => setNav("secrets")}>
+              <SideNavItem indicator={navIndicator} current={nav === "secrets"} onClick={() => setNav("secrets")}>
                 <KeyRoundIcon />
                 Secrets
               </SideNavItem>
-              <SideNavItem current={nav === "storage"} onClick={() => setNav("storage")}>
+              <SideNavItem indicator={navIndicator} current={nav === "storage"} onClick={() => setNav("storage")}>
                 <HardDriveIcon />
                 Storage
               </SideNavItem>
             </SideNavSection>
             <SideNavSection label="Delivery">
-              <SideNavItem current={nav === "github"} onClick={() => setNav("github")}>
+              <SideNavItem indicator={navIndicator} current={nav === "github"} onClick={() => setNav("github")}>
                 <GithubIcon />
                 GitHub
               </SideNavItem>
               <SideNavItem
+                indicator={navIndicator}
                 current={nav === "deploy"}
                 onClick={() => setNav("deploy")}
                 trailing={<StatusDot tone="unpublished" size={6} />}
@@ -406,6 +418,7 @@ export function Primitives() {
                 Deploy
               </SideNavItem>
               <SideNavItem
+                indicator={navIndicator}
                 current={nav === "domains"}
                 onClick={() => setNav("domains")}
                 trailing={<LockIcon className="text-silver-500" />}

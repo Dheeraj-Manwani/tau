@@ -67,7 +67,7 @@ export function InkReveal({
     const settle = () => {
       fade.current?.stop();
       fade.current = animate(glowOpacity, 0, { duration: 0.3, ease: "easeOut" });
-      if (!live) fade.current.then(() => caughtUp() && setRevealing(false)).catch(() => {});
+      if (!live) fade.current.finished.then(() => caughtUp() && setRevealing(false)).catch(() => {});
     };
 
     const advance = () => {
@@ -85,7 +85,7 @@ export function InkReveal({
         ease: moving ? [0, 0, 0.15, 1] : [0.25, 0, 0.15, 1],
       });
       // A stopped run settles too; only one that reaches the text lands.
-      run.current.then(() => caughtUp() && settle()).catch(() => {});
+      run.current.finished.then(() => caughtUp() && settle()).catch(() => {});
     };
 
     advance();
