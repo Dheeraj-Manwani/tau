@@ -147,7 +147,7 @@ export function DeployPanel() {
           sideOffset={8}
           collisionPadding={12}
           aria-label="Deployment summary"
-          className="z-50 max-h-[var(--radix-popover-content-available-height)] w-[288px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border border-line-strong bg-space-overlay p-1.5 text-silver-900 shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.04)] outline-none"
+          className="tau-pop tau-pop-rows z-50 max-h-[var(--radix-popover-content-available-height)] w-[288px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border border-line-strong bg-space-overlay p-1.5 text-silver-900 shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.04)] outline-none"
         >
           <div className="-mx-1.5 mb-1.5 flex items-start gap-3 border-b border-line px-4 pt-2.5 pb-3.5">
             <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line-strong bg-space-surface">

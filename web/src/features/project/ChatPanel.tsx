@@ -59,6 +59,7 @@ import toast from "react-hot-toast";
 
 import { cn } from "@/src/lib/utils";
 import { ChatMarkdown } from "@/src/components/ChatMarkdown";
+import { InkReveal } from "@/src/components/motion/InkReveal";
 import { Button } from "@/src/components/ui/button";
 import {
   DropdownMenu,
@@ -71,6 +72,7 @@ import { Skeleton } from "@/src/components/ui/skeleton";
 import { ChatLoader } from "@/src/components/motion/ChatLoader";
 import { TauMark } from "@/src/components/motion/TauMark";
 import { chatLoaderView, type ChatLoaderView } from "@/src/features/project/chatLoaderState";
+import { useSteadyLoaderView } from "@/src/features/project/useSteadyLoaderView";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import { ComposerSettings } from "@/src/features/composer/ComposerSettings";
 import { useEffortChoice } from "@/src/features/composer/useEffortChoice";
@@ -602,7 +604,7 @@ function ChatBubble({
   message: Message;
   delay: number;
   noAnimate?: boolean;
-  /** Text is streaming into this bubble: a blue caret follows it. */
+  /** tau is still writing this reply: it develops as it streams (InkReveal). */
   streaming?: boolean;
 }) {
   const transition = { ...ENTRANCE.transition, delay };
@@ -659,7 +661,7 @@ function ChatBubble({
             )}
           </div>
         )}
-        <span className="px-1 font-mono text-[11px] text-silver-500">
+        <span className="px-1 text-xs text-silver-500">
           {formatRelativeTime(message.timestamp)}
         </span>
       </div>
@@ -681,10 +683,10 @@ function ChatBubble({
     <div>
       {message.content && (
         <div className="group/message relative pr-8 text-sm text-silver-900">
-          <div className={streaming ? "stream-caret" : undefined}>
+          <InkReveal live={streaming}>
             <ChatMarkdown content={message.content} />
-          </div>
-          <CopyMessageButton text={message.content} />
+          </InkReveal>
+          {!streaming && <CopyMessageButton text={message.content} />}
         </div>
       )}
       {message.actions && message.actions.length > 0 && (
@@ -750,16 +752,11 @@ function TypingBubble({
       initial={ENTRANCE.initial}
       animate={ENTRANCE.animate}
       exit={{ opacity: 0 }}
-      className={view.kind === "writing" ? "mt-2" : "mt-6"}
+      className="mt-6"
     >
       <ChatLoader
         view={view}
         runStartedAt={runStartedAt}
-        actionIcon={
-          view.kind === "working" ? (
-            view.action ? <ActionIcon kind={view.action.kind} /> : <FilePen className="size-3.5" />
-          ) : undefined
-        }
         onResume={onResume}
         resuming={resuming}
       />
@@ -1217,7 +1214,7 @@ export function ChatPanel({
     !isStreaming &&
     !isSending &&
     shouldOfferCreditResume(messages, balance?.credits.available);
-  const loaderView = chatLoaderView({
+  const loaderView = useSteadyLoaderView(chatLoaderView({
     isAiTyping,
     status,
     streaming: streamingId !== null,
@@ -1227,7 +1224,7 @@ export function ChatPanel({
     messages,
     runStartedAt,
     runEndedAt,
-  });
+  }));
 
   const [draft, setDraft] = useState("");
 

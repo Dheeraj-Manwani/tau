@@ -204,8 +204,16 @@ export const CHAT_LOADER_INPUTS: { label: string; input: ChatLoaderInput }[] = [
   { label: "Working · reading a file", input: { ...loaderBase, liveAction: ACTIONS.read! } },
   { label: "Working · running a command", input: { ...loaderBase, liveAction: ACTIONS.run! } },
   { label: "Working · web search", input: { ...loaderBase, liveAction: ACTIONS.search! } },
-  { label: "Working · writing a file", input: { ...loaderBase, writingPath: "src/components/HabitList.tsx" } },
-  { label: "Writing text", input: { ...loaderBase, streaming: true } },
+  {
+    label: "Working · reading several files",
+    input: {
+      ...loaderBase,
+      messages: [PROMPT, msg("ai", "", [ACTIONS.read!, ACTIONS.read!, ACTIONS.read!])],
+      liveAction: ACTIONS.read!,
+    },
+  },
+  { label: "Writing · a file", input: { ...loaderBase, writingPath: "src/components/HabitList.tsx" } },
+  { label: "Writing · text", input: { ...loaderBase, streaming: true } },
   { label: "Stopped", input: { ...loaderBase, isAiTyping: false, status: "cancelled" } },
   {
     label: "Done",

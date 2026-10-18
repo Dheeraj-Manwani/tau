@@ -94,7 +94,7 @@ export function ComposerSettings({
           {current.label}
           <ChevronDownIcon
             aria-hidden="true"
-            className="size-3.5 text-silver-600 transition-transform duration-150 group-aria-expanded:rotate-180 motion-reduce:transition-none"
+            className="size-3.5 text-silver-600 transition-transform duration-200 group-aria-expanded:rotate-180 motion-reduce:transition-none"
           />
         </button>
       </DropdownMenuTrigger>

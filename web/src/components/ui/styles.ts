@@ -7,8 +7,10 @@
  * 34px rows with an 8px radius. Icons are text-2 and brighten on hover; blue
  * is only for the selected check. Destructive goes last, below a separator.
  */
+/** Every menu, select and context menu: the overlay surface, opening with the
+ *  shared spring and its rows sliding in (`.tau-pop`, index.css). */
 export const menuContentClass =
-  "z-50 min-w-48 overflow-hidden rounded-xl border border-line-strong bg-space-overlay p-1.5 text-silver-900 shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.04)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0";
+  "tau-pop tau-pop-rows z-50 min-w-48 overflow-hidden rounded-xl border border-line-strong bg-space-overlay p-1.5 text-silver-900 shadow-[0_16px_48px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.04)] outline-none";
 
 export const menuItemClass =
   "group/menu-item relative flex h-[34px] w-full cursor-pointer items-center gap-2.5 rounded-sm px-2.5 text-[13px] text-silver-900 outline-none select-none transition-colors focus:bg-space-raised data-[highlighted]:bg-space-raised data-[disabled]:pointer-events-none data-[disabled]:opacity-40 [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-silver-600 focus:[&_svg:not([class*='text-'])]:text-silver-900 data-[highlighted]:[&_svg:not([class*='text-'])]:text-silver-900 data-[variant=destructive]:text-red-400 data-[variant=destructive]:focus:bg-red-400/10 data-[variant=destructive]:data-[highlighted]:bg-red-400/10 data-[variant=destructive]:[&_svg]:!text-red-400";

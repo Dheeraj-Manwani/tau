@@ -999,6 +999,10 @@ export async function runAgentLoop(
         if (sandboxRef.current) {
           const host = sandboxRef.current.getHost(PREVIEW_PORT);
           previewUrl = `https://${host}`;
+          // The reply is written; what is left (the preview answering, the
+          // projects list's cover picture) can take a minute and is not
+          // writing. Say so, rather than leave the chat on "Writing".
+          await publish(jobId, { type: "thinking", message: "Finishing up" });
           // "build-error" here means the run is ending on an app that does not
           // compile. The end-of-run check has already sent it back once for
           // that if it could (finishGate.ts); this is the record that it ended

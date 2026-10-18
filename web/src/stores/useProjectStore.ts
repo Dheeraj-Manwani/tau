@@ -1775,7 +1775,14 @@ function applyEvent(set: SetState, get: GetState, event: JobEvent): void {
       // ("Starting preview", "Preparing your app") must not raise the chat's
       // τ shimmer. See `startPreviewJob`.
       if (get().isPreviewJob) return;
-      set({ isAiTyping: true, status: "streaming", activity: event.message });
+      // A status line means tau has stopped writing ("Finishing up" after the
+      // last reply): close the reply, or the loader keeps saying "Writing".
+      set((s) => ({
+        ...finalizeStreaming(s),
+        isAiTyping: true,
+        status: "streaming",
+        activity: event.message,
+      }));
       return;
 
     case "llm_chunk":

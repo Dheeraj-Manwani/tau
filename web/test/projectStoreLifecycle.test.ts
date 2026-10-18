@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { useProjectStore } from "../src/stores/useProjectStore";
 import { queryClient } from "../src/lib/query-client";
 import type { ProjectDetail } from "../src/features/project/types";
+import { chatLoaderView } from "../src/features/project/chatLoaderState";
 
 const question = { id: "q1", question: "Which layout?", options: ["Grid", "List"] };
 const detail: ProjectDetail = {
@@ -180,5 +181,29 @@ describe("project store lifecycle reconciliation", () => {
     });
     expect(queryClient.getQueryData(["project", "preview-project", "preview-status", "https://preview.example.test"])).toEqual({ alive: true });
     expect(queryClient.getQueryData(["project", "preview-project", "preview-status", "https://old.example.test"])).toEqual({ alive: false });
+  });
+  test("a status line after the last reply closes it, so the chat stops saying Writing", () => {
+    useProjectStore.getState().initProject("finishing-up");
+    useProjectStore.getState().startJob("finishing-job");
+    useProjectStore.getState().applyEvent({ type: "llm_chunk", content: "Your tracker is ready." });
+    const replyId = useProjectStore.getState().streamingId;
+    expect(replyId).not.toBeNull();
+    useProjectStore.getState().applyEvent({ type: "thinking", message: "Finishing up" });
+    const s = useProjectStore.getState();
+    expect(s).toMatchObject({ streamingId: null, isAiTyping: true, status: "streaming", activity: "Finishing up" });
+    expect(s.chatMessages.find((m) => m.id === replyId)?.content).toBe("Your tracker is ready.");
+    expect(
+      chatLoaderView({
+        isAiTyping: s.isAiTyping,
+        status: s.status,
+        streaming: s.streamingId !== null,
+        writingPath: s.writingPath,
+        activity: s.activity,
+        liveAction: s.liveAction,
+        messages: s.chatMessages,
+        runStartedAt: s.runStartedAt,
+        runEndedAt: s.runEndedAt,
+      }),
+    ).toMatchObject({ kind: "thinking", label: "Finishing up" });
   });
 });

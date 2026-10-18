@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { RotateCwIcon } from "lucide-react";
 
 import { Button } from "@/src/components/ui/button";
@@ -7,6 +6,7 @@ import { useNow } from "@/src/hooks/useNow";
 import {
   formatDuration,
   formatElapsed,
+  isRunningView,
   type ChatLoaderView,
 } from "@/src/features/project/chatLoaderState";
 import { cn } from "@/src/lib/utils";
@@ -19,21 +19,19 @@ import { cn } from "@/src/lib/utils";
 export function ChatLoader({
   view,
   runStartedAt,
-  actionIcon,
   onResume,
   resuming = false,
   className,
 }: {
   view: ChatLoaderView;
-  /** When the run started here; the thinking timer hides when unknown. */
+  /** When the run started here; the timer hides when unknown. */
   runStartedAt: number | null;
-  /** Icon for the live action (the same one its chip shows). */
-  actionIcon?: ReactNode;
   onResume?: () => void;
   resuming?: boolean;
   className?: string;
 }) {
-  const timing = view.kind === "thinking" && runStartedAt !== null;
+  const running = isRunningView(view);
+  const timing = running && runStartedAt !== null;
   const now = useNow(timing);
 
   return (
@@ -42,40 +40,29 @@ export function ChatLoader({
       aria-live="polite"
       className={cn("flex min-h-8 min-w-0 items-center gap-3", className)}
     >
-      {view.kind === "thinking" && (
+      {/* One row for every live phase, so the mark and the shimmer stay
+          mounted and keep moving while only the words change. */}
+      {running && (
         <>
           <TauMark />
-          <span className="shimmer-text truncate text-sm font-medium">{view.label}</span>
+          <span className="shimmer-text max-w-[60%] shrink-0 truncate text-sm font-medium">{view.label}</span>
+          {(view.detail || view.target) && (
+            <span
+              key={`${view.detail}|${view.target}`}
+              className="loader-detail-in min-w-0 truncate text-xs text-silver-500"
+            >
+              {view.detail}
+              {view.detail && view.target && " "}
+              {view.target && <span className="font-mono text-silver-600">{view.target}</span>}
+            </span>
+          )}
+          {/* The run's clock, pinned right: it times the run, not the step,
+              and stays put while the step beside the headline changes. */}
           {timing && (
-            <span className="font-mono text-xs tabular-nums text-silver-500" aria-hidden="true">
+            <span className="ml-auto shrink-0 pl-2 font-mono text-xs tabular-nums text-silver-500" aria-hidden="true">
               {formatElapsed((now - runStartedAt) / 1000)}
             </span>
           )}
-        </>
-      )}
-
-      {view.kind === "working" && (
-        <>
-          <TauMark />
-          <div className="action-sweep flex h-8 min-w-0 flex-1 items-center gap-2.5 rounded-md border border-line bg-space-surface px-3 text-[12.5px] text-silver-600">
-            <span aria-hidden="true" className="flex shrink-0 text-silver-500 [&_svg]:size-3.5">
-              {actionIcon}
-            </span>
-            <span className="shrink-0">{view.verb}</span>
-            {view.target && (
-              <span className="min-w-0 truncate font-mono text-xs text-silver-900">{view.target}</span>
-            )}
-          </div>
-        </>
-      )}
-
-      {view.kind === "writing" && (
-        <>
-          {/* The words own the eye: the mark settles to a still 20px tile. */}
-          <span className="flex size-7 shrink-0 items-center justify-center">
-            <TauMark size={20} state="still" />
-          </span>
-          <span className="text-xs text-silver-500">Writing</span>
         </>
       )}
 

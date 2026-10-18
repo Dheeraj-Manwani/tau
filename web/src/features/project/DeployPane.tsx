@@ -10,7 +10,7 @@ import toast from "react-hot-toast";
 import { useIsMutating } from "@tanstack/react-query";
 import { cn } from "@/src/lib/utils";
 import { Alert } from "@/src/components/ui/alert";
-import { Badge, StatusDot } from "@/src/components/ui/badge";
+import { Badge } from "@/src/components/ui/badge";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardHeader, CardRow, MetaLine } from "@/src/components/ui/card";
 import { PageHeader } from "@/src/components/ui/page-header";
@@ -215,15 +215,14 @@ export function DeployPane({ projectId }: { projectId: string }) {
           description="Make your app live and manage every deployment."
           actions={
             <>
-              <span className="flex items-center gap-2 text-[13px] text-silver-600">
-                {busy ? (
-                  <StatusDot tone="deploying" />
-                ) : (
-                  // The page's one loop: a live site breathes (boards/Main.dc.html).
+              {/* While deploying, the button's own "Deploying…" says it. */}
+              {!busy && (
+                <span className="flex items-center gap-2 text-[13px] text-silver-600">
+                  {/* The page's one loop: a live site breathes (boards/Main.dc.html). */}
                   <span className={cn("size-2 rounded-full", deployToneClass[presentation.tone], presentation.tone === "live" && "status-pulse")} aria-hidden="true" />
-                )}
-                {statusText}
-              </span>
+                  {statusText}
+                </span>
+              )}
               {review ? (
                 <Button variant="secondary" onClick={() => openTool("deploy", "deployments")}>
                   Review database changes
@@ -286,7 +285,9 @@ export function DeployPane({ projectId }: { projectId: string }) {
                 {tab.id === "identity" && identityDirty && (
                   <span aria-label="Unsaved changes" className="size-1.5 rounded-full bg-orange-400" />
                 )}
-                {tab.id === "deployments" && busy && <StatusDot tone="deploying" />}
+                {tab.id === "deployments" && busy && (
+                  <span role="img" aria-label="Deploying" className="status-blink size-1.5 rounded-full bg-yellow-400" />
+                )}
               </TabsTrigger>
             ))}
           </TabsList>

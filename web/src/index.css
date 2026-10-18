@@ -1275,15 +1275,33 @@ a:hover > .logo-shimmer {
   }
 }
 
-/* The word "Thinking": one highlight sweeping across grey text. */
+/* The chat loader's headline ("Thinking", "Working", "Writing"): one
+   highlight sweeping across grey text. The gradient tiles, so the loop moves
+   it by exactly one tile (3x the text's width) and the last frame matches the
+   first: the highlight starts and ends just off the left edge, never mid-word.
+   For a tile of 3W, background-position p places it at -2W·p. */
 .shimmer-text {
-  background: linear-gradient(100deg, var(--silver-600) 40%, #fff 50%, var(--silver-600) 60%);
-  background-size: 250% 100%;
+  background: linear-gradient(
+    100deg,
+    var(--silver-600) 41.667%,
+    #fff 50%,
+    var(--silver-600) 58.333%
+  );
+  background-size: 300% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: shimmer-text 2.2s linear infinite;
+  animation: shimmer-sweep 2s linear infinite;
 }
+@keyframes shimmer-sweep {
+  from {
+    background-position: 87.5% 0;
+  }
+  to {
+    background-position: -62.5% 0;
+  }
+}
+/* .loader-skeleton's sweep. */
 @keyframes shimmer-text {
   from {
     background-position: 120% 0;
@@ -1293,34 +1311,18 @@ a:hover > .logo-shimmer {
   }
 }
 
-/* The live action line: a 1px blue sweep along its bottom edge. */
-.action-sweep {
-  position: relative;
-  overflow: hidden;
+/* The chat loader's step ("Reading src/App.tsx") eases in when it changes. */
+.loader-detail-in {
+  animation: loader-detail-in 180ms ease-out;
 }
-.action-sweep::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 40%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--blue-500), transparent);
-  animation: action-sweep 1.6s ease-in-out infinite;
-}
-@keyframes action-sweep {
+@keyframes loader-detail-in {
   from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(250%);
+    opacity: 0;
+    transform: translateY(3px);
   }
 }
 
-/* A blue caret blinking at the end of streaming text. Put the class on the
-   markdown's parent; the caret follows its last paragraph or list item. */
-.stream-caret > p:last-child::after,
-.stream-caret > :is(ul, ol):last-child > li:last-child::after,
+/* A blue caret blinking at the end of a live line of text. */
 .stream-caret--inline::after {
   content: "";
   display: inline-block;
@@ -1503,20 +1505,29 @@ a:hover > .logo-shimmer {
   }
 }
 
+/* A deployment in flight: the Deployments tab's dot blinks. */
+.status-blink {
+  animation: status-blink 1.2s ease-in-out infinite;
+}
+@keyframes status-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tau-mark__rain,
   .tau-mark__glyph,
   .tau-mark::after,
   .shimmer-text,
-  .action-sweep::after,
-  .stream-caret > p:last-child::after,
-  .stream-caret > :is(ul, ol):last-child > li:last-child::after,
+  .loader-detail-in,
   .stream-caret--inline::after,
   .pipeline-line > i,
   .loader-skeleton::after,
   .loader-segment > i,
   .pipeline-spin,
-  .status-pulse {
+  .status-pulse,
+  .status-blink {
     animation: none;
   }
   .tau-mark__rain,
@@ -1561,15 +1572,14 @@ a:hover > .logo-shimmer {
 :root[data-reduce-motion] .tau-mark__glyph,
 :root[data-reduce-motion] .tau-mark::after,
 :root[data-reduce-motion] .shimmer-text,
-:root[data-reduce-motion] .action-sweep::after,
-:root[data-reduce-motion] .stream-caret > p:last-child::after,
-:root[data-reduce-motion] .stream-caret > :is(ul, ol):last-child > li:last-child::after,
+:root[data-reduce-motion] .loader-detail-in,
 :root[data-reduce-motion] .stream-caret--inline::after,
 :root[data-reduce-motion] .pipeline-line > i,
 :root[data-reduce-motion] .loader-skeleton::after,
 :root[data-reduce-motion] .loader-segment > i,
 :root[data-reduce-motion] .pipeline-spin,
-:root[data-reduce-motion] .status-pulse {
+:root[data-reduce-motion] .status-pulse,
+:root[data-reduce-motion] .status-blink {
   animation: none !important;
 }
 
@@ -1591,4 +1601,109 @@ a:hover > .logo-shimmer {
   animation: none;
   opacity: 1;
   filter: drop-shadow(0 0 28px #60a5fa88) drop-shadow(0 0 60px #60a5fa33);
+}
+
+/* Dropdowns, menus, selects and popovers open the way the effort menu first
+   did (useplanes.com "AI Prompt Composer" model picker): a spring from
+   opacity 0, 6px toward the trigger and 97% scale, grown from the corner
+   nearest it, and back the same way on close. Radix waits for the closing
+   animation before it unmounts. `linear()` is that spring (stiffness 420,
+   damping 30, mass 1), sampled; it settles by 450ms with a 3% overshoot.
+   `.tau-pop-rows` adds the rows sliding in from the left, 30ms apart. */
+.tau-pop {
+  --tau-pop-x: 0px;
+  --tau-pop-y: 0px;
+  --tau-pop-spring: linear(0, 0.019 2.2%, 0.0685 4.4%, 0.1794 7.8%, 0.312 11.1%, 0.4927 15.6%, 0.6551 20%, 0.7872 24.4%, 0.8862 28.9%, 0.9547 33.3%, 1.0055 38.9%, 1.0285 44.4%, 1.0342 50%, 1.0307 55.6%, 1.022 62.2%, 1.0131 68.9%, 1.0046 77.8%, 0.9998 88.9%, 1);
+  transform-origin: var(--radix-popper-transform-origin);
+}
+.tau-pop[data-side="top"] {
+  --tau-pop-y: 6px;
+}
+.tau-pop[data-side="bottom"] {
+  --tau-pop-y: -6px;
+}
+.tau-pop[data-side="left"] {
+  --tau-pop-x: 6px;
+}
+.tau-pop[data-side="right"] {
+  --tau-pop-x: -6px;
+}
+.tau-pop[data-state="open"] {
+  animation: tau-pop-in 450ms var(--tau-pop-spring) both;
+}
+.tau-pop[data-state="closed"] {
+  animation: tau-pop-out 450ms var(--tau-pop-spring) both;
+  pointer-events: none;
+}
+@keyframes tau-pop-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--tau-pop-x), var(--tau-pop-y)) scale(0.97);
+  }
+}
+@keyframes tau-pop-out {
+  to {
+    opacity: 0;
+    transform: translate(var(--tau-pop-x), var(--tau-pop-y)) scale(0.97);
+  }
+}
+
+/* Rows are the menu's own children, a select's viewport rows and the items of
+   a radio or checkbox group. A group holds still so its rows move once, and
+   they carry on counting from the group's place in the menu. */
+.tau-pop-rows[data-state="open"] > :not([role="group"], [data-radix-select-viewport]),
+.tau-pop-rows[data-state="open"] > [role="group"] > *,
+.tau-pop-rows[data-state="open"] > [data-radix-select-viewport] > * {
+  animation: tau-pop-row 200ms ease backwards;
+  animation-delay: calc((var(--tau-pop-base, 0) + var(--tau-pop-row, 0)) * 30ms);
+}
+.tau-pop-rows > [role="group"] {
+  --tau-pop-base: var(--tau-pop-row, 0);
+}
+:is(.tau-pop-rows > *, .tau-pop-rows > [role="group"] > *, .tau-pop-rows > [data-radix-select-viewport] > *):nth-child(1) { --tau-pop-row: 0; }
+:is(.tau-pop-rows > *, .tau-pop-rows > [role="group"] > *, .tau-pop-rows > [data-radix-select-viewport] > *):nth-child(2) { --tau-pop-row: 1; }
+:is(.tau-pop-rows > *, .tau-pop-rows > [role="group"] > *, .tau-pop-rows > [data-radix-select-viewport] > *):nth-child(3) { --tau-pop-row: 2; }
+:is(.tau-pop-rows > *, .tau-pop-rows > [role="group"] > *, .tau-pop-rows > [data-radix-select-viewport] > *):nth-child(4) { --tau-pop-row: 3; }
+:is(.tau-pop-rows > *, .tau-pop-rows > [role="group"] > *, .tau-pop-rows > [data-radix-select-viewport] > *):nth-child(5) { --tau-pop-row: 4; }
+:is(.tau-pop-rows > *, .tau-pop-rows > [role="group"] > *, .tau-pop-rows > [data-radix-select-viewport] > *):nth-child(6) { --tau-pop-row: 5; }
+:is(.tau-pop-rows > *, .tau-pop-rows > [role="group"] > *, .tau-pop-rows > [data-radix-select-viewport] > *):nth-child(7) { --tau-pop-row: 6; }
+:is(.tau-pop-rows > *, .tau-pop-rows > [role="group"] > *, .tau-pop-rows > [data-radix-select-viewport] > *):nth-child(n + 8) { --tau-pop-row: 7; }
+@keyframes tau-pop-row {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tau-pop[data-state="open"] {
+    animation: tau-pop-fade-in 150ms ease-out both;
+  }
+  .tau-pop[data-state="closed"] {
+    animation: tau-pop-fade-out 150ms ease-out both;
+  }
+  .tau-pop-rows[data-state="open"] > :not([role="group"], [data-radix-select-viewport]),
+  .tau-pop-rows[data-state="open"] > [role="group"] > *,
+  .tau-pop-rows[data-state="open"] > [data-radix-select-viewport] > * {
+    animation: none;
+  }
+}
+:root[data-reduce-motion] .tau-pop[data-state="open"] {
+  animation: tau-pop-fade-in 150ms ease-out both;
+}
+:root[data-reduce-motion] .tau-pop[data-state="closed"] {
+  animation: tau-pop-fade-out 150ms ease-out both;
+}
+:root[data-reduce-motion] :is(.tau-pop-rows[data-state="open"] > :not([role="group"], [data-radix-select-viewport]), .tau-pop-rows[data-state="open"] > [role="group"] > *, .tau-pop-rows[data-state="open"] > [data-radix-select-viewport] > *) {
+  animation: none;
+}
+@keyframes tau-pop-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes tau-pop-fade-out {
+  to {
+    opacity: 0;
+  }
 }
