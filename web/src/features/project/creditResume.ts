@@ -1,6 +1,6 @@
 import type { Message } from "@/src/stores/useProjectStore";
 
-const OUT_OF_CREDITS_NOTICE = "⚠️ Out of credits";
+export const OUT_OF_CREDITS_NOTICE = "⚠️ Out of credits";
 
 export const CREDIT_RESUME_PROMPT =
   "Continue the previous task from exactly where you left off. Do not repeat completed work.";

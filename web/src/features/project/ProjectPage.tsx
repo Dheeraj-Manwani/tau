@@ -196,6 +196,30 @@ function useProjectBootstrap() {
 
 const WORKSPACE_SPRING = { type: "spring", stiffness: 320, damping: 34 } as const;
 
+/** The project could not be loaded: no access, gone, or a failed request. */
+export function ProjectLoadError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  const message = error instanceof ApiError && error.status === 403
+    ? "You don’t have access to this project."
+    : error instanceof ApiError && [404, 410].includes(error.status)
+      ? "This project is no longer available."
+      : "We couldn’t load this project. Please try again.";
+  return (
+    <div className="flex h-full items-center justify-center p-6">
+      <div className="flex w-full max-w-md flex-col gap-4">
+        <Alert tone="danger">{message}</Alert>
+        <div className="flex justify-end gap-2.5">
+          <Button variant="ghost" asChild>
+            <Link to={APP_HOME}>Back to projects</Link>
+          </Button>
+          <Button variant="secondary" onClick={onRetry}>
+            Try again
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectPage() {
   const { detail, detailPending, detailError, retryLoad } = useProjectBootstrap();
 
@@ -277,26 +301,7 @@ export default function ProjectPage() {
   }, [isChatOpen]);
 
   if (detailError) {
-    const message = detailError instanceof ApiError && detailError.status === 403
-      ? "You don’t have access to this project."
-      : detailError instanceof ApiError && [404, 410].includes(detailError.status)
-        ? "This project is no longer available."
-        : "We couldn’t load this project. Please try again.";
-    return (
-      <div className="flex h-full items-center justify-center p-6">
-        <div className="flex w-full max-w-md flex-col gap-4">
-          <Alert tone="danger">{message}</Alert>
-          <div className="flex justify-end gap-2.5">
-            <Button variant="ghost" asChild>
-              <Link to={APP_HOME}>Back to projects</Link>
-            </Button>
-            <Button variant="secondary" onClick={() => void retryLoad()}>
-              Try again
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
+    return <ProjectLoadError error={detailError} onRetry={() => void retryLoad()} />;
   }
 
   if (layoutMode === "loading") {

@@ -1,6 +1,6 @@
 import { StrictMode, type ComponentType } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-router-dom";
 
 import "./index.css";
 import { SplashScreen } from "./components/SplashScreen";
@@ -88,9 +88,18 @@ const router = createBrowserRouter([
         path: "/checkout",
         lazy: lazyComponent(() => import("./pages/Checkout")),
       },
-      // Component kit for the redesign (doc/REDESIGN_PLAN.md); dev builds only.
+      // Every screen's states and every primitive (pages/UiComps); dev builds only.
       ...(import.meta.env.DEV
-        ? [{ path: "/_kit", lazy: lazyComponent(() => import("./pages/Kit")) }]
+        ? [
+            {
+              path: "/ui-comps/*",
+              lazy: lazyComponent(() => import("./pages/UiComps")),
+            },
+            {
+              path: "/_kit",
+              element: <Navigate to="/ui-comps#primitives-buttons" replace />,
+            },
+          ]
         : []),
       {
         path: "*",

@@ -41,6 +41,7 @@ import { env } from "@/src/lib/env";
 import { useReduceMotion } from "@/src/hooks/useReduceMotion";
 import { useSettings } from "@/src/hooks/useSettings";
 import { cn } from "@/src/lib/utils";
+import { DevGalleryLinks } from "@/src/pages/UiComps/DevGalleryLinks";
 
 // Free plan may own at most this many concurrent projects (mirrors
 // FREE_PLAN_MAX_PROJECTS in api/src/lib/pricing.ts). PRO is unlimited.
@@ -332,6 +333,8 @@ function Home() {
             )}
           </div>
         </section>
+
+        {import.meta.env.DEV && <DevGalleryLinks />}
 
         <AnimatePresence mode="wait">
           {!initializing && (

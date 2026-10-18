@@ -168,17 +168,21 @@ function tipOrder(avoid: readonly number[] = []): number[] {
   return [0, ...rest.slice(0, VISIBLE_TIP_COUNT)];
 }
 
-function PreviewPlaceholder({
+export function PreviewPlaceholder({
   state,
   onAction,
+  phase: phaseOverride,
 }: {
   state: EmptyPreviewState;
   onAction: (action: EmptyPreviewAction) => void;
+  /** Pins the building loader's phase (the dev gallery); the run decides otherwise. */
+  phase?: BuildPhase;
 }) {
   const [tipIndex, setTipIndex] = useState(0);
   const [order, setOrder] = useState(() => tipOrder());
   const reduceMotion = useReducedMotion();
-  const phase = useBuildPhase();
+  const runPhase = useBuildPhase();
+  const phase = phaseOverride ?? runPhase;
 
   useEffect(() => {
     if (!state.animated || reduceMotion) return;

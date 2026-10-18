@@ -1143,6 +1143,33 @@ function AskUserPrompt({
   );
 }
 
+/** The transcript before the project's messages have loaded. */
+export function ChatHistorySkeleton() {
+  return (
+    <div className="flex flex-col gap-6" aria-busy="true" aria-label="Loading chat">
+      <Skeleton className="ml-auto h-11 w-3/5 rounded-xl" />
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-3 w-[90%]" />
+        <Skeleton className="h-3 w-[75%]" />
+        <Skeleton className="h-3 w-[40%]" />
+      </div>
+    </div>
+  );
+}
+
+/** A loaded project with no messages (a cleared chat). */
+export function ChatEmpty() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2.5 text-center">
+      <span className="grid size-10 place-items-center rounded-md border border-line-strong bg-space-surface text-silver-600">
+        <MessageSquareIcon className="size-4" />
+      </span>
+      <p className="text-sm font-semibold text-silver-900">No messages yet</p>
+      <p className="max-w-60 text-[13px] text-silver-500">Ask tau for a change below.</p>
+    </div>
+  );
+}
+
 export function ChatPanel({
   showCollapse = true,
   readyNotification,
@@ -1406,25 +1433,8 @@ export function ChatPanel({
               <span className="font-mono text-xs text-silver-500">Loading earlier messages</span>
             </div>
           )}
-          {chatLoading && (
-            <div className="flex flex-col gap-6" aria-busy="true" aria-label="Loading chat">
-              <Skeleton className="ml-auto h-11 w-3/5 rounded-xl" />
-              <div className="flex flex-col gap-2">
-                <Skeleton className="h-3 w-[90%]" />
-                <Skeleton className="h-3 w-[75%]" />
-                <Skeleton className="h-3 w-[40%]" />
-              </div>
-            </div>
-          )}
-          {chatEmpty && (
-            <div className="flex h-full flex-col items-center justify-center gap-2.5 text-center">
-              <span className="grid size-10 place-items-center rounded-md border border-line-strong bg-space-surface text-silver-600">
-                <MessageSquareIcon className="size-4" />
-              </span>
-              <p className="text-sm font-semibold text-silver-900">No messages yet</p>
-              <p className="max-w-60 text-[13px] text-silver-500">Ask tau for a change below.</p>
-            </div>
-          )}
+          {chatLoading && <ChatHistorySkeleton />}
+          {chatEmpty && <ChatEmpty />}
           {messages.map((m, i) => {
             // Consecutive messages from the same speaker (tau narrating a
             // multi-step turn: "I'll set up...", "4 Actions", "Adding a

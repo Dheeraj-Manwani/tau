@@ -109,7 +109,7 @@ export function GithubPane({ projectId }: { projectId: string }) {
   );
 }
 
-function GithubLoadError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+export function GithubLoadError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
   return (
     <Alert
       tone="danger"

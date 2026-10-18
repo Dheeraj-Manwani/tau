@@ -1,10 +1,8 @@
 /**
- * Dev-only component kit (doc/REDESIGN_PLAN.md, Phase 2): every primitive in
- * every state, to compare against boards/Controls.dc.html and
- * boards/Surfaces.dc.html. Routed only when import.meta.env.DEV and outside
- * the auth guard. Delete in Phase 12.
+ * Every primitive in every state (doc/REDESIGN_PLAN.md, Phase 2), to compare
+ * against boards/Controls.dc.html and boards/Surfaces.dc.html. Was `/_kit`.
  */
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 import {
   ArrowRightIcon,
@@ -90,30 +88,9 @@ import { ComposerSettings } from "@/src/features/composer/ComposerSettings";
 import { PromptComposer } from "@/src/features/composer/PromptComposer";
 import type { Effort } from "@/src/features/project/types";
 
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-6">
-      <div>
-        <p className="eyebrow">// {id}</p>
-        <h2 className="display-heading mt-2 text-[40px] text-silver-900">{title}</h2>
-      </div>
-      <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))]">{children}</div>
-    </section>
-  );
-}
+import { Row, Section, Spec } from "../frame";
 
-function Spec({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
-  return (
-    <div className={`flex min-w-0 flex-col gap-4 rounded-lg border border-line bg-space-surface p-5.5 ${wide ? "col-span-full" : ""}`}>
-      <p className="lab">{label}</p>
-      {children}
-    </div>
-  );
-}
-
-const Row = ({ children }: { children: ReactNode }) => <div className="flex flex-wrap items-center gap-3">{children}</div>;
-
-export default function Kit() {
+export function Primitives() {
   const [view, setView] = useState("tools");
   const [effort, setEffort] = useState("high");
   const [device, setDevice] = useState("desktop");
@@ -129,16 +106,9 @@ export default function Kit() {
   const [lookChosen, setLookChosen] = useState(false);
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-16 px-6 py-14">
-      <header>
-        <p className="eyebrow">// Tau design system · kit</p>
-        <h1 className="display-l mt-3">Every control, every state.</h1>
-        <p className="mt-3 max-w-xl text-[15px] text-silver-600">
-          Dev-only. Compare with boards/Controls.dc.html and boards/Surfaces.dc.html.
-        </p>
-      </header>
+    <>
 
-      <Section id="01" title="Buttons">
+      <Section id="primitives-buttons" eyebrow="primitives · 01" title="Buttons">
         <Spec label="Variants">
           <Row>
             <Button>
@@ -215,7 +185,7 @@ export default function Kit() {
         </Spec>
       </Section>
 
-      <Section id="02" title="Fields">
+      <Section id="primitives-fields" eyebrow="primitives · 02" title="Fields">
         <Spec label="Text · states">
           <Field label="Name" htmlFor="kit-name" counter="30/60" help="The title in a browser tab and a shared link.">
             <Input id="kit-name" defaultValue="Daybook, a calm daily planner" />
@@ -311,7 +281,7 @@ export default function Kit() {
         </Spec>
       </Section>
 
-      <Section id="03" title="Selection & navigation">
+      <Section id="primitives-selection" eyebrow="primitives · 03" title="Selection & navigation">
         <Spec label="Composer · Home, then chat" wide>
           <PromptComposer
             value={draft}
@@ -487,7 +457,7 @@ export default function Kit() {
         </Spec>
       </Section>
 
-      <Section id="04" title="Status & feedback">
+      <Section id="primitives-status" eyebrow="primitives · 04" title="Status & feedback">
         <Spec label="Alerts" wide>
           <Alert tone="warning">
             This project has a database, and deploying a database isn't available yet. Deploying will stop and tell you
@@ -598,7 +568,7 @@ export default function Kit() {
         </Spec>
       </Section>
 
-      <Section id="05" title="Menus & overlays">
+      <Section id="primitives-menus" eyebrow="primitives · 05" title="Menus & overlays">
         <Spec label="Dropdown menu">
           <Row>
             <DropdownMenu>
@@ -704,7 +674,7 @@ export default function Kit() {
         </Spec>
       </Section>
 
-      <Section id="06" title="Cards & rows">
+      <Section id="primitives-cards" eyebrow="primitives · 06" title="Cards & rows">
         <Card>
           <CardHeader title="Address & domains" description="Where people can reach your app." />
           <CardRow
@@ -762,6 +732,6 @@ export default function Kit() {
           />
         </Card>
       </Section>
-    </div>
+    </>
   );
 }
