@@ -27,7 +27,7 @@ import {
   clearFreshBuild,
   hasFreshBuild,
 } from "@/src/features/project/revealSession";
-import { useReadyNotification } from "@/src/features/project/useReadyNotification";
+// import { useReadyNotification } from "@/src/features/project/useReadyNotification";
 import { useAgentFavicon } from "@/src/features/project/useAgentFavicon";
 import { useFirstBuildFlash } from "@/src/features/project/useFirstBuildFlash";
 import { resolveProjectLayout } from "@/src/features/project/projectLayout";
@@ -268,16 +268,18 @@ export default function ProjectPage() {
       />
     </Suspense>
   );
-  const readyNotification = useReadyNotification({
-    projectId,
-    projectName: detail?.project.name,
-    currentJobId,
-    status,
-    isPreviewJob,
-    terminalOutcome,
-    pendingQuestion,
-    userCancelledJobId,
-  });
+  // Notify-when-ready is disabled for now.
+  // const readyNotification = useReadyNotification({
+  //   projectId,
+  //   projectName: detail?.project.name,
+  //   currentJobId,
+  //   status,
+  //   isPreviewJob,
+  //   terminalOutcome,
+  //   pendingQuestion,
+  //   userCancelledJobId,
+  // });
+  const readyNotification = undefined;
   useFirstBuildFlash();
   useAgentFavicon({
     status,

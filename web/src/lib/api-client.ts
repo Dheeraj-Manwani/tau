@@ -1,5 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
-import toast from "react-hot-toast";
+// import toast from "react-hot-toast";
 
 import { env } from "./env";
 
@@ -36,7 +36,8 @@ export function isTerminalRequestError(error: unknown): boolean {
 
 /** Show each request separately, without query parameters or credentials. */
 export function notifyApiRequest(url: string): void {
-  toast(new URL(url, "http://tau.local").pathname);
+  // Disabled for now: toasting every API call.
+  // toast(new URL(url, "http://tau.local").pathname);
 }
 
 export const api = axios.create({

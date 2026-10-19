@@ -1,5 +1,5 @@
 import { useLocation } from "react-router-dom";
-import toast from "react-hot-toast";
+// import toast from "react-hot-toast";
 
 import {
   Dialog,
@@ -18,10 +18,10 @@ import {
 } from "@/src/features/settings/BuildDefaults";
 import { TOUR_IDS, TOUR_INFO } from "@/src/features/tour/tours";
 import { useSettingsStore } from "@/src/stores/useSettingsStore";
-import {
-  browserNotificationsSupported,
-  requestReadyNotificationPermission,
-} from "@/src/features/project/useReadyNotification";
+// import {
+//   browserNotificationsSupported,
+//   requestReadyNotificationPermission,
+// } from "@/src/features/project/useReadyNotification";
 import {
   playNotificationSound,
   primeNotificationSound,
@@ -35,8 +35,8 @@ export function SettingsModal() {
   const {
     reduceMotion,
     setReduceMotion,
-    notifyWhenReady,
-    setNotifyWhenReady,
+    // notifyWhenReady,
+    // setNotifyWhenReady,
     notificationSound,
     setNotificationSound,
   } = useSettings();
@@ -50,25 +50,26 @@ export function SettingsModal() {
   };
   // Tours point at the project workspace, so they can only replay there.
   const inProject = useLocation().pathname.startsWith("/project/");
-  const notificationsSupported = browserNotificationsSupported();
-  const notificationPermission = notificationsSupported
-    ? Notification.permission
-    : "denied";
+  // Desktop notifications disabled for now.
+  // const notificationsSupported = browserNotificationsSupported();
+  // const notificationPermission = notificationsSupported
+  //   ? Notification.permission
+  //   : "denied";
 
-  const changeReadyNotifications = async (enabled: boolean) => {
-    if (!enabled) {
-      setNotifyWhenReady(false);
-      return;
-    }
+  // const changeReadyNotifications = async (enabled: boolean) => {
+  //   if (!enabled) {
+  //     setNotifyWhenReady(false);
+  //     return;
+  //   }
 
-    if (!(await requestReadyNotificationPermission())) {
-      toast.error("Allow browser notifications to enable this setting");
-      return;
-    }
+  //   if (!(await requestReadyNotificationPermission())) {
+  //     toast.error("Allow browser notifications to enable this setting");
+  //     return;
+  //   }
 
-    setNotifyWhenReady(true);
-    toast.success("Ready notifications enabled");
-  };
+  //   setNotifyWhenReady(true);
+  //   toast.success("Ready notifications enabled");
+  // };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && close()}>
@@ -98,6 +99,7 @@ export function SettingsModal() {
             }
           />
 
+          {/* Desktop notifications disabled for now.
           <SettingsRow
             title="Desktop notifications"
             htmlFor="notify-when-ready"
@@ -126,6 +128,7 @@ export function SettingsModal() {
               />
             }
           />
+          */}
 
           <SettingsRow
             title="Sound"

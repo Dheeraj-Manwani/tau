@@ -9,7 +9,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowDownIcon,
-  BellIcon,
+  // BellIcon,
   BookOpen,
   Box,
   BrainIcon,
@@ -1524,6 +1524,7 @@ export function ChatPanel({
         className={cn("shrink-0", showCollapse ? "px-4 pb-4" : "pb-[22px]")}
         data-tour="composer"
       >
+        {/* Notify-when-ready prompt disabled for now.
         {!pendingQuestion && readyNotification?.showPrompt && (
           <div className="mb-2 flex w-full items-center gap-2.5 rounded-lg border border-line bg-space-surface py-2 pr-2 pl-3">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-sm border border-line-strong bg-space-overlay text-silver-600">
@@ -1554,6 +1555,7 @@ export function ChatPanel({
             </Button>
           </div>
         )}
+        */}
         {pendingQuestion?.secrets?.length && currentJobId && projectId ? (
           <SecretRequestPrompt
             key={pendingQuestion.id}
