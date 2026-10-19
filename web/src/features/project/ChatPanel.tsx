@@ -1169,7 +1169,7 @@ export function ChatEmpty() {
 
 export function ChatPanel({
   showCollapse = true,
-  readyNotification,
+  // readyNotification,
 }: {
   showCollapse?: boolean;
   readyNotification?: ReadyNotificationController;

@@ -241,12 +241,12 @@ export default function ProjectPage() {
   const buildStarted = useProjectStore((s) => s.buildStarted);
   const storeProjectId = useProjectStore((s) => s.projectId);
   const status = useProjectStore((s) => s.status);
-  const currentJobId = useProjectStore((s) => s.currentJobId);
-  const terminalOutcome = useProjectStore((s) => s.terminalOutcome);
+  // const currentJobId = useProjectStore((s) => s.currentJobId);
+  // const terminalOutcome = useProjectStore((s) => s.terminalOutcome);
   const pendingQuestion = useProjectStore((s) => s.pendingQuestion);
   const isStalled = useProjectStore((s) => s.isStalled);
   const isPreviewJob = useProjectStore((s) => s.isPreviewJob);
-  const userCancelledJobId = useProjectStore((s) => s.userCancelledJobId);
+  // const userCancelledJobId = useProjectStore((s) => s.userCancelledJobId);
   const layoutMode = resolveProjectLayout({
     liveBuildStarted: storeProjectId === projectId && buildStarted,
     workspaceStartedAt: detail?.project.workspaceStartedAt,

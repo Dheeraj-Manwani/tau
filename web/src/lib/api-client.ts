@@ -35,7 +35,7 @@ export function isTerminalRequestError(error: unknown): boolean {
 }
 
 /** Show each request separately, without query parameters or credentials. */
-export function notifyApiRequest(url: string): void {
+export function notifyApiRequest(_url: string): void {
   // Disabled for now: toasting every API call.
   // toast(new URL(url, "http://tau.local").pathname);
 }
